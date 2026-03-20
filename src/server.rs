@@ -286,6 +286,7 @@ pub async fn create_relay_connection(
     server: ServerPtr,
     relay_server: String,
     uuid: String,
+    token: String,
     peer_addr: SocketAddr,
     secure: bool,
     ipv4: bool,
@@ -295,6 +296,7 @@ pub async fn create_relay_connection(
         server,
         relay_server,
         uuid.clone(),
+        token,
         peer_addr,
         secure,
         ipv4,
@@ -315,6 +317,7 @@ async fn create_relay_connection_(
     server: ServerPtr,
     relay_server: String,
     uuid: String,
+    token: String,
     peer_addr: SocketAddr,
     secure: bool,
     ipv4: bool,
@@ -329,6 +332,7 @@ async fn create_relay_connection_(
     let licence_key = crate::get_key(true).await;
     msg_out.set_request_relay(RequestRelay {
         licence_key,
+        token,
         uuid,
         ..Default::default()
     });

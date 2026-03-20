@@ -127,6 +127,20 @@ pub fn core_main() -> Option<Vec<String>> {
     if args.contains(&"--noinstall".to_string()) {
         args.clear();
     }
+    match crate::common::apply_deskzap_launch_args(&args) {
+        Ok(Some(translated_args)) => {
+            args = translated_args;
+            #[cfg(feature = "flutter")]
+            {
+                _is_flutter_invoke_new_connection = true;
+            }
+        }
+        Ok(None) => {}
+        Err(err) => {
+            log::error!("Failed to apply Deskzap launch args: {}", err);
+            return None;
+        }
+    }
     if args.len() > 0 {
         if args[0] == "--version" {
             println!("{}", crate::VERSION);
@@ -153,6 +167,7 @@ pub fn core_main() -> Option<Vec<String>> {
         }
     }
     hbb_common::init_log(false, &log_name);
+    crate::common::bootstrap_deskzap_host();
 
     // linux uni (url) go here.
     #[cfg(all(target_os = "linux", feature = "flutter"))]

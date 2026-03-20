@@ -2,10 +2,12 @@ use std::{
     collections::HashMap,
     future::Future,
     net::{SocketAddr, ToSocketAddrs},
+    path::{Path, PathBuf},
     sync::{Arc, Mutex, RwLock},
     task::Poll,
 };
 
+use serde_derive::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 
 #[cfg(not(target_os = "ios"))]
@@ -54,6 +56,31 @@ pub type NotifyMessageBox = fn(String, String, String, String) -> dyn Future<Out
 
 // the executable name of the portable version
 pub const PORTABLE_APPNAME_RUNTIME_ENV_KEY: &str = "RUSTDESK_APPNAME";
+pub const DESKZAP_PROFILE_RUNTIME_ENV_KEY: &str = "DESKZAP_PROFILE_PATH";
+const DESKZAP_PROFILE_FILE_NAME: &str = "deskzap-profile.json";
+const DESKZAP_ENROLLMENT_TOKEN_KEY: &str = "deskzap-enrollment-token";
+const DESKZAP_LAUNCH_PAYLOAD_OPTION: &str = "deskzap-launch-payload";
+const DESKZAP_SESSION_ID_OPTION: &str = "deskzap-session-id";
+const DESKZAP_AUTHORIZATION_TOKEN_OPTION: &str = "deskzap-authorization-token";
+const DESKZAP_DEVICE_ID_OPTION: &str = "deskzap-device-id";
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeskzapLaunchPayload {
+    pub remote_id: String,
+    pub session_type: String,
+    pub authorization_token: String,
+    pub session_id: String,
+    #[serde(default)]
+    pub device_id: String,
+    #[serde(default)]
+    pub device_name: String,
+    #[serde(default)]
+    pub rustdesk_runtime_id: String,
+    #[serde(default)]
+    pub force_relay: bool,
+    #[serde(default)]
+    pub password: String,
+}
 
 pub const PLATFORM_WINDOWS: &str = "Windows";
 pub const PLATFORM_LINUX: &str = "Linux";
@@ -1786,22 +1813,188 @@ pub fn load_custom_client() {
     #[cfg(debug_assertions)]
     if let Ok(data) = std::fs::read_to_string("./custom.txt") {
         read_custom_client(data.trim());
-        return;
     }
-    let Some(path) = std::env::current_exe().map_or(None, |x| x.parent().map(|x| x.to_path_buf()))
-    else {
+
+    let Some(resource_dir) = get_runtime_resource_dir() else {
         return;
     };
-    #[cfg(target_os = "macos")]
-    let path = path.join("../Resources");
-    let path = path.join("custom.txt");
-    if path.is_file() {
-        let Ok(data) = std::fs::read_to_string(&path) else {
+
+    let signed_profile_path = resource_dir.join("custom.txt");
+    if signed_profile_path.is_file() {
+        let Ok(data) = std::fs::read_to_string(&signed_profile_path) else {
             log::error!("Failed to read custom client config");
             return;
         };
-        read_custom_client(&data.trim());
+        read_custom_client(data.trim());
     }
+
+    if let Some(deskzap_profile_path) = get_deskzap_profile_path(&resource_dir) {
+        read_deskzap_client_profile(&deskzap_profile_path);
+    }
+}
+
+pub fn bootstrap_deskzap_host() {
+    if !config::is_incoming_only() {
+        return;
+    }
+
+    let enrollment_token = config::HARD_SETTINGS
+        .read()
+        .unwrap()
+        .get(DESKZAP_ENROLLMENT_TOKEN_KEY)
+        .cloned()
+        .unwrap_or_default();
+    if enrollment_token.trim().is_empty() {
+        return;
+    }
+
+    let api_server = Config::get_option(keys::OPTION_API_SERVER);
+    if api_server.trim().is_empty() {
+        log::warn!("Deskzap host bootstrap skipped because api-server is empty");
+        return;
+    }
+
+    let hostname = crate::common::hostname();
+    let display_name = {
+        let configured = get_builtin_option(keys::OPTION_DISPLAY_NAME);
+        if configured.trim().is_empty() {
+            hostname.clone()
+        } else {
+            configured
+        }
+    };
+
+    let operating_system = match std::env::consts::OS {
+        "windows" => "Windows",
+        "macos" => "macOS",
+        "linux" => "Linux",
+        other => other,
+    };
+
+    let body = json!({
+        "enrollment_token": enrollment_token,
+        "rustdesk_runtime_id": Config::get_id(),
+        "hostname": hostname,
+        "display_name": display_name,
+        "operating_system": operating_system,
+        "agent_version": crate::VERSION,
+    })
+    .to_string();
+
+    let url = format!(
+        "{}/api/v1/devices/enroll",
+        api_server.trim_end_matches('/')
+    );
+    match post_request_sync(url, body, "{}") {
+        Ok(_) => {
+            log::info!("Deskzap host bootstrap enrollment completed");
+        }
+        Err(err) => {
+            log::error!("Deskzap host bootstrap enrollment failed: {}", err);
+        }
+    }
+}
+
+pub fn apply_deskzap_launch_args(args: &[String]) -> Result<Option<Vec<String>>, String> {
+    if args.first().map(|arg| arg.as_str()) != Some("--deskzap-connect") {
+        return Ok(None);
+    }
+
+    let Some(source) = args.get(1) else {
+        return Err("missing Deskzap launch payload".to_owned());
+    };
+
+    let payload = parse_deskzap_launch_payload(source)?;
+    if payload.remote_id.trim().is_empty()
+        || payload.authorization_token.trim().is_empty()
+        || payload.session_id.trim().is_empty()
+    {
+        return Err("Deskzap launch payload is incomplete".to_owned());
+    }
+
+    persist_deskzap_launch_payload(&payload);
+
+    let command = match payload.session_type.as_str() {
+        "file_session" | "file_transfer" => "--file-transfer",
+        "remote_desktop" | "chat_session" | "" => "--connect",
+        other => {
+            log::warn!("Unknown Deskzap session type {}, defaulting to --connect", other);
+            "--connect"
+        }
+    };
+
+    let mut translated = vec![
+        command.to_owned(),
+        payload.remote_id.clone(),
+        payload.password.clone(),
+    ];
+
+    if payload.force_relay {
+        translated.push("--relay".to_owned());
+    }
+
+    Ok(Some(translated))
+}
+
+fn parse_deskzap_launch_payload(source: &str) -> Result<DeskzapLaunchPayload, String> {
+    let path = PathBuf::from(source);
+    let raw = if path.is_file() {
+        std::fs::read_to_string(&path)
+            .map_err(|err| format!("failed to read Deskzap launch payload: {err}"))?
+    } else if source.trim_start().starts_with('{') {
+        source.to_owned()
+    } else {
+        let decoded = base64::decode(source);
+        let decoded = decoded.map_err(|err| format!("failed to decode Deskzap launch payload: {err}"))?;
+        String::from_utf8(decoded).map_err(|err| format!("Deskzap launch payload is not valid UTF-8: {err}"))?
+    };
+
+    serde_json::from_str::<DeskzapLaunchPayload>(&raw)
+        .map_err(|err| format!("failed to parse Deskzap launch payload: {err}"))
+}
+
+fn persist_deskzap_launch_payload(payload: &DeskzapLaunchPayload) {
+    let serialized = serde_json::to_string(payload).unwrap_or_default();
+    LocalConfig::set_option(DESKZAP_LAUNCH_PAYLOAD_OPTION.to_owned(), serialized);
+    LocalConfig::set_option(DESKZAP_SESSION_ID_OPTION.to_owned(), payload.session_id.clone());
+    LocalConfig::set_option(
+        DESKZAP_AUTHORIZATION_TOKEN_OPTION.to_owned(),
+        payload.authorization_token.clone(),
+    );
+    LocalConfig::set_option(DESKZAP_DEVICE_ID_OPTION.to_owned(), payload.device_id.clone());
+}
+
+fn get_runtime_resource_dir() -> Option<PathBuf> {
+    let path = std::env::current_exe().ok()?;
+    let parent = path.parent()?.to_path_buf();
+
+    #[cfg(target_os = "macos")]
+    {
+        return Some(parent.join("../Resources"));
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        Some(parent)
+    }
+}
+
+fn get_deskzap_profile_path(resource_dir: &Path) -> Option<PathBuf> {
+    if let Ok(path) = std::env::var(DESKZAP_PROFILE_RUNTIME_ENV_KEY) {
+        let path = PathBuf::from(path);
+        return path.is_file().then_some(path);
+    }
+
+    #[cfg(debug_assertions)]
+    {
+        let path = PathBuf::from(format!("./{DESKZAP_PROFILE_FILE_NAME}"));
+        if path.is_file() {
+            return Some(path);
+        }
+    }
+
+    let path = resource_dir.join(DESKZAP_PROFILE_FILE_NAME);
+    path.is_file().then_some(path)
 }
 
 fn read_custom_client_advanced_settings(
@@ -1894,13 +2087,35 @@ pub fn read_custom_client(config: &str) {
         log::error!("Failed to dec custom client config");
         return;
     };
-    let Ok(mut data) =
+    let Ok(data) =
         serde_json::from_slice::<std::collections::HashMap<String, serde_json::Value>>(&data)
     else {
         log::error!("Failed to parse custom client config");
         return;
     };
 
+    apply_custom_client_config(data);
+}
+
+fn read_deskzap_client_profile(path: &Path) {
+    let Ok(data) = std::fs::read_to_string(path) else {
+        log::error!("Failed to read Deskzap runtime profile: {:?}", path);
+        return;
+    };
+
+    let Ok(data) = serde_json::from_str::<std::collections::HashMap<String, serde_json::Value>>(&data)
+    else {
+        log::error!("Failed to parse Deskzap runtime profile: {:?}", path);
+        return;
+    };
+
+    log::info!("Loaded Deskzap runtime profile from {:?}", path);
+    apply_custom_client_config(data);
+}
+
+fn apply_custom_client_config(
+    mut data: std::collections::HashMap<String, serde_json::Value>,
+) {
     if let Some(app_name) = data.remove("app-name") {
         if let Some(app_name) = app_name.as_str() {
             *config::APP_NAME.write().unwrap() = app_name.to_owned();

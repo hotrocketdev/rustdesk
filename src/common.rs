@@ -63,6 +63,7 @@ const DESKZAP_LAUNCH_PAYLOAD_OPTION: &str = "deskzap-launch-payload";
 const DESKZAP_SESSION_ID_OPTION: &str = "deskzap-session-id";
 const DESKZAP_AUTHORIZATION_TOKEN_OPTION: &str = "deskzap-authorization-token";
 const DESKZAP_DEVICE_ID_OPTION: &str = "deskzap-device-id";
+const DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION: &str = "deskzap-runtime-heartbeat-token";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeskzapLaunchPayload {
@@ -80,6 +81,17 @@ pub struct DeskzapLaunchPayload {
     pub force_relay: bool,
     #[serde(default)]
     pub password: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct DeskzapEnrollmentResponse {
+    device: DeskzapEnrolledDevice,
+    runtime_heartbeat_token: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct DeskzapEnrolledDevice {
+    id: String,
 }
 
 pub const PLATFORM_WINDOWS: &str = "Windows";
@@ -1886,13 +1898,71 @@ pub fn bootstrap_deskzap_host() {
         api_server.trim_end_matches('/')
     );
     match post_request_sync(url, body, "{}") {
-        Ok(_) => {
+        Ok(response) => {
+            if let Err(err) = persist_deskzap_enrollment(&api_server, &response, operating_system) {
+                log::error!("Deskzap host bootstrap enrollment persistence failed: {}", err);
+                return;
+            }
             log::info!("Deskzap host bootstrap enrollment completed");
         }
         Err(err) => {
             log::error!("Deskzap host bootstrap enrollment failed: {}", err);
         }
     }
+}
+
+fn persist_deskzap_enrollment(
+    api_server: &str,
+    response: &str,
+    operating_system: &str,
+) -> Result<(), String> {
+    let enrollment = serde_json::from_str::<DeskzapEnrollmentResponse>(response)
+        .map_err(|err| format!("failed to parse Deskzap enrollment response: {err}"))?;
+
+    if enrollment.device.id.trim().is_empty()
+        || enrollment.runtime_heartbeat_token.trim().is_empty()
+    {
+        return Err("Deskzap enrollment response is incomplete".to_owned());
+    }
+
+    LocalConfig::set_option(
+        DESKZAP_DEVICE_ID_OPTION.to_owned(),
+        enrollment.device.id.clone(),
+    );
+    LocalConfig::set_option(
+        DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION.to_owned(),
+        enrollment.runtime_heartbeat_token.clone(),
+    );
+
+    send_deskzap_runtime_heartbeat(
+        api_server,
+        &enrollment.runtime_heartbeat_token,
+        operating_system,
+    )
+}
+
+fn send_deskzap_runtime_heartbeat(
+    api_server: &str,
+    runtime_heartbeat_token: &str,
+    operating_system: &str,
+) -> Result<(), String> {
+    let url = format!(
+        "{}/api/v1/devices/runtime-heartbeat",
+        api_server.trim_end_matches('/')
+    );
+    let body = json!({
+        "agent_version": crate::VERSION,
+        "operating_system": operating_system,
+    })
+    .to_string();
+    let headers = json!({
+        "Authorization": format!("Bearer {}", runtime_heartbeat_token),
+    })
+    .to_string();
+
+    post_request_sync(url, body, &headers)
+        .map(|_| ())
+        .map_err(|err| format!("failed to send Deskzap runtime heartbeat: {err}"))
 }
 
 pub fn apply_deskzap_launch_args(args: &[String]) -> Result<Option<Vec<String>>, String> {

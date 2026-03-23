@@ -64,6 +64,8 @@ const DESKZAP_SESSION_ID_OPTION: &str = "deskzap-session-id";
 const DESKZAP_AUTHORIZATION_TOKEN_OPTION: &str = "deskzap-authorization-token";
 const DESKZAP_DEVICE_ID_OPTION: &str = "deskzap-device-id";
 const DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION: &str = "deskzap-runtime-heartbeat-token";
+const DESKZAP_PUBLIC_WEB_URL: &str = "https://my.deskzap.co.uk";
+const DESKZAP_DOMAIN: &str = "deskzap.co.uk";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeskzapLaunchPayload {
@@ -989,7 +991,7 @@ pub fn check_software_update() {
 }
 
 // No need to check `danger_accept_invalid_cert` for now.
-// Because the url is always `https://api.rustdesk.com/version/latest`.
+// Because the url is always the public Deskzap release endpoint.
 #[tokio::main(flavor = "current_thread")]
 pub async fn do_check_software_update() -> hbb_common::ResultType<()> {
     let (request, url) =
@@ -1120,12 +1122,12 @@ fn get_api_server_(api: String, custom: String) -> String {
             return format!("http://{}", s);
         }
     }
-    "https://admin.rustdesk.com".to_owned()
+    DESKZAP_PUBLIC_WEB_URL.to_owned()
 }
 
 #[inline]
 pub fn is_public(url: &str) -> bool {
-    url.contains("rustdesk.com/") || url.ends_with("rustdesk.com")
+    url.contains(&format!("{DESKZAP_DOMAIN}/")) || url.ends_with(DESKZAP_DOMAIN)
 }
 
 pub fn get_udp_punch_enabled() -> bool {

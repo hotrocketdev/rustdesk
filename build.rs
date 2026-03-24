@@ -2,10 +2,25 @@
 fn build_windows() {
     let file = "src/platform/windows.cc";
     let file2 = "src/platform/windows_delete_test_cert.cc";
-    cc::Build::new().file(file).file(file2).compile("windows");
+    let target_env = std::env::var("CARGO_CFG_TARGET_ENV").ok();
+    let is_gnu = target_env.as_deref() == Some("gnu");
+    let mut build = cc::Build::new();
+    build.cpp(true).flag_if_supported("/std:c++17").flag_if_supported("-std=gnu++17");
+    build.file(file);
+    if !is_gnu {
+        build.file(file2);
+    }
+    build.compile("windows");
     println!("cargo:rustc-link-lib=WtsApi32");
+    if is_gnu {
+        println!("cargo:rustc-link-lib=uuid");
+        println!("cargo:rustc-link-lib=ole32");
+        println!("cargo:rustc-link-lib=windowscodecs");
+    }
     println!("cargo:rerun-if-changed={}", file);
-    println!("cargo:rerun-if-changed={}", file2);
+    if !is_gnu {
+        println!("cargo:rerun-if-changed={}", file2);
+    }
 }
 
 #[cfg(target_os = "macos")]

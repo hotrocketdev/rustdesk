@@ -44,9 +44,12 @@ pub const LOAD_LIBRARY_SAFE_CURRENT_DIRS: u32 = 8192;
 pub const LOAD_LIBRARY_SEARCH_SYSTEM32_NO_FORWARDER: u32 = 16384;
 pub const LOAD_LIBRARY_OS_INTEGRITY_CONTINUITY: u32 = 32768;
 
-extern "C" {
-    pub static GUID_WICPixelFormat32bppRGBA: GUID;
-}
+pub const GUID_WICPixelFormat32bppRGBA: GUID = GUID {
+    Data1: 0xf5c7ad2d,
+    Data2: 0x6a8d,
+    Data3: 0x43dd,
+    Data4: [0xa7, 0xa8, 0xa2, 0x99, 0x35, 0x26, 0x1a, 0xe9],
+};
 
 lazy_static::lazy_static! {
     static ref MAG_BUFFER: Mutex<(bool, Vec<u8>)> =  Default::default();

@@ -12,11 +12,12 @@ use crate::mediacodec::{MediaCodecDecoder, H264_DECODER_SUPPORT, H265_DECODER_SU
 #[cfg(feature = "vram")]
 use crate::vram::*;
 use crate::{
-    aom::{self, AomDecoder, AomEncoder, AomEncoderConfig},
     common::GoogleImage,
     vpxcodec::{self, VpxDecoder, VpxDecoderConfig, VpxEncoder, VpxEncoderConfig, VpxVideoCodecId},
     CodecFormat, EncodeInput, EncodeYuvFormat, ImageRgb, ImageTexture,
 };
+#[cfg(not(all(target_os = "windows", target_env = "gnu")))]
+use crate::aom::{self, AomDecoder, AomEncoder, AomEncoderConfig};
 
 #[cfg(any(
     feature = "hwcodec",
@@ -50,6 +51,7 @@ pub const ENCODE_NEED_SWITCH: &'static str = "ENCODE_NEED_SWITCH";
 #[derive(Debug, Clone)]
 pub enum EncoderCfg {
     VPX(VpxEncoderConfig),
+    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     AOM(AomEncoderConfig),
     #[cfg(feature = "hwcodec")]
     HWRAM(HwRamEncoderConfig),
@@ -103,6 +105,7 @@ impl DerefMut for Encoder {
 pub struct Decoder {
     vp8: Option<VpxDecoder>,
     vp9: Option<VpxDecoder>,
+    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     av1: Option<AomDecoder>,
     #[cfg(feature = "hwcodec")]
     h264_ram: Option<HwRamDecoder>,
@@ -137,6 +140,7 @@ impl Encoder {
             EncoderCfg::VPX(_) => Ok(Encoder {
                 codec: Box::new(VpxEncoder::new(config, i444)?),
             }),
+            #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
             EncoderCfg::AOM(_) => Ok(Encoder {
                 codec: Box::new(AomEncoder::new(config, i444)?),
             }),
@@ -364,6 +368,7 @@ impl Encoder {
                 VpxVideoCodecId::VP8 => CodecFormat::VP8,
                 VpxVideoCodecId::VP9 => CodecFormat::VP9,
             },
+            #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
             EncoderCfg::AOM(_) => CodecFormat::AV1,
             #[cfg(feature = "hwcodec")]
             EncoderCfg::HWRAM(hw) => {
@@ -410,6 +415,7 @@ impl Encoder {
                 VpxVideoCodecId::VP8 => false,
                 VpxVideoCodecId::VP9 => decodings.iter().all(|d| d.1.i444.vp9),
             },
+            #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
             EncoderCfg::AOM(_) => decodings.iter().all(|d| d.1.i444.av1),
             #[cfg(feature = "hwcodec")]
             EncoderCfg::HWRAM(_) => false,
@@ -500,7 +506,9 @@ impl Decoder {
 
     pub fn new(format: CodecFormat, _luid: Option<i64>) -> Decoder {
         log::info!("try create new decoder, format: {format:?}, _luid: {_luid:?}");
-        let (mut vp8, mut vp9, mut av1) = (None, None, None);
+        let (mut vp8, mut vp9) = (None, None);
+        #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
+        let mut av1 = None;
         #[cfg(feature = "hwcodec")]
         let (mut h264_ram, mut h265_ram) = (None, None);
         #[cfg(feature = "vram")]
@@ -529,11 +537,16 @@ impl Decoder {
                 valid = vp9.is_some();
             }
             CodecFormat::AV1 => {
-                match AomDecoder::new() {
-                    Ok(v) => av1 = Some(v),
-                    Err(e) => log::error!("create AV1 decoder failed: {}", e),
+                #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
+                {
+                    match AomDecoder::new() {
+                        Ok(v) => av1 = Some(v),
+                        Err(e) => log::error!("create AV1 decoder failed: {}", e),
+                    }
+                    valid = av1.is_some();
                 }
-                valid = av1.is_some();
+                #[cfg(all(target_os = "windows", target_env = "gnu"))]
+                log::warn!("AV1 decoder is disabled for Windows GNU builds");
             }
             CodecFormat::H264 => {
                 #[cfg(feature = "vram")]
@@ -599,6 +612,7 @@ impl Decoder {
         Decoder {
             vp8,
             vp9,
+            #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
             av1,
             #[cfg(feature = "hwcodec")]
             h264_ram,
@@ -651,12 +665,17 @@ impl Decoder {
                     bail!("vp9 decoder not available");
                 }
             }
+            #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
             video_frame::Union::Av1s(av1s) => {
                 if let Some(av1) = &mut self.av1 {
                     Decoder::handle_av1s_video_frame(av1, av1s, rgb, chroma)
                 } else {
                     bail!("av1 decoder not available");
                 }
+            }
+            #[cfg(all(target_os = "windows", target_env = "gnu"))]
+            video_frame::Union::Av1s(_) => {
+                bail!("av1 decoder not available");
             }
             #[cfg(any(feature = "hwcodec", feature = "vram"))]
             video_frame::Union::H264s(h264s) => {
@@ -736,6 +755,7 @@ impl Decoder {
     }
 
     // rgb [in/out] fmt and stride must be set in ImageRgb
+    #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
     fn handle_av1s_video_frame(
         decoder: &mut AomDecoder,
         av1s: &EncodedVideoFrames,
@@ -1049,6 +1069,13 @@ pub fn test_av1() {
 
     static ONCE: Once = Once::new();
     ONCE.call_once(|| {
+        #[cfg(all(target_os = "windows", target_env = "gnu"))]
+        {
+            Config::set_option(OPTION_AV1_TEST.to_string(), "N".to_string());
+            return;
+        }
+
+        #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
         let f = || {
             let (width, height, quality, keyframe_interval, i444) = (1920, 1080, 1.0, None, false);
             let frame_count = 10;
@@ -1146,6 +1173,7 @@ pub fn test_av1() {
             key_frame_time < Duration::from_millis(90)
                 && non_key_frame_time < Duration::from_millis(30)
         };
+        #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
         std::thread::spawn(move || {
             let v = f();
             Config::set_option(

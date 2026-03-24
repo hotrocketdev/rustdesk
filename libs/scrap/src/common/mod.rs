@@ -48,6 +48,7 @@ pub use self::convert::*;
 pub const STRIDE_ALIGN: usize = 64; // commonly used in libvpx vpx_img_alloc caller
 pub const HW_STRIDE_ALIGN: usize = 0; // recommended by av_frame_get_buffer
 
+#[cfg(not(all(target_os = "windows", target_env = "gnu")))]
 pub mod aom;
 #[cfg(not(any(target_os = "ios")))]
 pub mod camera;

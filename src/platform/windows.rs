@@ -845,6 +845,12 @@ async fn send_close_async(postfix: &str) -> ResultType<()> {
 
 // https://docs.microsoft.com/en-us/windows/win32/api/sas/nf-sas-sendsas
 // https://www.cnblogs.com/doutu/p/4892726.html
+#[cfg(target_env = "gnu")]
+pub fn send_sas() {
+    log::warn!("SendSAS is not available in the MinGW Deskzap build");
+}
+
+#[cfg(not(target_env = "gnu"))]
 pub fn send_sas() {
     #[link(name = "sas")]
     extern "system" {
@@ -2813,12 +2819,19 @@ pub fn uninstall_cert() -> ResultType<()> {
 }
 
 mod cert {
-    use hbb_common::ResultType;
+    use hbb_common::{log, ResultType};
 
+    #[cfg(not(target_env = "gnu"))]
     extern "C" {
         fn DeleteRustDeskTestCertsW();
     }
     pub fn uninstall_cert() -> ResultType<()> {
+        #[cfg(target_env = "gnu")]
+        {
+            log::warn!("test certificate cleanup is unavailable in the MinGW Deskzap build");
+            return Ok(());
+        }
+        #[cfg(not(target_env = "gnu"))]
         unsafe {
             DeleteRustDeskTestCertsW();
         }

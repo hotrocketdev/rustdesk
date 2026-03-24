@@ -17,7 +17,10 @@ fn build_c_impl() {
             build.flag("-GR-");
             // build.flag("-std:c++11");
         } else {
+            build.define("UNICODE", "");
+            build.define("_UNICODE", "");
             build.flag("-fPIC");
+            build.flag("-std=gnu99");
             // build.flag("-std=c++11");
             // build.flag("-include");
             // build.flag(&confdefs_path.to_string_lossy());

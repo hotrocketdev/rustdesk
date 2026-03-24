@@ -38,7 +38,12 @@ fn link_vcpkg(mut path: PathBuf, name: &str) -> PathBuf {
     } else {
         target_arch = "arm".to_owned();
     }
-    let mut target = if target_os == "macos" {
+    let mut target = if let Ok(explicit_triplet) = std::env::var("VCPKGRS_TRIPLET")
+        .or_else(|_| std::env::var("VCPKG_TARGET_TRIPLET"))
+        .or_else(|_| std::env::var("VCPKG_DEFAULT_TRIPLET"))
+    {
+        explicit_triplet
+    } else if target_os == "macos" {
         if target_arch == "x64" {
             "x64-osx".to_owned()
         } else if target_arch == "arm64" {
@@ -232,6 +237,7 @@ fn main() {
 
     // there is problem with cfg(target_os) in build.rs, so use our workaround
     let target_os = std::env::var("CARGO_CFG_TARGET_OS").unwrap();
+    let target_env = std::env::var("CARGO_CFG_TARGET_ENV").unwrap_or_default();
 
     // note: all link symbol names in x86 (32-bit) are prefixed wth "_".
     // run "rustup show" to show current default toolchain, if it is stable-x86-pc-windows-msvc,
@@ -246,7 +252,9 @@ fn main() {
 
     find_package("libyuv");
     gen_vcpkg_package("libvpx", "vpx_ffi.h", "vpx_ffi.rs", "^[vV].*");
-    gen_vcpkg_package("aom", "aom_ffi.h", "aom_ffi.rs", "^(aom|AOM|OBU|AV1).*");
+    if !(target_os == "windows" && target_env == "gnu") {
+        gen_vcpkg_package("aom", "aom_ffi.h", "aom_ffi.rs", "^(aom|AOM|OBU|AV1).*");
+    }
     gen_vcpkg_package("libyuv", "yuv_ffi.h", "yuv_ffi.rs", ".*");
     // ffmpeg();
 

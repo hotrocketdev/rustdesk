@@ -45,12 +45,13 @@ use scrap::vram::{VRamEncoder, VRamEncoderConfig};
 #[cfg(not(windows))]
 use scrap::Capturer;
 use scrap::{
-    aom::AomEncoderConfig,
     codec::{Encoder, EncoderCfg},
     record::{Recorder, RecorderContext},
     vpxcodec::{VpxEncoderConfig, VpxVideoCodecId},
     CodecFormat, Display, EncodeInput, TraitCapturer, TraitPixelBuffer,
 };
+#[cfg(not(all(target_os = "windows", target_env = "gnu")))]
+use scrap::aom::AomEncoderConfig;
 #[cfg(windows)]
 use std::sync::Once;
 use std::{
@@ -1015,12 +1016,27 @@ fn get_encoder_config(
             },
             keyframe_interval,
         }),
-        CodecFormat::AV1 => EncoderCfg::AOM(AomEncoderConfig {
-            width: c.width as _,
-            height: c.height as _,
-            quality,
-            keyframe_interval,
-        }),
+        CodecFormat::AV1 => {
+            #[cfg(not(all(target_os = "windows", target_env = "gnu")))]
+            {
+                EncoderCfg::AOM(AomEncoderConfig {
+                    width: c.width as _,
+                    height: c.height as _,
+                    quality,
+                    keyframe_interval,
+                })
+            }
+            #[cfg(all(target_os = "windows", target_env = "gnu"))]
+            {
+                EncoderCfg::VPX(VpxEncoderConfig {
+                    width: c.width as _,
+                    height: c.height as _,
+                    quality,
+                    codec: VpxVideoCodecId::VP9,
+                    keyframe_interval,
+                })
+            }
+        }
         _ => EncoderCfg::VPX(VpxEncoderConfig {
             width: c.width as _,
             height: c.height as _,

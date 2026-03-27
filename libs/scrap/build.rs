@@ -47,7 +47,12 @@ fn link_vcpkg(mut path: PathBuf, name: &str) -> PathBuf {
             format!("{}-{}", target_arch, target_os)
         }
     } else if target_os == "windows" {
-        "x64-windows-static".to_owned()
+        let target_env = std::env::var("CARGO_CFG_TARGET_ENV").unwrap_or_default();
+        if target_env == "gnu" {
+            "x64-mingw-static".to_owned()
+        } else {
+            "x64-windows-static".to_owned()
+        }
     } else {
         format!("{}-{}", target_arch, target_os)
     };

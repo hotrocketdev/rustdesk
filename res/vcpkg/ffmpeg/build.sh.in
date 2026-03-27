@@ -3,6 +3,13 @@
 set -e
 
 export PATH="$PATH:/usr/bin"
+export CHERE_INVOKING=1
+export MSYS2_PATH_TYPE=inherit
+
+if [ "@VCPKG_TARGET_IS_MINGW@" = "ON" ]; then
+    export MSYSTEM=MINGW64
+    export MINGW_PREFIX=/mingw64
+fi
 
 command -v cygpath >/dev/null && have_cygpath=1
 

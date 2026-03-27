@@ -83,7 +83,7 @@ set(OPTIONS "\
 --enable-protocol=file \
 ")
 
-if(VCPKG_HOST_IS_WINDOWS)
+if(VCPKG_HOST_IS_WINDOWS AND NOT VCPKG_TARGET_IS_MINGW)
     vcpkg_acquire_msys(MSYS_ROOT PACKAGES automake1.16)
     set(SHELL "${MSYS_ROOT}/usr/bin/bash.exe")
     vcpkg_add_to_path("${MSYS_ROOT}/usr/share/automake-1.16")
@@ -123,7 +123,7 @@ if(VCPKG_TARGET_IS_LINUX)
 ")
         endif()
     endif()
-elseif(VCPKG_TARGET_IS_WINDOWS)
+elseif(VCPKG_TARGET_IS_WINDOWS AND NOT VCPKG_TARGET_IS_MINGW)
     string(APPEND OPTIONS "\
 --target-os=win32 \
 --toolchain=msvc \

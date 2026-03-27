@@ -846,11 +846,19 @@ async fn send_close_async(postfix: &str) -> ResultType<()> {
 // https://docs.microsoft.com/en-us/windows/win32/api/sas/nf-sas-sendsas
 // https://www.cnblogs.com/doutu/p/4892726.html
 pub fn send_sas() {
-    #[link(name = "sas")]
-    extern "system" {
-        pub fn SendSAS(AsUser: BOOL);
+    #[cfg(target_env = "gnu")]
+    {
+        log::warn!("SendSAS is not available in the GNU Windows build");
+        return;
     }
+
+    #[cfg(not(target_env = "gnu"))]
     unsafe {
+        #[link(name = "sas")]
+        extern "system" {
+            pub fn SendSAS(AsUser: BOOL);
+        }
+
         log::info!("SAS received");
 
         // Check and temporarily set SoftwareSASGeneration if needed
@@ -2815,13 +2823,20 @@ pub fn uninstall_cert() -> ResultType<()> {
 mod cert {
     use hbb_common::ResultType;
 
+    #[cfg(not(target_env = "gnu"))]
     extern "C" {
         fn DeleteRustDeskTestCertsW();
     }
+
     pub fn uninstall_cert() -> ResultType<()> {
+        #[cfg(not(target_env = "gnu"))]
         unsafe {
             DeleteRustDeskTestCertsW();
         }
+
+        #[cfg(target_env = "gnu")]
+        eprintln!("Certificate uninstall is not available in the GNU Windows build");
+
         Ok(())
     }
 }

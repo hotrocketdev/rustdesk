@@ -1,11 +1,14 @@
 #include <windows.h>
 #include <wtsapi32.h>
 #include <tlhelp32.h>
+#ifndef __MINGW32__
 #include <comdef.h>
+#endif
 #include <xpsprint.h>
 #include <cstdio>
 #include <cstdint>
 #include <intrin.h>
+#include <algorithm>
 #include <string>
 #include <memory>
 #include <shlobj.h> // NOLINT(build/include_order)
@@ -37,6 +40,10 @@ static BOOL GetProcessUserName(DWORD processID, LPWSTR outUserName, DWORD inUser
     PTOKEN_USER tokenUser = NULL;
     wchar_t *userName = NULL;
     wchar_t *domainName = NULL;
+    DWORD tokenInfoLength = 0;
+    DWORD userSize = 0;
+    DWORD domainSize = 0;
+    SID_NAME_USE snu;
 
     hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, processID);
     if (hProcess == NULL)
@@ -47,7 +54,6 @@ static BOOL GetProcessUserName(DWORD processID, LPWSTR outUserName, DWORD inUser
     {
         goto cleanup;
     }
-    DWORD tokenInfoLength = 0;
     GetTokenInformation(hToken, TokenUser, NULL, 0, &tokenInfoLength);
     if (tokenInfoLength == 0)
     {
@@ -62,9 +68,6 @@ static BOOL GetProcessUserName(DWORD processID, LPWSTR outUserName, DWORD inUser
     {
         goto cleanup;
     }
-    DWORD userSize = 0;
-    DWORD domainSize = 0;
-    SID_NAME_USE snu;
     LookupAccountSidW(NULL, tokenUser->User.Sid, NULL, &userSize, NULL, &domainSize, &snu);
     if (userSize == 0 || domainSize == 0)
     {
@@ -582,6 +585,9 @@ extern "C"
 
     BOOL is_session_locked(BOOL include_rdp)
     {
+#ifdef __MINGW32__
+        return FALSE;
+#else
         DWORD session_id = get_current_session(include_rdp);
         if (session_id == 0xFFFFFFFF) {
             return FALSE;
@@ -603,6 +609,7 @@ extern "C"
             }
         }
         return locked;
+#endif
     }
 
     uint32_t get_active_user(PWSTR bufin, uint32_t nin, BOOL rdp)
@@ -615,7 +622,7 @@ extern "C"
         {
             if (buf)
             {
-                nout = min(nin, n);
+                nout = std::min(nin, static_cast<uint32_t>(n));
                 memcpy(bufin, buf, nout);
                 WTSFreeMemory(buf);
             }
@@ -632,7 +639,7 @@ extern "C"
         {
             if (buf)
             {
-                nout = min(nin, n);
+                nout = std::min(nin, static_cast<uint32_t>(n));
                 memcpy(bufin, buf, nout);
                 WTSFreeMemory(buf);
             }
@@ -913,6 +920,22 @@ typedef HRESULT(WINAPI *StartXpsPrintJobFunc)(
 static HMODULE xpsPrintModule = nullptr;
 static StartXpsPrintJobFunc StartXpsPrintJobPtr = nullptr;
 
+#ifdef __MINGW32__
+static bool InitXpsPrint()
+{
+    return false;
+}
+
+int PrintXPSRawData(LPWSTR printerName, BYTE *rawData, ULONG dataSize)
+{
+    flog("XPS printing is not available in the MinGW Deskzap build\n");
+    return -1;
+}
+
+void CleanupXpsPrint()
+{
+}
+#else
 static bool InitXpsPrint()
 {
     if (xpsPrintModule == nullptr)
@@ -1056,4 +1079,5 @@ static bool InitXpsPrint()
     }
 
 #pragma warning(pop)
+#endif
 }

@@ -31,5 +31,9 @@ fn build_c_impl() {
 
 fn main() {
     #[cfg(target_os = "windows")]
-    build_c_impl();
+    {
+        build_c_impl();
+        println!("cargo:rustc-link-lib=ole32");
+        println!("cargo:rustc-link-lib=uuid");
+    }
 }

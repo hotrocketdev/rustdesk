@@ -2,8 +2,15 @@
 fn build_windows() {
     let file = "src/platform/windows.cc";
     let file2 = "src/platform/windows_delete_test_cert.cc";
-    cc::Build::new().file(file).file(file2).compile("windows");
+    let mut build = cc::Build::new();
+    build.file(file);
+    let target_env = std::env::var("CARGO_CFG_TARGET_ENV").unwrap_or_default();
+    if target_env != "gnu" {
+        build.file(file2);
+    }
+    build.compile("windows");
     println!("cargo:rustc-link-lib=WtsApi32");
+    println!("cargo:rustc-link-lib=crypt32");
     println!("cargo:rerun-if-changed={}", file);
     println!("cargo:rerun-if-changed={}", file2);
 }

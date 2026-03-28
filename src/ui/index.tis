@@ -6,7 +6,7 @@ stdout.println("is_xfce: ", is_xfce);
 const msgbox_default_height = 180;
 const incoming_only_width = 180;
 
-const outgoing_only = handler.is_outgoing_only();
+const outgoing_only = handler.is_outgoing_only() || handler.get_app_name().toLowerCase().indexOf("deskzap connect") >= 0;
 const incoming_only = handler.is_incoming_only();
 const disable_installation = handler.is_disable_installation();
 const disable_account = handler.is_disable_account();
@@ -726,12 +726,12 @@ class App: Reactor.Component
                         </div>}
                         {!outgoing_only && <PasswordArea />}
                     </div>
-                    {(!is_win || handler.is_installed() || disable_installation) ? "" : <InstallMe />}
-                    {software_update_url && !disable_installation ? <UpdateMe /> : ""}
-                    {is_win && handler.is_installed() && !software_update_url && handler.is_installed_lower_version() && !disable_installation ? <UpgradeMe /> : ""}
+                    {!outgoing_only && (!is_win || handler.is_installed() || disable_installation) ? "" : <InstallMe />}
+                    {!outgoing_only && software_update_url && !disable_installation ? <UpdateMe /> : ""}
+                    {!outgoing_only && is_win && handler.is_installed() && !software_update_url && handler.is_installed_lower_version() && !disable_installation ? <UpgradeMe /> : ""}
                     {is_can_screen_recording ? "": <CanScreenRecording />}
                     {is_can_screen_recording && !handler.is_process_trusted(false) ? <TrustMe /> : ""}
-                    {!service_stopped && is_can_screen_recording && handler.is_process_trusted(false) && handler.is_installed() && !handler.is_installed_daemon(false) ? <InstallDaemon /> : ""}
+                    {!outgoing_only && !service_stopped && is_can_screen_recording && handler.is_process_trusted(false) && handler.is_installed() && !handler.is_installed_daemon(false) ? <InstallDaemon /> : ""}
                     {system_error ? <SystemError /> : ""}
                     {!system_error && handler.is_login_wayland() && !handler.current_is_wayland() ? <FixWayland /> : ""}
                     {!system_error && handler.current_is_wayland() ? <ModifyDefaultLogin /> : ""}

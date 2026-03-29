@@ -3,8 +3,13 @@ use std::{
     future::Future,
     net::{SocketAddr, ToSocketAddrs},
     path::{Path, PathBuf},
-    sync::{Arc, Mutex, RwLock},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, Mutex, RwLock,
+    },
     task::Poll,
+    thread,
+    time::Duration as StdDuration,
 };
 
 use serde_derive::{Deserialize, Serialize};
@@ -66,6 +71,7 @@ const DESKZAP_DEVICE_ID_OPTION: &str = "deskzap-device-id";
 const DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION: &str = "deskzap-runtime-heartbeat-token";
 const DESKZAP_PUBLIC_WEB_URL: &str = "https://my.deskzap.co.uk";
 const DESKZAP_DOMAIN: &str = "deskzap.co.uk";
+const DESKZAP_RUNTIME_HEARTBEAT_INTERVAL_SECS: u64 = 60;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeskzapLaunchPayload {
@@ -138,6 +144,7 @@ lazy_static::lazy_static! {
     pub static ref DEVICE_ID: Arc<Mutex<String>> = Default::default();
     pub static ref DEVICE_NAME: Arc<Mutex<String>> = Default::default();
     static ref PUBLIC_IPV6_ADDR: Arc<Mutex<(Option<SocketAddr>, Option<Instant>)>> = Default::default();
+    static ref DESKZAP_RUNTIME_HEARTBEAT_LOOP_STARTED: AtomicBool = AtomicBool::new(false);
 }
 
 lazy_static::lazy_static! {
@@ -1868,6 +1875,15 @@ pub fn bootstrap_deskzap_host() {
         return;
     }
 
+    let saved_runtime_heartbeat_token =
+        LocalConfig::get_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION);
+    if !saved_runtime_heartbeat_token.trim().is_empty() {
+        start_deskzap_runtime_heartbeat_loop(
+            api_server.to_owned(),
+            operating_system_label().to_owned(),
+        );
+    }
+
     let hostname = crate::common::hostname();
     let display_name = {
         let configured = get_builtin_option(keys::OPTION_DISPLAY_NAME);
@@ -1878,12 +1894,7 @@ pub fn bootstrap_deskzap_host() {
         }
     };
 
-    let operating_system = match std::env::consts::OS {
-        "windows" => "Windows",
-        "macos" => "macOS",
-        "linux" => "Linux",
-        other => other,
-    };
+    let operating_system = operating_system_label();
 
     let body = json!({
         "enrollment_token": enrollment_token,
@@ -1905,6 +1916,10 @@ pub fn bootstrap_deskzap_host() {
                 log::error!("Deskzap host bootstrap enrollment persistence failed: {}", err);
                 return;
             }
+            start_deskzap_runtime_heartbeat_loop(
+                api_server.to_owned(),
+                operating_system.to_owned(),
+            );
             log::info!("Deskzap host bootstrap enrollment completed");
         }
         Err(err) => {
@@ -1965,6 +1980,40 @@ fn send_deskzap_runtime_heartbeat(
     post_request_sync(url, body, &headers)
         .map(|_| ())
         .map_err(|err| format!("failed to send Deskzap runtime heartbeat: {err}"))
+}
+
+fn operating_system_label() -> &'static str {
+    match std::env::consts::OS {
+        "windows" => "Windows",
+        "macos" => "macOS",
+        "linux" => "Linux",
+        other => other,
+    }
+}
+
+fn start_deskzap_runtime_heartbeat_loop(api_server: String, operating_system: String) {
+    if DESKZAP_RUNTIME_HEARTBEAT_LOOP_STARTED.swap(true, Ordering::SeqCst) {
+        return;
+    }
+
+    thread::spawn(move || loop {
+        thread::sleep(StdDuration::from_secs(
+            DESKZAP_RUNTIME_HEARTBEAT_INTERVAL_SECS,
+        ));
+
+        let runtime_heartbeat_token =
+            LocalConfig::get_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION);
+        if runtime_heartbeat_token.trim().is_empty() {
+            log::warn!("Deskzap runtime heartbeat loop skipped because token is empty");
+            continue;
+        }
+
+        if let Err(err) =
+            send_deskzap_runtime_heartbeat(&api_server, &runtime_heartbeat_token, &operating_system)
+        {
+            log::warn!("Deskzap runtime heartbeat loop failed: {}", err);
+        }
+    });
 }
 
 pub fn apply_deskzap_launch_args(args: &[String]) -> Result<Option<Vec<String>>, String> {
@@ -2034,6 +2083,62 @@ fn persist_deskzap_launch_payload(payload: &DeskzapLaunchPayload) {
         payload.authorization_token.clone(),
     );
     LocalConfig::set_option(DESKZAP_DEVICE_ID_OPTION.to_owned(), payload.device_id.clone());
+}
+
+fn get_deskzap_launch_payload() -> Option<DeskzapLaunchPayload> {
+    let raw = LocalConfig::get_option(DESKZAP_LAUNCH_PAYLOAD_OPTION);
+    if raw.trim().is_empty() {
+        return None;
+    }
+    serde_json::from_str::<DeskzapLaunchPayload>(&raw)
+        .map_err(|err| {
+            log::warn!("Failed to parse persisted Deskzap launch payload: {}", err);
+            err
+        })
+        .ok()
+}
+
+pub async fn report_deskzap_runtime_session_state(
+    status: &str,
+    rustdesk_session_id: Option<String>,
+    network_type: Option<&str>,
+) {
+    let Some(payload) = get_deskzap_launch_payload() else {
+        return;
+    };
+
+    if payload.authorization_token.trim().is_empty() || payload.session_id.trim().is_empty() {
+        return;
+    }
+
+    let mut body = json!({
+        "authorization_token": payload.authorization_token,
+        "status": status,
+    });
+
+    if let Some(session_id) = rustdesk_session_id {
+        if !session_id.trim().is_empty() {
+            body["rustdesk_session_id"] = Value::String(session_id);
+        }
+    }
+
+    if let Some(network_type) = network_type {
+        if !network_type.trim().is_empty() {
+            body["network_type"] = Value::String(network_type.to_owned());
+        }
+    }
+
+    let url = format!(
+        "{}/api/v1/runtime/sessions/state",
+        get_api_server().trim_end_matches('/')
+    );
+    if let Err(err) = post_request_sync(url, body.to_string(), "{}").await {
+        log::warn!(
+            "Failed to report Deskzap runtime session state {}: {}",
+            status,
+            err
+        );
+    }
 }
 
 fn get_runtime_resource_dir() -> Option<PathBuf> {

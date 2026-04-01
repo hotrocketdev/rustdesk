@@ -4,11 +4,14 @@ stdout.println("is_xfce: ", is_xfce);
 
 // See default height in common.tis `msgbox()`.
 const msgbox_default_height = 180;
-const incoming_only_width = 180;
+const incoming_only_width = 400;
 
-const outgoing_only = handler.is_outgoing_only() || handler.get_app_name().toLowerCase().indexOf("deskzap connect") >= 0;
 const incoming_only = handler.is_incoming_only();
-const deskzap_host = handler.get_app_name().toLowerCase().indexOf("deskzap host") >= 0;
+const app_name_lc = handler.get_app_name().toLowerCase();
+const deskzap_branded = app_name_lc.indexOf("deskzap") >= 0;
+const deskzap_host = app_name_lc.indexOf("deskzap host") >= 0 || (deskzap_branded && incoming_only);
+const deskzap_connect = app_name_lc.indexOf("deskzap connect") >= 0 || (deskzap_branded && !incoming_only && app_name_lc.indexOf("host") < 0);
+const outgoing_only = handler.is_outgoing_only() || deskzap_connect;
 const disable_installation = handler.is_disable_installation();
 const disable_account = handler.is_disable_account();
 const disable_settings = handler.is_disable_settings();
@@ -23,7 +26,7 @@ const disable_change_id = handler.get_builtin_option("disable-change-id") == "Y"
 
 // html min-width, min-height not working on mac, below works for all
 if (incoming_only) {
-  view.windowMinSize = (scaleIt(incoming_only_width), scaleIt((handler.is_installed() || disable_installation) ? 300 : 390));
+  view.windowMinSize = (scaleIt(incoming_only_width), scaleIt((handler.is_installed() || disable_installation) ? 400 : 480));
 } else {
   view.windowMinSize = (scaleIt(560), scaleIt(300));
 }
@@ -1484,7 +1487,7 @@ function self.ready() {
             view.move(r[0], r[1], incoming_only ? scaleIt(incoming_only_width) : r[2], r[3]);
         }
     } else {
-        centerize(scaleIt(incoming_only ? incoming_only_width : 800), scaleIt(incoming_only ? 390 : 600));
+        centerize(scaleIt(incoming_only ? incoming_only_width : 800), scaleIt(incoming_only ? 480 : 600));
     }
     if (!handler.get_remote_id()) {
         view.focus = $(#remote_id);

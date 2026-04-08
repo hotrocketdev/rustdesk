@@ -159,6 +159,22 @@ fn generate_bindings(
         .layout_tests(false) // breaks 32/64-bit compat
         .generate_comments(false); // comments have prefix /*!\
 
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows")
+        && std::env::var("CARGO_CFG_TARGET_ENV").as_deref() == Ok("gnu")
+    {
+        b = b.clang_arg("--target=x86_64-w64-windows-gnu");
+        let mingw_root = std::env::var("DESKZAP_MINGW_ROOT")
+            .unwrap_or_else(|_| "C:/Builds/vcpkg/downloads/tools/perl/5.42.0.1/c".to_owned());
+        for dir in [
+            format!("{mingw_root}/lib/gcc/x86_64-w64-mingw32/13.2.0/include"),
+            format!("{mingw_root}/include"),
+            format!("{mingw_root}/lib/gcc/x86_64-w64-mingw32/13.2.0/include-fixed"),
+            format!("{mingw_root}/x86_64-w64-mingw32/include"),
+        ] {
+            b = b.clang_arg(format!("-I{dir}"));
+        }
+    }
+
     for dir in include_paths {
         b = b.clang_arg(format!("-I{}", dir.display()));
     }
@@ -256,6 +272,12 @@ fn main() {
     if target_os == "windows" {
         println!("cargo:rustc-link-lib=windowscodecs");
         println!("cargo:rustc-link-lib=uuid");
+        if std::env::var("CARGO_CFG_TARGET_ENV").as_deref() == Ok("gnu") {
+            cc::Build::new()
+                .file("src/bindings/setjmp_compat.c")
+                .flag("-O2")
+                .compile("setjmp_compat");
+        }
     }
     // ffmpeg();
 

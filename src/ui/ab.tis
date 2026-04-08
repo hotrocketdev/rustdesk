@@ -16,7 +16,17 @@ class AddressBook: Reactor.Component
     
     function render() {
         if (!handler.get_local_option("access_token")) {
-            return <div style="margin: *"><div #login-link .link style="margin: *; width: 100px; text-align: center; font-size: 1.2em;">{translate("Login")}</div></div>;
+            return <div class="workspace-empty-state">
+                <div class="workspace-empty-card">
+                    <div class="workspace-empty-eyebrow">DESKZAP WORKSPACE</div>
+                    <div class="workspace-empty-title">Sign in to sync your devices</div>
+                    <div class="workspace-empty-copy">Load your workspace devices, recent connections, and saved targets into Deskzap Connect.</div>
+                    <div class="workspace-empty-actions">
+                        <button #login-link .button>{translate("Login")}</button>
+                        <button #workspace-help .button .outline>Help</button>
+                    </div>
+                </div>
+            </div>;
         }
         if (abLoading) {
             return <div style="margin: *"><progress style="color: #0071ff" /></div>;
@@ -26,6 +36,20 @@ class AddressBook: Reactor.Component
             </div>;
         }
         var peers = this.getPeers();
+        var accountLabel = getAccountLabelWithHandle() || "Signed in to Deskzap";
+        if (peers.length == 0) {
+            return <div class="workspace-empty-state">
+                <div class="workspace-empty-card">
+                    <div class="workspace-empty-eyebrow">WORKSPACE DEVICES</div>
+                    <div class="workspace-empty-title">No workspace devices yet</div>
+                    <div class="workspace-empty-copy">You are signed in as {accountLabel}. Install Deskzap Host on the first remote machine, then refresh this view after it checks in.</div>
+                    <div class="workspace-empty-actions">
+                        <button #workspace-refresh .button>Refresh</button>
+                        <button #workspace-open-computers .button .outline>Open Deskzap</button>
+                    </div>
+                </div>
+            </div>;
+        }
         var me = this;
         return <div .app #ab style="size:*">
             <popup>
@@ -48,6 +72,17 @@ class AddressBook: Reactor.Component
             </div>
             <div .right-pane>
                 <div .right-content style="padding-top:0; padding-right: 0;">
+                    <div class="workspace-summary">
+                        <div>
+                            <div class="workspace-summary-eyebrow">DESKZAP WORKSPACE</div>
+                            <div class="workspace-summary-title">{accountLabel}</div>
+                            <div class="workspace-summary-copy">Signed-in devices are shown online first so you can reach active machines faster.</div>
+                        </div>
+                        <div class="workspace-summary-actions">
+                            <button #workspace-refresh .button .outline>Refresh</button>
+                            <button #workspace-open-computers .button .outline>Deskzap</button>
+                        </div>
+                    </div>
                     <SessionList sessions={peers} type="ab" />
                 </div>
             </div>
@@ -68,6 +103,18 @@ class AddressBook: Reactor.Component
 
     event click $(#login-link) (_, __) {
         login();
+    }
+
+    event click $(#workspace-refresh) (_, __) {
+        refreshCurrentUser();
+    }
+
+    event click $(#workspace-open-computers) (_, __) {
+        handler.open_url("https://my.deskzap.co.uk/dashboard/computers");
+    }
+
+    event click $(#workspace-help) (_, __) {
+        handler.open_url("https://support.deskzap.co.uk/articles/installation-instructions.html");
     }
 
     event click $(#tags-label svg#menu) (_, me) {
@@ -226,6 +273,22 @@ function getSessionsStyle(type) {
     return v;
 }
 
+function getRecentSessionsLabel() {
+    return outgoing_only ? "Recent devices" : translate("Recent sessions");
+}
+
+function getFavoritesLabel() {
+    return outgoing_only ? "Saved devices" : translate("Favorites");
+}
+
+function getLanLabel() {
+    return outgoing_only ? "Nearby devices" : translate("Discovered");
+}
+
+function getAddressBookLabel() {
+    return outgoing_only ? "Workspace devices" : translate("Address book");
+}
+
 var searchPatterns = {};
 
 class SearchBar: Reactor.Component {
@@ -239,9 +302,10 @@ class SearchBar: Reactor.Component {
         var value = searchPatterns[this.type] || "";
         var me = this;
         self.timer(1ms, function() { (me.search_id || {}).value = value; });
+        var searchLabel = this.type == "ab" ? "Search devices" : translate("Search ID");
         return <div .search-id style="margin-left: 12px">
             <span .search-icon>{search_icon}</span>
-            <input|text @{this.search_id} novalue={translate("Search ID")} />
+            <input|text @{this.search_id} novalue={searchLabel} />
             {value && <span .clear-input>{clear_icon}</span>}
         </div>;
     }
@@ -317,7 +381,8 @@ class SessionList: Reactor.Component {
     function render() {
         var sessions = this.getSessions();
         if (sessions.length == 0) {
-            return <div style="margin: *; font-size: 1.6em; width: 100px; text-align: center;">{translate("Empty")}</div>;
+            var emptyLabel = this.type == "ab" ? "No workspace devices yet" : translate("Empty");
+            return <div style="margin: *; font-size: 0.98em; width: auto; text-align: center; white-space: nowrap; color: #23324d;">{emptyLabel}</div>;
         }
         var me = this;
         sessions = sessions.map(function(x) { return me.getSession(x); });
@@ -540,10 +605,10 @@ class MultipleSessions: Reactor.Component {
         return  <div style="size: *">
                 <div .sessions-bar>
                     <div style="width:*" .sessions-tab #sessions-type>
-                        <span class={!type ? 'active' : 'inactive'}>{translate('Recent sessions')}</span>
-                        <span #fav class={type == "fav" ? 'active' : 'inactive'}>{translate('Favorites')}</span>
-                        {handler.is_installed() && <span #lan class={type == "lan" ? 'active' : 'inactive'}>{translate('Discovered')}</span>}
-                        {!disable_account && !disable_ab && <span #ab class={type == "ab" ? 'active' : 'inactive'}>{translate('Address book')}</span>}
+                        <span class={!type ? 'active' : 'inactive'}>{getRecentSessionsLabel()}</span>
+                        <span #fav class={type == "fav" ? 'active' : 'inactive'}>{getFavoritesLabel()}</span>
+                        {handler.is_installed() && <span #lan class={type == "lan" ? 'active' : 'inactive'}>{getLanLabel()}</span>}
+                        {!disable_account && !disable_ab && <span #ab class={type == "ab" ? 'active' : 'inactive'}>{getAddressBookLabel()}</span>}
                     </div>
                     {!this.hidden && !(disable_account && type == "ab") && <SearchBar type={type} />}
                     {!this.hidden && !(disable_account && type == "ab") && <SessionStyle type={type} />}
@@ -578,7 +643,6 @@ class MultipleSessions: Reactor.Component {
 
     function onSize() {
         var w = this.$(.sessions-bar .sessions-tab).box(#width);
-        var len = translate('Recent sessions').length;
         var totalChars = 0;
         var nEle = 0;
         for (var el in this.$$(#sessions-type span)) {
@@ -643,21 +707,63 @@ function handleAbError(err) {
     app.update();
 }
 
+function normalizeDeskzapPlatform(platform) {
+    var value = (platform || "").toLowerCase();
+    if (value.indexOf("mac") >= 0 || value.indexOf("darwin") >= 0) return "Mac OS";
+    if (value.indexOf("linux") >= 0) return "Linux";
+    if (value.indexOf("android") >= 0) return "Android";
+    if (value.indexOf("windows") >= 0 || value.indexOf("win") >= 0) return "Windows";
+    return platform || "";
+}
+
+function buildDeskzapPeerMeta(device) {
+    var parts = [];
+    if (device.device_group_name) parts.push(device.device_group_name);
+    if (device.owner_name) parts.push(device.owner_name);
+    parts.push(device.is_online ? "Online" : "Offline");
+    return parts.join(" · ");
+}
+
+function mapDeskzapDevicesToAddressBook(devices) {
+    return (devices || []).map(function(device) {
+        var runtimeId = device.rustdesk_runtime_id || device.id || "";
+        var alias = device.display_name || device.hostname || runtimeId;
+        var platform = normalizeDeskzapPlatform(device.operating_system);
+        var meta = buildDeskzapPeerMeta(device);
+        return {
+            id: runtimeId,
+            alias: alias,
+            hostname: device.hostname || platform || alias,
+            username: meta,
+            platform: platform,
+            online: device.is_online,
+            tags: [],
+            device_group_name: device.device_group_name || "",
+            deskzap_device_id: device.id || ""
+        };
+    }).filter(function(peer) {
+        return !!peer.id;
+    }).sort(function(left, right) {
+        if (!!left.online != !!right.online) {
+            return left.online ? -1 : 1;
+        }
+        return (left.alias || "").localeCompare(right.alias || "");
+    });
+}
+
 function getAb() {
     abLoading = true;
     abError = "";
     app.update();
-    httpRequest(handler.get_api_server() + "/api/ab/get", #post, {}, function(data) {
-        if (data) {
-            if (data.error) {
-                handleAbError(data.error);
-                return;
-            }
-            var tm = data.updated_at;
-            ab = JSON.parse(data.data);
-            if (!ab.tags) ab.tags = [];
-            if (!ab.peers) ab.peers = [];
+    httpRequest(handler.get_api_server() + "/api/v1/devices/list", #post, {}, function(data) {
+        if (data && data.error) {
+            handleAbError(data.error);
+            return;
         }
+        ab = {
+            tags: [],
+            peers: mapDeskzapDevicesToAddressBook((data || {}).devices || [])
+        };
         abLoading = false;
         app.update();
     }, function(err, status) {
@@ -666,9 +772,7 @@ function getAb() {
 }
 
 function updateAb() {
-    httpRequest(handler.get_api_server() + "/api/ab", #post, { data: JSON.stringify(ab) }, function(data) {
-    }, function(err, status) {
-    }, getHttpHeaders());
+    app.update();
 }
 
 function resetAb() {

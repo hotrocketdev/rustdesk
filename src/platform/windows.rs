@@ -1714,6 +1714,10 @@ fn get_uninstall(kill_self: bool, uninstall_printer: bool) -> String {
         }
     }
     let (subkey, path, start_menu, _) = get_install_info();
+    let user_start_menu = format!(
+        "%APPDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\{}",
+        crate::get_app_name()
+    );
     format!(
         "
     {before_uninstall}
@@ -1723,12 +1727,16 @@ fn get_uninstall(kill_self: bool, uninstall_printer: bool) -> String {
     {uninstall_amyuni_idd}
     if exist \"{path}\" rd /s /q \"{path}\"
     if exist \"{start_menu}\" rd /s /q \"{start_menu}\"
+    if exist \"{user_start_menu}\" rd /s /q \"{user_start_menu}\"
     if exist \"%PUBLIC%\\Desktop\\{app_name}.lnk\" del /f /q \"%PUBLIC%\\Desktop\\{app_name}.lnk\"
+    if exist \"%USERPROFILE%\\Desktop\\{app_name}.lnk\" del /f /q \"%USERPROFILE%\\Desktop\\{app_name}.lnk\"
     if exist \"%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\{app_name} Tray.lnk\" del /f /q \"%PROGRAMDATA%\\Microsoft\\Windows\\Start Menu\\Programs\\Startup\\{app_name} Tray.lnk\"
+    start \"\" /b powershell -NoProfile -WindowStyle Hidden -Command \"Start-Sleep -Seconds 2; Remove-Item -LiteralPath '{path}' -Recurse -Force -ErrorAction SilentlyContinue; Remove-Item -LiteralPath '{start_menu}' -Recurse -Force -ErrorAction SilentlyContinue; Remove-Item -LiteralPath '$env:APPDATA\\Microsoft\\Windows\\Start Menu\\Programs\\{app_name}' -Recurse -Force -ErrorAction SilentlyContinue; Remove-Item -LiteralPath '$env:PUBLIC\\Desktop\\{app_name}.lnk' -Force -ErrorAction SilentlyContinue; Remove-Item -LiteralPath '$env:USERPROFILE\\Desktop\\{app_name}.lnk' -Force -ErrorAction SilentlyContinue\"
     ",
         before_uninstall=get_before_uninstall(kill_self),
         uninstall_amyuni_idd=get_uninstall_amyuni_idd(),
         app_name = crate::get_app_name(),
+        user_start_menu = user_start_menu,
     )
 }
 

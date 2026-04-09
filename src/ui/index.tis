@@ -852,7 +852,7 @@ class DeskzapConnectPanel: Reactor.Component {
             var recentCount = handler.get_recent_sessions().length;
             var statusLine = workspaceCount > 0
                 ? workspaceCount + " workspace device" + (workspaceCount == 1 ? "" : "s") + " synced"
-                : "Signed in. Waiting for your first workspace device.";
+                : "Signed in. Waiting for your first device.";
             return <div class="install-me deskzap-connect-panel signed-in">
                 <div class="deskzap-panel-eyebrow">Deskzap account</div>
                 <div class="deskzap-panel-title">{account.name}</div>

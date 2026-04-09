@@ -454,6 +454,7 @@ div.trust-me > div:nth-child(3) {
     text-align: center;
     font-size: 0.9em;
     font-weight: normal;
+    margin-top: 0.8em;
 }
 
 div.deskzap-connect-panel {
@@ -540,7 +541,7 @@ div.deskzap-host-panel > div:nth-child(3) {
     font-size: 0.64em;
     text-align: center;
     margin-top: 0;
-    margin-bottom: 12px;
+    margin-bottom: 20px;
 }
 
 .deskzap-panel-actions {

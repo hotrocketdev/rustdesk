@@ -31,7 +31,7 @@ const incoming_window_width = (deskzap_host || (incoming_only && deskzap_branded
 if (incoming_only) {
   view.windowMinSize = (scaleIt(incoming_window_width), scaleIt((handler.is_installed() || disable_installation) ? 420 : 500));
 } else {
-  view.windowMinSize = (scaleIt(560), scaleIt(300));
+  view.windowMinSize = (scaleIt(560), scaleIt(420));
 }
 
 var app;
@@ -94,7 +94,7 @@ function getInstallPanelTitle() {
 
 function getInstallPanelCopy() {
     if (deskzap_host || incoming_only) {
-        return "Install Deskzap Host to keep this device ready for unattended access and secure workspace enrollment.";
+        return "Install Deskzap Host as a service so this device can be reached remotely, including through Windows UAC prompts and before login.";
     }
     return translate('install_tip');
 }
@@ -903,7 +903,7 @@ class DeskzapHostPanel: Reactor.Component {
             ? "Deskzap Host setup"
             : (serviceStopped ? "Deskzap Host paused" : "Deskzap Host ready");
         var copy = !installed
-            ? "Install Deskzap Host to enroll this device and keep it available for secure unattended access."
+            ? "Install Deskzap Host as a service so this device can be reached remotely, including through Windows UAC prompts and before login."
             : (serviceStopped
                 ? "Start Host so this device can appear online in your Deskzap workspace."
                 : "This device is ready to accept secure remote connections from Deskzap Connect.");

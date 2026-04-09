@@ -170,6 +170,7 @@ impl Drop for SimpleCallOnReturn {
 }
 
 pub fn global_init() -> bool {
+    preload_deskzap_app_identity();
     #[cfg(target_os = "linux")]
     {
         if !crate::platform::linux::is_x11() {
@@ -1854,6 +1855,19 @@ pub fn load_custom_client() {
     }
 }
 
+pub fn preload_deskzap_app_identity() {
+    if let Some(resource_dir) = get_runtime_resource_dir() {
+        if let Some(deskzap_profile_path) = get_deskzap_profile_path(&resource_dir) {
+            read_deskzap_client_profile(&deskzap_profile_path);
+            if deskzap_role_is_set() {
+                return;
+            }
+        }
+    }
+
+    apply_deskzap_role_from_exe_name();
+}
+
 pub fn bootstrap_deskzap_host() {
     if !config::is_incoming_only() {
         return;
@@ -2172,6 +2186,44 @@ fn get_deskzap_profile_path(resource_dir: &Path) -> Option<PathBuf> {
 
     let path = resource_dir.join(DESKZAP_PROFILE_FILE_NAME);
     path.is_file().then_some(path)
+}
+
+fn deskzap_role_is_set() -> bool {
+    let app_name = config::APP_NAME.read().unwrap().clone();
+    let hard_settings = config::HARD_SETTINGS.read().unwrap();
+    let conn_type = hard_settings
+        .get("conn-type")
+        .map(|value| value.as_str())
+        .unwrap_or_default();
+
+    matches!(
+        (app_name.as_str(), conn_type),
+        ("Deskzap Host", "incoming") | ("Deskzap Connect", "outgoing")
+    )
+}
+
+fn apply_deskzap_role_from_exe_name() {
+    let Ok(current_exe) = std::env::current_exe() else {
+        return;
+    };
+    let exe_name = current_exe
+        .file_name()
+        .map(|name| name.to_string_lossy().to_ascii_lowercase())
+        .unwrap_or_default();
+
+    let (app_name, conn_type) = if exe_name.contains("deskzap-host") {
+        ("Deskzap Host", "incoming")
+    } else if exe_name.contains("deskzap-connect") {
+        ("Deskzap Connect", "outgoing")
+    } else {
+        return;
+    };
+
+    *config::APP_NAME.write().unwrap() = app_name.to_owned();
+    config::HARD_SETTINGS
+        .write()
+        .unwrap()
+        .insert("conn-type".to_owned(), conn_type.to_owned());
 }
 
 fn read_custom_client_advanced_settings(

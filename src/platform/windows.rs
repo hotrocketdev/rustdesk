@@ -1485,11 +1485,10 @@ pub fn install_me(options: &str, path: String, silent: bool, debug: bool) -> Res
     }
     let app_name = crate::get_app_name();
 
-    let current_exe = std::env::current_exe()?;
-
     let tmp_path = std::env::temp_dir().to_string_lossy().to_string();
+    let current_exe = std::env::current_exe()?;
     let cur_exe = current_exe.to_str().unwrap_or("").to_owned();
-    let shortcut_icon_location = get_shortcut_icon_location(&cur_exe);
+    let shortcut_icon_location = get_shortcut_icon_location(&exe);
     let mk_shortcut = write_cmds(
         format!(
             "
@@ -1540,10 +1539,10 @@ oLink.Save
         );
         reg_value_desktop_shortcuts = "1".to_owned();
     }
-    if options.contains("startmenu") {
+    if options.contains("startmenu") || crate::is_custom_client() {
         shortcuts = format!(
             "{shortcuts}
-md \"{start_menu}\"
+if not exist \"{start_menu}\" md \"{start_menu}\"
 copy /Y \"{tmp_path}\\{app_name}.lnk\" \"{start_menu}\\\"
 copy /Y \"{tmp_path}\\Uninstall {app_name}.lnk\" \"{start_menu}\\\"
      "
@@ -1639,7 +1638,7 @@ copy /Y \"{tmp_path}\\Uninstall {app_name}.lnk\" \"{path}\\\"
 {install_remote_printer}
 {sleep}
     ",
-        display_icon = get_custom_icon(&cur_exe).unwrap_or(exe.to_string()),
+        display_icon = get_custom_icon(&exe).unwrap_or(exe.to_string()),
         version = crate::VERSION.replace("-", "."),
         build_date = crate::BUILD_DATE,
         after_install = get_after_install(

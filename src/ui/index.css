@@ -464,7 +464,7 @@ div.deskzap-host-panel {
     padding-top: 24px;
 }
 
-div.deskzap-connect-panel > div:nth-child(2) {
+.deskzap-panel-eyebrow {
     font-size: 0.7em;
     font-weight: bold;
     text-align: left;
@@ -474,21 +474,39 @@ div.deskzap-connect-panel > div:nth-child(2) {
     opacity: 0.92;
 }
 
-div.deskzap-connect-panel > div:nth-child(3) {
+.deskzap-panel-title {
     line-height: 1.2em;
-    font-size: 0.9em;
+    font-size: 0.88em;
     text-align: left;
     margin-top: 10px;
     margin-bottom: 0;
     font-weight: bold;
 }
 
-div.deskzap-connect-panel > div:nth-child(4) {
+.deskzap-panel-meta {
     text-align: left;
-    font-size: 0.68em;
+    font-size: 0.6em;
+    line-height: 1.3em;
+    margin-top: 6px;
+    color: rgba(255,255,255,0.92);
+    overflow-wrap: anywhere;
+}
+
+.deskzap-panel-copy {
+    text-align: left;
+    font-size: 0.64em;
     font-weight: normal;
     line-height: 1.35em;
     margin-top: 8px;
+    overflow-wrap: anywhere;
+}
+
+.deskzap-connect-panel.signed-in .deskzap-panel-copy {
+    margin-top: 6px;
+}
+
+.deskzap-connect-panel.signed-in .deskzap-panel-copy > div + div {
+    margin-top: 4px;
 }
 
 div.deskzap-host-panel > div:nth-child(2) {
@@ -513,6 +531,7 @@ div.deskzap-host-panel > div:nth-child(3) {
     margin-top: 12px;
     padding-left: 6px;
     padding-right: 6px;
+    width: *;
 }
 
 div.trust-me > div:nth-child(4),
@@ -554,6 +573,12 @@ div.remote-session svg#menu {
     border: 1px;
     background: none;
     color: white;
+}
+
+.deskzap-connect-panel.signed-in .button,
+.deskzap-connect-panel.signed-out .button,
+.deskzap-host-panel .button {
+    min-width: 6.4em;
 }
 
 svg#refresh-password {

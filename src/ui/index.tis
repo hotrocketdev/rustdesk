@@ -856,7 +856,6 @@ class DeskzapConnectPanel: Reactor.Component {
             return <div class="install-me deskzap-connect-panel signed-in">
                 <div class="deskzap-panel-eyebrow">Deskzap account</div>
                 <div class="deskzap-panel-title">{account.name}</div>
-                <div class="deskzap-panel-meta">{account.email}</div>
                 <div class="deskzap-panel-copy">
                     <div>{statusLine}</div>
                     {recentCount > 0 ? <div>{recentCount + " recent connection" + (recentCount == 1 ? "" : "s") + " available."}</div> : ""}

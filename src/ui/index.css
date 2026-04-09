@@ -468,7 +468,7 @@ div.deskzap-host-panel {
 .deskzap-panel-eyebrow {
     font-size: 0.7em;
     font-weight: bold;
-    text-align: left;
+    text-align: center;
     margin-bottom: 0;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -478,23 +478,14 @@ div.deskzap-host-panel {
 .deskzap-panel-title {
     line-height: 1.16em;
     font-size: 0.8em;
-    text-align: left;
+    text-align: center;
     margin-top: 10px;
     margin-bottom: 0;
     font-weight: bold;
 }
 
-.deskzap-panel-meta {
-    text-align: left;
-    font-size: 0.54em;
-    line-height: 1.22em;
-    margin-top: 6px;
-    color: rgba(255,255,255,0.92);
-    overflow-wrap: anywhere;
-}
-
 .deskzap-panel-copy {
-    text-align: left;
+    text-align: center;
     font-size: 0.56em;
     font-weight: normal;
     line-height: 1.28em;
@@ -518,6 +509,7 @@ div.deskzap-host-panel {
 
 .deskzap-connect-panel.signed-in .deskzap-panel-copy > div {
     max-width: 100%;
+    text-align: center;
 }
 
 .deskzap-connect-panel.signed-in .deskzap-panel-copy > div + div {
@@ -527,6 +519,7 @@ div.deskzap-host-panel {
 .deskzap-connect-panel.signed-in .deskzap-panel-copy {
     margin-top: 7px;
     max-width: 100%;
+    text-align: center;
 }
 
 div.deskzap-host-panel > div:nth-child(2) {

@@ -1520,6 +1520,10 @@ function showSettings() {
 function checkConnectStatus() {
     handler.check_mouse_time(); // trigger connection status updater
     self.timer(1s, function() {
+        if (!app) {
+            checkConnectStatus();
+            return;
+        }
         var tmp = handler.get_option("stop-service") == "Y";
         if (tmp != service_stopped) {
             service_stopped = tmp;
@@ -1528,13 +1532,13 @@ function checkConnectStatus() {
         tmp = handler.using_public_server();
         if (tmp != using_public_server) {
             using_public_server = tmp;
-            app.connect_status.update();
+            if (app.connect_status) app.connect_status.update();
         }
         tmp = handler.get_connect_status();
         if (tmp[0] != connect_status) {
             connect_status = tmp[0];
-            app.connect_status.update();
-            myIdMenu.update();
+            if (app.connect_status) app.connect_status.update();
+            if (myIdMenu) myIdMenu.update();
         }
         if (tmp[1] != key_confirmed) {
             key_confirmed = tmp[1];

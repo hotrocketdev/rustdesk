@@ -1860,6 +1860,16 @@ pub fn preload_deskzap_app_identity() {
         if let Some(deskzap_profile_path) = get_deskzap_profile_path(&resource_dir) {
             read_deskzap_client_profile(&deskzap_profile_path);
             if deskzap_role_is_set() {
+                log::info!(
+                    "Deskzap role preloaded from profile: app_name={}, conn_type={}",
+                    config::APP_NAME.read().unwrap().clone(),
+                    config::HARD_SETTINGS
+                        .read()
+                        .unwrap()
+                        .get("conn-type")
+                        .cloned()
+                        .unwrap_or_default()
+                );
                 return;
             }
         }
@@ -2144,9 +2154,9 @@ pub async fn report_deskzap_runtime_session_state(
 
     let url = format!(
         "{}/api/v1/runtime/sessions/state",
-        get_api_server().trim_end_matches('/')
+        Config::get_option(keys::OPTION_API_SERVER).trim_end_matches('/')
     );
-    if let Err(err) = post_request_sync(url, body.to_string(), "{}").await {
+    if let Err(err) = post_request_sync(url, body.to_string(), "{}") {
         log::warn!(
             "Failed to report Deskzap runtime session state {}: {}",
             status,
@@ -2224,6 +2234,12 @@ fn apply_deskzap_role_from_exe_name() {
         .write()
         .unwrap()
         .insert("conn-type".to_owned(), conn_type.to_owned());
+    log::info!(
+        "Deskzap role inferred from exe name {}: app_name={}, conn_type={}",
+        exe_name,
+        app_name,
+        conn_type
+    );
 }
 
 fn read_custom_client_advanced_settings(

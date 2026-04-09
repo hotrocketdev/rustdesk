@@ -5,6 +5,7 @@
 #include <windows.h>
 
 #include <algorithm>
+#include <filesystem>
 #include <iostream>
 
 #include "win32_desktop.h"
@@ -18,6 +19,25 @@ typedef int (*FUNC_RUSTDESK_GET_APP_NAME)(wchar_t*, int);
 const std::vector<std::string> parameters_white_list = {"--install", "--cm"};
 
 const wchar_t* getWindowClassName();
+
+std::wstring infer_deskzap_app_name_from_exe() {
+  wchar_t module_path[MAX_PATH] = {0};
+  if (GetModuleFileNameW(nullptr, module_path, MAX_PATH) == 0) {
+    return L"RustDesk";
+  }
+
+  std::wstring filename = std::filesystem::path(module_path).filename().wstring();
+  std::wstring lower = filename;
+  std::transform(lower.begin(), lower.end(), lower.begin(), towlower);
+
+  if (lower.find(L"deskzap-host") != std::wstring::npos) {
+    return L"Deskzap Host";
+  }
+  if (lower.find(L"deskzap-connect") != std::wstring::npos) {
+    return L"Deskzap Connect";
+  }
+  return L"RustDesk";
+}
 
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command)
@@ -63,7 +83,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   std::vector<std::string> rust_args(c_args, c_args + args_len);
   free_c_args(c_args, args_len);
 
-  std::wstring app_name = L"RustDesk";
+  std::wstring app_name = infer_deskzap_app_name_from_exe();
   FUNC_RUSTDESK_GET_APP_NAME get_rustdesk_app_name = (FUNC_RUSTDESK_GET_APP_NAME)GetProcAddress(hInstance, "get_rustdesk_app_name");
   if (get_rustdesk_app_name) {
     wchar_t app_name_buffer[512] = {0};

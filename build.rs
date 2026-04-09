@@ -33,8 +33,33 @@ fn build_mac() {
 fn build_manifest() {
     use std::io::Write;
     if std::env::var("PROFILE").unwrap() == "release" {
+        let role = std::env::var("DESKZAP_ROLE").unwrap_or_else(|_| "connect".to_owned());
+        let icon_path = std::env::var("DESKZAP_BUILD_ICON").unwrap_or_else(|_| {
+            if role.eq_ignore_ascii_case("host") {
+                "res/host-icon.ico".to_owned()
+            } else {
+                "res/connect-icon.ico".to_owned()
+            }
+        });
+        let product_name = std::env::var("DESKZAP_BUILD_PRODUCT_NAME").unwrap_or_else(|_| {
+            if role.eq_ignore_ascii_case("host") {
+                "Deskzap Host".to_owned()
+            } else {
+                "Deskzap Connect".to_owned()
+            }
+        });
+        let original_filename = std::env::var("DESKZAP_BUILD_ORIGINAL_FILENAME").unwrap_or_else(|_| {
+            if role.eq_ignore_ascii_case("host") {
+                "deskzap-host.exe".to_owned()
+            } else {
+                "deskzap-connect.exe".to_owned()
+            }
+        });
         let mut res = winres::WindowsResource::new();
-        res.set_icon("res/icon.ico")
+        res.set_icon(&icon_path)
+            .set("ProductName", &product_name)
+            .set("FileDescription", &product_name)
+            .set("OriginalFilename", &original_filename)
             .set_language(winapi::um::winnt::MAKELANGID(
                 winapi::um::winnt::LANG_ENGLISH,
                 winapi::um::winnt::SUBLANG_ENGLISH_US,
@@ -86,6 +111,10 @@ fn install_android_deps() {
 
 fn main() {
     hbb_common::gen_version();
+    println!("cargo:rerun-if-env-changed=DESKZAP_ROLE");
+    println!("cargo:rerun-if-env-changed=DESKZAP_BUILD_ICON");
+    println!("cargo:rerun-if-env-changed=DESKZAP_BUILD_PRODUCT_NAME");
+    println!("cargo:rerun-if-env-changed=DESKZAP_BUILD_ORIGINAL_FILENAME");
     install_android_deps();
     #[cfg(all(windows, feature = "inline"))]
     build_manifest();

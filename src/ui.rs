@@ -854,6 +854,19 @@ pub fn value_crash_workaround(values: &[Value]) -> Arc<Vec<Value>> {
 }
 
 pub fn get_icon() -> String {
+    #[cfg(not(target_os = "macos"))]
+    {
+        if let Ok(exe) = std::env::current_exe() {
+            if let Some(parent) = exe.parent() {
+                let custom_icon = parent.join("data").join("flutter_assets").join("assets").join("icon.png");
+                if let Ok(bytes) = std::fs::read(&custom_icon) {
+                    if !bytes.is_empty() {
+                        return format!("data:image/png;base64,{}", hbb_common::base64::encode(bytes));
+                    }
+                }
+            }
+        }
+    }
     // 128x128
     #[cfg(target_os = "macos")]
     // 128x128 on 160x160 canvas, then shrink to 128, mac looks better with padding

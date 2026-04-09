@@ -850,14 +850,15 @@ class DeskzapConnectPanel: Reactor.Component {
             var account = getAccountInfo();
             var workspaceCount = (ab && ab.peers) ? ab.peers.length : 0;
             var recentCount = handler.get_recent_sessions().length;
+            var statusLine = workspaceCount > 0
+                ? workspaceCount + " workspace device" + (workspaceCount == 1 ? "" : "s") + " synced"
+                : "Signed in. Waiting for your first workspace device.";
             return <div class="install-me deskzap-connect-panel signed-in">
                 <div class="deskzap-panel-eyebrow">Deskzap account</div>
                 <div class="deskzap-panel-title">{account.name}</div>
                 <div class="deskzap-panel-meta">{account.email}</div>
                 <div class="deskzap-panel-copy">
-                    <div>{workspaceCount > 0
-                        ? workspaceCount + " workspace device" + (workspaceCount == 1 ? "" : "s") + " synced"
-                        : "Signed in. Waiting for your first workspace device."}</div>
+                    <div>{statusLine}</div>
                     {recentCount > 0 ? <div>{recentCount + " recent connection" + (recentCount == 1 ? "" : "s") + " available."}</div> : ""}
                 </div>
                 <div .deskzap-panel-actions>
@@ -898,7 +899,6 @@ class DeskzapHostPanel: Reactor.Component {
     function render() {
         var installed = handler.is_installed() || disable_installation;
         var serviceStopped = service_stopped;
-        var hostReady = installed && !serviceStopped;
         var title = !installed
             ? "Deskzap Host setup"
             : (serviceStopped ? "Deskzap Host paused" : "Deskzap Host ready");

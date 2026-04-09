@@ -27,7 +27,7 @@ body {
 }
 
 .left-pane {
-    width: 200px;
+    width: 252px;
     height: *;
     background: color(bg);
     border-right: color(border) 1px solid;
@@ -190,7 +190,7 @@ span.clear-input:hover {
 }
 
 div.connect-status {
-    left: 240px;
+    left: 292px;
     border-top: color(border) solid 1px;
     width: 100%;
     padding: 1em;
@@ -476,7 +476,7 @@ div.deskzap-host-panel {
 
 .deskzap-panel-title {
     line-height: 1.2em;
-    font-size: 0.88em;
+    font-size: 0.84em;
     text-align: left;
     margin-top: 10px;
     margin-bottom: 0;
@@ -485,7 +485,7 @@ div.deskzap-host-panel {
 
 .deskzap-panel-meta {
     text-align: left;
-    font-size: 0.6em;
+    font-size: 0.58em;
     line-height: 1.3em;
     margin-top: 6px;
     color: rgba(255,255,255,0.92);
@@ -494,7 +494,7 @@ div.deskzap-host-panel {
 
 .deskzap-panel-copy {
     text-align: left;
-    font-size: 0.64em;
+    font-size: 0.6em;
     font-weight: normal;
     line-height: 1.35em;
     margin-top: 8px;
@@ -503,6 +503,20 @@ div.deskzap-host-panel {
 
 .deskzap-connect-panel.signed-in .deskzap-panel-copy {
     margin-top: 6px;
+}
+
+.deskzap-connect-panel.signed-in .deskzap-panel-title {
+    line-height: 1.15em;
+}
+
+.deskzap-connect-panel.signed-in .deskzap-panel-meta {
+    line-height: 1.2em;
+    max-height: 2.4em;
+    overflow: hidden;
+}
+
+.deskzap-connect-panel.signed-in .deskzap-panel-copy > div {
+    max-width: 100%;
 }
 
 .deskzap-connect-panel.signed-in .deskzap-panel-copy > div + div {

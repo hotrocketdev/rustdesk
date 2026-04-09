@@ -788,8 +788,8 @@ class App: Reactor.Component
                         {!outgoing_only && <PasswordArea />}
                     </div>
                     {outgoing_only ? <DeskzapConnectPanel /> : ((deskzap_host || incoming_only) ? <DeskzapHostPanel /> : ((!is_win || handler.is_installed() || disable_installation) ? "" : <InstallMe />))}
-                    {!outgoing_only && software_update_url && !disable_installation ? <UpdateMe /> : ""}
-                    {!outgoing_only && is_win && handler.is_installed() && !software_update_url && handler.is_installed_lower_version() && !disable_installation ? <UpgradeMe /> : ""}
+                    {!outgoing_only && !is_custom_client && software_update_url && !disable_installation ? <UpdateMe /> : ""}
+                    {!outgoing_only && !is_custom_client && is_win && handler.is_installed() && !software_update_url && handler.is_installed_lower_version() && !disable_installation ? <UpgradeMe /> : ""}
                     {is_can_screen_recording ? "": <CanScreenRecording />}
                     {is_can_screen_recording && !handler.is_process_trusted(false) ? <TrustMe /> : ""}
                     {!outgoing_only && !service_stopped && is_can_screen_recording && handler.is_process_trusted(false) && handler.is_installed() && !handler.is_installed_daemon(false) ? <InstallDaemon /> : ""}

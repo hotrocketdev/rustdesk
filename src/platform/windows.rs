@@ -1599,13 +1599,14 @@ copy /Y \"{tmp_path}\\{app_name} Tray.lnk\" \"%PROGRAMDATA%\\Microsoft\\Windows\
     // New code should be written in a common function.
     let cmds = format!(
         "
-{uninstall_str}
-chcp 65001
-md \"{path}\"
-{copy_exe}
-reg add {subkey} /f
-reg add {subkey} /f /v DisplayIcon /t REG_SZ /d \"{display_icon}\"
-reg add {subkey} /f /v DisplayName /t REG_SZ /d \"{app_name}\"
+    {uninstall_str}
+    chcp 65001
+    md \"{path}\"
+    {copy_exe}
+    {rename_exe}
+    reg add {subkey} /f
+    reg add {subkey} /f /v DisplayIcon /t REG_SZ /d \"{display_icon}\"
+    reg add {subkey} /f /v DisplayName /t REG_SZ /d \"{app_name}\"
 reg add {subkey} /f /v DisplayVersion /t REG_SZ /d \"{version}\"
 reg add {subkey} /f /v Version /t REG_SZ /d \"{version}\"
 reg add {subkey} /f /v BuildDate /t REG_SZ /d \"{build_date}\"
@@ -1640,6 +1641,7 @@ copy /Y \"{tmp_path}\\Uninstall {app_name}.lnk\" \"{path}\\\"
         sleep = if debug { "timeout 300" } else { "" },
         dels = if debug { "" } else { &dels },
         copy_exe = copy_exe_cmd(&src_exe, &exe, &path)?,
+        rename_exe = rename_exe_cmd(&src_exe, &path)?,
         import_config = get_import_config(&exe),
     );
     run_cmds(cmds, debug, "install")?;

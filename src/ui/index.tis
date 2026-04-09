@@ -5,6 +5,7 @@ stdout.println("is_xfce: ", is_xfce);
 // See default height in common.tis `msgbox()`.
 const msgbox_default_height = 180;
 const incoming_only_width = 400;
+const deskzap_host_width = 520;
 
 const incoming_only = handler.is_incoming_only();
 const app_name_lc = handler.get_app_name().toLowerCase();
@@ -24,9 +25,11 @@ const hide_stop_service = handler.get_builtin_option("hide-stop-service") == "Y"
 const disable_change_permanent_password = handler.get_builtin_option("disable-change-permanent-password") == "Y";
 const disable_change_id = handler.get_builtin_option("disable-change-id") == "Y";
 
+const incoming_window_width = (deskzap_host || (incoming_only && deskzap_branded)) ? deskzap_host_width : incoming_only_width;
+
 // html min-width, min-height not working on mac, below works for all
 if (incoming_only) {
-  view.windowMinSize = (scaleIt(incoming_only_width), scaleIt((handler.is_installed() || disable_installation) ? 400 : 480));
+  view.windowMinSize = (scaleIt(incoming_window_width), scaleIt((handler.is_installed() || disable_installation) ? 420 : 500));
 } else {
   view.windowMinSize = (scaleIt(560), scaleIt(300));
 }
@@ -64,7 +67,7 @@ function get_id() {
 
 function get_msgbox_width(width=500) {
     if (incoming_only) {
-        var maxw = scaleIt(incoming_only_width);
+        var maxw = scaleIt(incoming_window_width);
         if (width > maxw) width = maxw;
     }
     return width;
@@ -1484,10 +1487,10 @@ function self.ready() {
         if (r[2] >= sw && r[3] >= sh) {
             self.timer(1ms, function() { view.windowState = View.WINDOW_MAXIMIZED; });
         } else {
-            view.move(r[0], r[1], incoming_only ? scaleIt(incoming_only_width) : r[2], r[3]);
+            view.move(r[0], r[1], incoming_only ? scaleIt(incoming_window_width) : r[2], r[3]);
         }
     } else {
-        centerize(scaleIt(incoming_only ? incoming_only_width : 800), scaleIt(incoming_only ? 480 : 600));
+        centerize(scaleIt(incoming_only ? incoming_window_width : 800), scaleIt(incoming_only ? 520 : 600));
     }
     if (!handler.get_remote_id()) {
         view.focus = $(#remote_id);

@@ -10,6 +10,7 @@ import 'package:flutter_hbb/common/widgets/animated_rotation_widget.dart';
 import 'package:flutter_hbb/common/widgets/custom_password.dart';
 import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/desktop/pages/connection_page.dart';
+import 'package:flutter_hbb/desktop/pages/deskzap_enrollment_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_tab_page.dart';
 import 'package:flutter_hbb/desktop/widgets/update_progress.dart';
@@ -50,6 +51,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   var watchIsCanRecordAudio = false;
   Timer? _updateTimer;
   bool isCardClosed = false;
+  String _enrollmentStateJson = '';
 
   final RxBool _editHover = false.obs;
   final RxBool _block = false.obs;
@@ -60,6 +62,17 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   Widget build(BuildContext context) {
     super.build(context);
     final isIncomingOnly = bind.isIncomingOnly();
+    // Show the OAuth device-authorization enrollment screen when the device
+    // auth flow is active (no baked-in enrollment token on first run).
+    if (isIncomingOnly && _enrollmentStateJson.isNotEmpty) {
+      try {
+        final map = jsonDecode(_enrollmentStateJson) as Map<String, dynamic>;
+        final status = map['status'] as String? ?? '';
+        if (status == 'pending' || status == 'authorized' || status == 'enrolled') {
+          return const DeskzapEnrollmentPage();
+        }
+      } catch (_) {}
+    }
     return _buildBlock(
         child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -703,6 +716,13 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       if (systemError != error) {
         systemError = error;
         setState(() {});
+      }
+      if (bind.isIncomingOnly()) {
+        final authState = bind.mainGetDeskzapDeviceAuthState();
+        if (authState != _enrollmentStateJson) {
+          _enrollmentStateJson = authState;
+          setState(() {});
+        }
       }
       final v = await mainGetBoolOption(kOptionStopService);
       if (v != svcStopped.value) {

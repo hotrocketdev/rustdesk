@@ -2382,6 +2382,14 @@ List<String>? urlLinkToCmdArgs(Uri uri) {
         });
       }
     }
+  } else if (uri.authority == 'deskzap-connect') {
+    // deskzap://deskzap-connect/<base64url_payload>
+    // Triggered from the web console Connect button deep link.
+    final payload = uri.path.length > 1 ? uri.path.substring(1) : '';
+    if (payload.isNotEmpty) {
+      return ['--deskzap-connect', payload];
+    }
+    return null;
   } else if (options.contains(uri.authority)) {
     command = '--${uri.authority}';
     if (uri.path.length > 1) {

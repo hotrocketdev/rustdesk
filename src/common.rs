@@ -72,6 +72,10 @@ const DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION: &str = "deskzap-runtime-heartbeat-
 const DESKZAP_PUBLIC_WEB_URL: &str = "https://my.deskzap.co.uk";
 const DESKZAP_DOMAIN: &str = "deskzap.co.uk";
 const DESKZAP_RUNTIME_HEARTBEAT_INTERVAL_SECS: u64 = 60;
+const DESKZAP_DEVICE_AUTH_POLL_INTERVAL_SECS: u64 = 5;
+const DESKZAP_DEVICE_AUTH_STATE_OPTION: &str = "deskzap-device-auth-state";
+const DESKZAP_KEYRING_SERVICE: &str = "deskzap-host";
+const DESKZAP_KEYRING_KEY_ENTRY: &str = "device-signing-key";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeskzapLaunchPayload {
@@ -100,6 +104,30 @@ struct DeskzapEnrollmentResponse {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct DeskzapEnrolledDevice {
     id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct DeskzapDeviceAuthResponse {
+    device_code: String,
+    user_code: String,
+    verification_uri: String,
+    expires_in: u64,
+    interval: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct DeskzapTokenResponse {
+    access_token: Option<String>,
+    error: Option<String>,
+}
+
+/// State stored in LocalConfig so Flutter can poll and render the enrollment UI.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeskzapDeviceAuthState {
+    pub user_code: String,
+    pub verification_uri: String,
+    /// "pending" | "authorized" | "expired" | "denied" | "enrolled"
+    pub status: String,
 }
 
 pub const PLATFORM_WINDOWS: &str = "Windows";
@@ -145,6 +173,7 @@ lazy_static::lazy_static! {
     pub static ref DEVICE_NAME: Arc<Mutex<String>> = Default::default();
     static ref PUBLIC_IPV6_ADDR: Arc<Mutex<(Option<SocketAddr>, Option<Instant>)>> = Default::default();
     static ref DESKZAP_RUNTIME_HEARTBEAT_LOOP_STARTED: AtomicBool = AtomicBool::new(false);
+    static ref DESKZAP_DEVICE_AUTH_POLL_STARTED: AtomicBool = AtomicBool::new(false);
 }
 
 lazy_static::lazy_static! {
@@ -1889,10 +1918,6 @@ pub fn bootstrap_deskzap_host() {
         .get(DESKZAP_ENROLLMENT_TOKEN_KEY)
         .cloned()
         .unwrap_or_default();
-    if enrollment_token.trim().is_empty() {
-        return;
-    }
-
     let api_server = Config::get_option(keys::OPTION_API_SERVER);
     if api_server.trim().is_empty() {
         log::warn!("Deskzap host bootstrap skipped because api-server is empty");
@@ -1901,6 +1926,21 @@ pub fn bootstrap_deskzap_host() {
 
     let saved_runtime_heartbeat_token =
         LocalConfig::get_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION);
+
+    // If no enrollment token is baked in, fall back to OAuth 2.0 Device Authorization
+    // unless this device is already enrolled (has a heartbeat token).
+    if enrollment_token.trim().is_empty() {
+        if saved_runtime_heartbeat_token.trim().is_empty() {
+            start_deskzap_device_authorization(api_server);
+        } else {
+            start_deskzap_runtime_heartbeat_loop(
+                api_server.to_owned(),
+                operating_system_label().to_owned(),
+            );
+        }
+        return;
+    }
+
     if !saved_runtime_heartbeat_token.trim().is_empty() {
         start_deskzap_runtime_heartbeat_loop(
             api_server.to_owned(),
@@ -1996,12 +2036,33 @@ fn send_deskzap_runtime_heartbeat(
         "operating_system": operating_system,
     })
     .to_string();
-    let headers = json!({
-        "Authorization": format!("Bearer {}", runtime_heartbeat_token),
-    })
-    .to_string();
 
-    post_request_sync(url, body, &headers)
+    // Build headers — include an Ed25519 device signature when a key is available.
+    let mut headers_obj = serde_json::json!({
+        "Authorization": format!("Bearer {}", runtime_heartbeat_token),
+    });
+
+    let device_id = LocalConfig::get_option(DESKZAP_DEVICE_ID_OPTION);
+    if !device_id.trim().is_empty() {
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        // Signature message: "{device_id}:{timestamp}:{sha256_hex(body)}"
+        let body_hash = {
+            use sha2::{Digest, Sha256};
+            let mut hasher = Sha256::new();
+            hasher.update(body.as_bytes());
+            hex::encode(hasher.finalize())
+        };
+        let message = format!("{device_id}:{timestamp}:{body_hash}");
+        if let Some(sig) = sign_with_device_key(message.as_bytes()) {
+            headers_obj["X-Deskzap-Signature"] =
+                serde_json::json!(format!("{device_id};{timestamp};{sig}"));
+        }
+    }
+
+    post_request_sync(url, body, &headers_obj.to_string())
         .map(|_| ())
         .map_err(|err| format!("failed to send Deskzap runtime heartbeat: {err}"))
 }
@@ -2038,6 +2099,253 @@ fn start_deskzap_runtime_heartbeat_loop(api_server: String, operating_system: St
             log::warn!("Deskzap runtime heartbeat loop failed: {}", err);
         }
     });
+}
+
+/// Returns the current device authorization state as a JSON string,
+/// or an empty string if no authorization is in progress.
+/// Called from Flutter via flutter_ffi to drive the enrollment UI.
+pub fn get_deskzap_device_auth_state() -> String {
+    LocalConfig::get_option(DESKZAP_DEVICE_AUTH_STATE_OPTION)
+}
+
+fn set_deskzap_device_auth_state(state: &DeskzapDeviceAuthState) {
+    let json = serde_json::to_string(state).unwrap_or_default();
+    LocalConfig::set_option(DESKZAP_DEVICE_AUTH_STATE_OPTION.to_owned(), json);
+}
+
+pub fn clear_deskzap_device_auth_state() {
+    LocalConfig::set_option(DESKZAP_DEVICE_AUTH_STATE_OPTION.to_owned(), String::new());
+}
+
+// ── Ed25519 device identity (Step 7) ─────────────────────────────────────────
+
+/// Generates a new Ed25519 key pair, stores the private key in the OS keychain,
+/// and returns the public key as standard base64.
+fn generate_and_store_device_key() -> Result<String, String> {
+    use ed25519_dalek::SigningKey;
+    use rand::rngs::OsRng;
+
+    let signing_key = SigningKey::generate(&mut OsRng);
+    let private_bytes = signing_key.to_bytes();
+    let private_b64 = base64::encode(private_bytes);
+
+    let entry = keyring::Entry::new(DESKZAP_KEYRING_SERVICE, DESKZAP_KEYRING_KEY_ENTRY)
+        .map_err(|e| format!("keychain entry error: {e}"))?;
+    entry
+        .set_password(&private_b64)
+        .map_err(|e| format!("keychain store error: {e}"))?;
+
+    let public_b64 = base64::encode(signing_key.verifying_key().to_bytes());
+    Ok(public_b64)
+}
+
+fn get_device_signing_key() -> Option<ed25519_dalek::SigningKey> {
+    use ed25519_dalek::SigningKey;
+
+    let entry =
+        keyring::Entry::new(DESKZAP_KEYRING_SERVICE, DESKZAP_KEYRING_KEY_ENTRY).ok()?;
+    let b64 = entry.get_password().ok()?;
+    let bytes = base64::decode(&b64).ok()?;
+    let arr: [u8; 32] = bytes.try_into().ok()?;
+    Some(SigningKey::from_bytes(&arr))
+}
+
+/// Returns the stored device public key as base64, or `None` if not yet generated.
+pub fn get_device_public_key_base64() -> Option<String> {
+    let signing_key = get_device_signing_key()?;
+    Some(base64::encode(signing_key.verifying_key().to_bytes()))
+}
+
+/// Signs `data` with the device's Ed25519 private key.
+/// Returns the signature as base64, or `None` if no key is stored.
+pub fn sign_with_device_key(data: &[u8]) -> Option<String> {
+    use ed25519_dalek::Signer;
+
+    let signing_key = get_device_signing_key()?;
+    let signature = signing_key.sign(data);
+    Some(base64::encode(signature.to_bytes()))
+}
+
+// ── OAuth 2.0 Device Authorization Grant ─────────────────────────────────────
+
+/// Starts the OAuth 2.0 Device Authorization Grant flow for enrolling a new Deskzap Host.
+/// Called from `bootstrap_deskzap_host` when no enrollment token is present.
+pub fn start_deskzap_device_authorization(api_server: String) {
+    if DESKZAP_DEVICE_AUTH_POLL_STARTED.swap(true, Ordering::SeqCst) {
+        return;
+    }
+
+    thread::spawn(move || {
+        run_deskzap_device_authorization(&api_server);
+    });
+}
+
+fn run_deskzap_device_authorization(api_server: &str) {
+    let url = format!("{}/oauth/device", api_server.trim_end_matches('/'));
+    let body = json!({ "client_id": "deskzap-host" }).to_string();
+
+    let response = match post_request_sync(url, body, "{}") {
+        Ok(r) => r,
+        Err(err) => {
+            log::error!("Deskzap device authorization request failed: {}", err);
+            return;
+        }
+    };
+
+    let auth: DeskzapDeviceAuthResponse = match serde_json::from_str(&response) {
+        Ok(a) => a,
+        Err(err) => {
+            log::error!("Deskzap device authorization response parse failed: {}", err);
+            return;
+        }
+    };
+
+    log::info!(
+        "Deskzap device authorization started. Code: {} — Visit: {}",
+        auth.user_code,
+        auth.verification_uri
+    );
+
+    set_deskzap_device_auth_state(&DeskzapDeviceAuthState {
+        user_code: auth.user_code.clone(),
+        verification_uri: auth.verification_uri.clone(),
+        status: "pending".to_owned(),
+    });
+
+    let interval = std::cmp::max(auth.interval, 5);
+    let expires_at = std::time::Instant::now()
+        + StdDuration::from_secs(std::cmp::max(auth.expires_in, 60));
+
+    loop {
+        thread::sleep(StdDuration::from_secs(interval));
+
+        if std::time::Instant::now() >= expires_at {
+            log::warn!("Deskzap device authorization code expired");
+            set_deskzap_device_auth_state(&DeskzapDeviceAuthState {
+                user_code: auth.user_code.clone(),
+                verification_uri: auth.verification_uri.clone(),
+                status: "expired".to_owned(),
+            });
+            return;
+        }
+
+        let token_url = format!("{}/oauth/token", api_server.trim_end_matches('/'));
+        let token_body = json!({
+            "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+            "device_code": auth.device_code,
+            "client_id": "deskzap-host",
+        })
+        .to_string();
+
+        let token_response = match post_request_sync(token_url, token_body, "{}") {
+            Ok(r) => r,
+            Err(err) => {
+                log::warn!("Deskzap device authorization poll failed: {}", err);
+                continue;
+            }
+        };
+
+        let parsed: DeskzapTokenResponse = match serde_json::from_str(&token_response) {
+            Ok(p) => p,
+            Err(_) => continue,
+        };
+
+        match parsed.error.as_deref() {
+            Some("authorization_pending") | None if parsed.access_token.is_none() => {
+                continue;
+            }
+            Some("slow_down") => {
+                thread::sleep(StdDuration::from_secs(5));
+                continue;
+            }
+            Some("access_denied") => {
+                log::warn!("Deskzap device authorization was denied");
+                set_deskzap_device_auth_state(&DeskzapDeviceAuthState {
+                    user_code: auth.user_code.clone(),
+                    verification_uri: auth.verification_uri.clone(),
+                    status: "denied".to_owned(),
+                });
+                return;
+            }
+            Some(other) => {
+                log::warn!("Deskzap device authorization error: {}", other);
+                return;
+            }
+            None => {}
+        }
+
+        if let Some(access_token) = parsed.access_token {
+            log::info!("Deskzap device authorization approved — enrolling device");
+            set_deskzap_device_auth_state(&DeskzapDeviceAuthState {
+                user_code: auth.user_code.clone(),
+                verification_uri: auth.verification_uri.clone(),
+                status: "authorized".to_owned(),
+            });
+
+            let hostname = crate::common::hostname();
+            let display_name = {
+                let configured = get_builtin_option(keys::OPTION_DISPLAY_NAME);
+                if configured.trim().is_empty() {
+                    hostname.clone()
+                } else {
+                    configured
+                }
+            };
+            let operating_system = operating_system_label();
+
+            // Generate device Ed25519 key pair and store in OS keychain
+            let device_public_key = match generate_and_store_device_key() {
+                Ok(pk) => Some(pk),
+                Err(err) => {
+                    log::warn!("Deskzap device key generation failed (enrollment continues without key): {}", err);
+                    None
+                }
+            };
+
+            let enroll_url = format!(
+                "{}/api/v1/devices/enroll",
+                api_server.trim_end_matches('/')
+            );
+            let mut enroll_obj = json!({
+                "rustdesk_runtime_id": Config::get_id(),
+                "hostname": hostname,
+                "display_name": display_name,
+                "operating_system": operating_system,
+                "agent_version": crate::VERSION,
+            });
+            if let Some(pk) = device_public_key {
+                enroll_obj["device_public_key"] = json!(pk);
+            }
+            let enroll_body = enroll_obj.to_string();
+            let enroll_header = json!({
+                "Authorization": format!("Bearer {}", access_token),
+            })
+            .to_string();
+
+            match post_request_sync(enroll_url, enroll_body, &enroll_header) {
+                Ok(response) => {
+                    if let Err(err) = persist_deskzap_enrollment(api_server, &response, operating_system) {
+                        log::error!("Deskzap device enrollment persistence failed: {}", err);
+                        return;
+                    }
+                    set_deskzap_device_auth_state(&DeskzapDeviceAuthState {
+                        user_code: auth.user_code.clone(),
+                        verification_uri: auth.verification_uri.clone(),
+                        status: "enrolled".to_owned(),
+                    });
+                    start_deskzap_runtime_heartbeat_loop(
+                        api_server.to_owned(),
+                        operating_system.to_owned(),
+                    );
+                    log::info!("Deskzap device authorization enrollment completed");
+                }
+                Err(err) => {
+                    log::error!("Deskzap device enrollment failed: {}", err);
+                }
+            }
+            return;
+        }
+    }
 }
 
 pub fn apply_deskzap_launch_args(args: &[String]) -> Result<Option<Vec<String>>, String> {

@@ -2692,6 +2692,14 @@ pub fn main_get_buildin_option(key: String) -> SyncReturn<String> {
     SyncReturn(get_builtin_option(&key))
 }
 
+pub fn main_get_deskzap_device_auth_state() -> SyncReturn<String> {
+    SyncReturn(crate::common::get_deskzap_device_auth_state())
+}
+
+pub fn main_clear_deskzap_device_auth_state() {
+    crate::common::clear_deskzap_device_auth_state();
+}
+
 pub fn main_check_hwcodec() {
     check_hwcodec()
 }

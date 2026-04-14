@@ -622,7 +622,7 @@ extern "C"
         {
             if (buf)
             {
-                nout = std::min(nin, static_cast<uint32_t>(n));
+                nout = (std::min)(nin, static_cast<uint32_t>(n));
                 memcpy(bufin, buf, nout);
                 WTSFreeMemory(buf);
             }
@@ -639,7 +639,7 @@ extern "C"
         {
             if (buf)
             {
-                nout = std::min(nin, static_cast<uint32_t>(n));
+                nout = (std::min)(nin, static_cast<uint32_t>(n));
                 memcpy(bufin, buf, nout);
                 WTSFreeMemory(buf);
             }

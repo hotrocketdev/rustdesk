@@ -2181,7 +2181,10 @@ pub fn start_deskzap_device_authorization(api_server: String) {
 }
 
 fn run_deskzap_device_authorization(api_server: &str) {
-    let url = format!("{}/oauth/device", api_server.trim_end_matches('/'));
+    let url = format!(
+        "{}/api/v1/oauth/device",
+        api_server.trim_end_matches('/')
+    );
     let body = json!({ "client_id": "deskzap-host" }).to_string();
 
     let response = match post_request_sync(url, body, "{}") {
@@ -2229,7 +2232,10 @@ fn run_deskzap_device_authorization(api_server: &str) {
             return;
         }
 
-        let token_url = format!("{}/oauth/token", api_server.trim_end_matches('/'));
+        let token_url = format!(
+            "{}/api/v1/oauth/token",
+            api_server.trim_end_matches('/')
+        );
         let token_body = json!({
             "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
             "device_code": auth.device_code,

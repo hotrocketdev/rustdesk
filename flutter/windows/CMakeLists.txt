@@ -4,7 +4,28 @@ project(deskzap LANGUAGES CXX)
 
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
+set(DESKZAP_ROLE "$ENV{DESKZAP_ROLE}")
+string(TOLOWER "${DESKZAP_ROLE}" DESKZAP_ROLE)
+
 set(BINARY_NAME "deskzap")
+set(DESKZAP_PRODUCT_NAME "Deskzap")
+set(DESKZAP_FILE_DESCRIPTION "Deskzap Remote Access")
+set(DESKZAP_INTERNAL_NAME "deskzap")
+set(DESKZAP_ORIGINAL_FILENAME "deskzap.exe")
+
+if(DESKZAP_ROLE STREQUAL "connect")
+  set(BINARY_NAME "deskzap-connect")
+  set(DESKZAP_PRODUCT_NAME "Deskzap Connect")
+  set(DESKZAP_FILE_DESCRIPTION "Deskzap Connect")
+  set(DESKZAP_INTERNAL_NAME "deskzap-connect")
+  set(DESKZAP_ORIGINAL_FILENAME "deskzap-connect.exe")
+elseif(DESKZAP_ROLE STREQUAL "host")
+  set(BINARY_NAME "deskzap-host")
+  set(DESKZAP_PRODUCT_NAME "Deskzap Host")
+  set(DESKZAP_FILE_DESCRIPTION "Deskzap Host")
+  set(DESKZAP_INTERNAL_NAME "deskzap-host")
+  set(DESKZAP_ORIGINAL_FILENAME "deskzap-host.exe")
+endif()
 
 # Explicitly opt into modern CMake behaviors to avoid warnings with recent
 # versions of CMake.

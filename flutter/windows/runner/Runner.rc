@@ -72,6 +72,30 @@ IDI_APP_ICON            ICON                    "resources\\app_icon.ico"
 #define VERSION_AS_STRING "1.0.0"
 #endif
 
+#if defined(DESKZAP_FILE_DESCRIPTION)
+#define DESKZAP_FILE_DESCRIPTION_VALUE DESKZAP_FILE_DESCRIPTION
+#else
+#define DESKZAP_FILE_DESCRIPTION_VALUE "Deskzap Remote Access"
+#endif
+
+#if defined(DESKZAP_INTERNAL_NAME)
+#define DESKZAP_INTERNAL_NAME_VALUE DESKZAP_INTERNAL_NAME
+#else
+#define DESKZAP_INTERNAL_NAME_VALUE "deskzap"
+#endif
+
+#if defined(DESKZAP_ORIGINAL_FILENAME)
+#define DESKZAP_ORIGINAL_FILENAME_VALUE DESKZAP_ORIGINAL_FILENAME
+#else
+#define DESKZAP_ORIGINAL_FILENAME_VALUE "deskzap.exe"
+#endif
+
+#if defined(DESKZAP_PRODUCT_NAME)
+#define DESKZAP_PRODUCT_NAME_VALUE DESKZAP_PRODUCT_NAME
+#else
+#define DESKZAP_PRODUCT_NAME_VALUE "Deskzap"
+#endif
+
 VS_VERSION_INFO VERSIONINFO
  FILEVERSION VERSION_AS_NUMBER
  PRODUCTVERSION VERSION_AS_NUMBER
@@ -90,12 +114,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "Deskzap" "\0"
-            VALUE "FileDescription", "Deskzap Remote Access" "\0"
+            VALUE "FileDescription", DESKZAP_FILE_DESCRIPTION_VALUE "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "deskzap" "\0"
+            VALUE "InternalName", DESKZAP_INTERNAL_NAME_VALUE "\0"
             VALUE "LegalCopyright", "Copyright © 2026 Deskzap. All rights reserved." "\0"
-            VALUE "OriginalFilename", "deskzap.exe" "\0"
-            VALUE "ProductName", "Deskzap" "\0"
+            VALUE "OriginalFilename", DESKZAP_ORIGINAL_FILENAME_VALUE "\0"
+            VALUE "ProductName", DESKZAP_PRODUCT_NAME_VALUE "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

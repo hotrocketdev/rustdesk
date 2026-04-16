@@ -81,7 +81,7 @@ fn main() {
         common::test_rendezvous_server();
         common::test_nat_type();
         let key = matches.value_of("key").unwrap_or("").to_owned();
-        let token = LocalConfig::get_option("access_token");
+        let token = common::get_rendezvous_access_token();
         cli::start_one_port_forward(
             options[0].clone(),
             port,
@@ -94,7 +94,7 @@ fn main() {
         common::test_rendezvous_server();
         common::test_nat_type();
         let key = matches.value_of("key").unwrap_or("").to_owned();
-        let token = LocalConfig::get_option("access_token");
+        let token = common::get_rendezvous_access_token();
         cli::connect_test(p, key, token);
     } else if let Some(p) = matches.value_of("server") {
         log::info!("id={}", hbb_common::config::Config::get_id());

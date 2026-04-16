@@ -1814,6 +1814,14 @@ pub fn using_public_server() -> bool {
     crate::get_custom_rendezvous_server(get_option("custom-rendezvous-server")).is_empty()
 }
 
+#[inline]
+pub fn get_rendezvous_access_token() -> String {
+    if !using_public_server() {
+        return String::new();
+    }
+    LocalConfig::get_option("access_token")
+}
+
 pub struct ThrottledInterval {
     interval: Interval,
     next_tick: Instant,
@@ -1909,6 +1917,7 @@ pub fn preload_deskzap_app_identity() {
 
 pub fn bootstrap_deskzap_host() {
     if !config::is_incoming_only() {
+        log::info!("Deskzap host bootstrap skipped because conn-type is not incoming");
         return;
     }
 
@@ -1926,6 +1935,13 @@ pub fn bootstrap_deskzap_host() {
 
     let saved_runtime_heartbeat_token =
         LocalConfig::get_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION);
+    log::info!(
+        "Deskzap host bootstrap starting: api_server={}, enrollment_token_present={}, heartbeat_token_present={}, runtime_id={}",
+        api_server,
+        !enrollment_token.trim().is_empty(),
+        !saved_runtime_heartbeat_token.trim().is_empty(),
+        Config::get_id()
+    );
 
     // If no enrollment token is baked in, fall back to OAuth 2.0 Device Authorization
     // unless this device is already enrolled (has a heartbeat token).

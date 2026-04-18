@@ -1921,6 +1921,30 @@ pub fn bootstrap_deskzap_host() {
         return;
     }
 
+    #[cfg(windows)]
+    {
+        let arg1 = std::env::args().nth(1).unwrap_or_default();
+        let is_server_process = arg1 == "--server";
+        let is_ui_process = arg1.is_empty();
+        let is_installed_host = crate::platform::is_installed();
+
+        // On installed Windows hosts, the background server process should own
+        // OAuth bootstrap so the foreground UI does not request duplicate
+        // device codes. On portable hosts without a service, let the UI own it.
+        if is_installed_host && !is_server_process {
+            log::info!(
+                "Deskzap host bootstrap skipped because installed Windows host bootstrap is owned by the server process"
+            );
+            return;
+        }
+        if !is_installed_host && !is_ui_process {
+            log::info!(
+                "Deskzap host bootstrap skipped because portable Windows host bootstrap is owned by the UI process"
+            );
+            return;
+        }
+    }
+
     let enrollment_token = config::HARD_SETTINGS
         .read()
         .unwrap()

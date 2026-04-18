@@ -97,11 +97,8 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage>
   }
 
   Widget _buildPendingCard() {
-    final qrData = _verificationUri.isEmpty
-        ? ''
-        : _userCode.isEmpty
-            ? _verificationUri
-            : '$_verificationUri?code=$_userCode';
+    final verificationTarget = _buildVerificationTarget();
+    final qrData = verificationTarget;
 
     return Card(
       elevation: 4,
@@ -132,9 +129,11 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage>
             // Verification URI
             if (_verificationUri.isNotEmpty) ...[
               GestureDetector(
-                onTap: () => launchUrl(Uri.parse(_verificationUri)),
+                onTap: verificationTarget.isEmpty
+                    ? null
+                    : () => launchUrl(Uri.parse(verificationTarget)),
                 child: Text(
-                  _verificationUri.replaceFirst(RegExp(r'^https?://'), ''),
+                  verificationTarget.replaceFirst(RegExp(r'^https?://'), ''),
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -288,5 +287,21 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage>
         ),
       ),
     );
+  }
+
+  String _buildVerificationTarget() {
+    if (_verificationUri.isEmpty) {
+      return '';
+    }
+    if (_userCode.isEmpty) {
+      return _verificationUri;
+    }
+    final uri = Uri.tryParse(_verificationUri);
+    if (uri == null) {
+      return '$_verificationUri?code=$_userCode';
+    }
+    final params = Map<String, String>.from(uri.queryParameters);
+    params['code'] = _userCode;
+    return uri.replace(queryParameters: params).toString();
   }
 }

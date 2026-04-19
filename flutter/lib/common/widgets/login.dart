@@ -388,6 +388,22 @@ class LoginWidgetUserPass extends StatelessWidget {
 
 const kAuthReqTypeOidc = 'oidc/';
 
+String _friendlyAuthErrorMessage(Object err) {
+  final raw = err is RequestException ? err.cause : err.toString();
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty) {
+    return 'Could not log in. Please try again.';
+  }
+  final lower = trimmed.toLowerCase();
+  if (lower.startsWith('<!doctype html') || lower.startsWith('<html')) {
+    return 'Could not log in right now. The server returned an unexpected response.';
+  }
+  if (trimmed.length > 180) {
+    return '${trimmed.substring(0, 177)}...';
+  }
+  return translate(trimmed);
+}
+
 // call this directly
 Future<bool?> loginDialog() async {
   var username =
@@ -501,9 +517,9 @@ Future<bool?> loginDialog() async {
             type: HttpType.kAuthReqTypeAccount));
         await handleLoginResponse(resp, true, close);
       } on RequestException catch (err) {
-        passwordMsg = translate(err.cause);
+        passwordMsg = _friendlyAuthErrorMessage(err);
       } catch (err) {
-        passwordMsg = "Unknown Error: $err";
+        passwordMsg = _friendlyAuthErrorMessage(err);
       }
       curOP.value = '';
       setState(() => isInProgress = false);

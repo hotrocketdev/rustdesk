@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/common/widgets/animated_rotation_widget.dart';
+import 'package:flutter_hbb/common/widgets/login.dart';
 import 'package:flutter_hbb/common/widgets/custom_password.dart';
 import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/desktop/pages/connection_page.dart';
@@ -164,26 +165,35 @@ class _DesktopHomePageState extends State<DesktopHomePage>
               Positioned(
                 bottom: 6,
                 left: 12,
+                right: 12,
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: InkWell(
-                    child: Obx(
-                      () => Icon(
-                        Icons.settings,
-                        color: _editHover.value
-                            ? textColor
-                            : Colors.grey.withOpacity(0.5),
-                        size: 22,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (!bind.isDisableAccount()) buildAccountEntry(context),
+                      if (!bind.isDisableAccount()) const SizedBox(height: 10),
+                      InkWell(
+                        child: Obx(
+                          () => Icon(
+                            Icons.settings,
+                            color: _editHover.value
+                                ? textColor
+                                : Colors.grey.withOpacity(0.5),
+                            size: 22,
+                          ),
+                        ),
+                        onTap: () => {
+                          if (DesktopSettingPage.tabKeys.isNotEmpty)
+                            {
+                              DesktopSettingPage.switch2page(
+                                  DesktopSettingPage.tabKeys[0])
+                            }
+                        },
+                        onHover: (value) => _editHover.value = value,
                       ),
-                    ),
-                    onTap: () => {
-                      if (DesktopSettingPage.tabKeys.isNotEmpty)
-                        {
-                          DesktopSettingPage.switch2page(
-                              DesktopSettingPage.tabKeys[0])
-                        }
-                    },
-                    onHover: (value) => _editHover.value = value,
+                    ],
                   ),
                 ),
               )
@@ -191,6 +201,94 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         ),
       ),
     );
+  }
+
+  Widget buildAccountEntry(BuildContext context) {
+    return Obx(() {
+      final isLoggedIn = gFFI.userModel.isLogin;
+      final theme = Theme.of(context);
+      return ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 176),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.45),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.white12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                isLoggedIn ? 'Deskzap account' : 'Sign in to Deskzap',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (isLoggedIn) ...[
+                const SizedBox(height: 4),
+                Text(
+                  gFFI.userModel.displayNameOrUserName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium,
+                ),
+                Text(
+                  '@${gFFI.userModel.userName.value}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.textTheme.bodySmall?.color?.withOpacity(0.8),
+                  ),
+                ),
+              ] else ...[
+                const SizedBox(height: 4),
+                Text(
+                  'See your workspace devices here.',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.textTheme.bodySmall?.color?.withOpacity(0.8),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    if (isLoggedIn) {
+                      DesktopSettingPage.switch2page(SettingsTabKey.account);
+                    } else {
+                      loginDialog();
+                    }
+                  },
+                  icon: Icon(
+                    isLoggedIn ? Icons.person_outline : Icons.login,
+                    size: 16,
+                  ),
+                  label: Text(
+                    isLoggedIn ? 'Account' : 'Login',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(36),
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    });
   }
 
   buildRightPane(BuildContext context) {

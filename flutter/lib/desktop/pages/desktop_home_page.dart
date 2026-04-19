@@ -70,7 +70,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       try {
         final map = jsonDecode(_enrollmentStateJson) as Map<String, dynamic>;
         final status = map['status'] as String? ?? '';
-        if (status == 'pending' || status == 'authorized' || status == 'enrolled') {
+        if (status.isNotEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             windowManager.setSize(_deskzapEnrollmentWindowSize);
           });

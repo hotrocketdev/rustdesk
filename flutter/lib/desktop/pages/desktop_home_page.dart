@@ -40,6 +40,7 @@ const borderColor = Color(0xFF2F65BA);
 class _DesktopHomePageState extends State<DesktopHomePage>
     with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
   final _leftPaneScrollController = ScrollController();
+  static const Size _deskzapEnrollmentWindowSize = Size(920, 720);
 
   @override
   bool get wantKeepAlive => true;
@@ -70,6 +71,9 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         final map = jsonDecode(_enrollmentStateJson) as Map<String, dynamic>;
         final status = map['status'] as String? ?? '';
         if (status == 'pending' || status == 'authorized' || status == 'enrolled') {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            windowManager.setSize(_deskzapEnrollmentWindowSize);
+          });
           return const DeskzapEnrollmentPage();
         }
       } catch (_) {}

@@ -2331,6 +2331,27 @@ fn run_deskzap_device_authorization(api_server: &str) {
                 });
                 return;
             }
+            Some("already_used") => {
+                log::info!("Deskzap device authorization code marked as already used — checking if enrolled in background");
+                // If it's already used, we might have successfully enrolled in another thread/process.
+                // Give it a moment to persist, then check if we can skip to enrolled.
+                if let Some(token) = get_option(DESKZAP_ENROLLMENT_TOKEN_KEY.to_owned()).as_str().filter(|s| !s.is_empty()) {
+                     log::info!("Found enrollment token after already_used — skipping to enrolled state");
+                     set_deskzap_device_auth_state(&DeskzapDeviceAuthState {
+                         user_code: auth.user_code.clone(),
+                         verification_uri: auth.verification_uri.clone(),
+                         status: "enrolled".to_owned(),
+                     });
+                     return;
+                }
+                
+                set_deskzap_device_auth_state(&DeskzapDeviceAuthState {
+                    user_code: auth.user_code.clone(),
+                    verification_uri: auth.verification_uri.clone(),
+                    status: "error: already_used (please restart)".to_owned(),
+                });
+                return;
+            }
             Some(other) => {
                 log::warn!("Deskzap device authorization error: {}", other);
                 set_deskzap_device_auth_state(&DeskzapDeviceAuthState {

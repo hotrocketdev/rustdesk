@@ -2322,8 +2322,22 @@ fn run_deskzap_device_authorization(api_server: &str) {
                 });
                 return;
             }
+            Some("expired_token") => {
+                log::warn!("Deskzap device authorization code expired");
+                set_deskzap_device_auth_state(&DeskzapDeviceAuthState {
+                    user_code: auth.user_code.clone(),
+                    verification_uri: auth.verification_uri.clone(),
+                    status: "expired".to_owned(),
+                });
+                return;
+            }
             Some(other) => {
                 log::warn!("Deskzap device authorization error: {}", other);
+                set_deskzap_device_auth_state(&DeskzapDeviceAuthState {
+                    user_code: auth.user_code.clone(),
+                    verification_uri: auth.verification_uri.clone(),
+                    status: format!("error: {}", other),
+                });
                 return;
             }
             None => {}
@@ -2379,8 +2393,14 @@ fn run_deskzap_device_authorization(api_server: &str) {
 
             match post_request_sync(enroll_url, enroll_body, &enroll_header) {
                 Ok(response) => {
+                    log::info!("Deskzap device enrollment successful — persisting local state");
                     if let Err(err) = persist_deskzap_enrollment(api_server, &response, operating_system) {
                         log::error!("Deskzap device enrollment persistence failed: {}", err);
+                        set_deskzap_device_auth_state(&DeskzapDeviceAuthState {
+                            user_code: auth.user_code.clone(),
+                            verification_uri: auth.verification_uri.clone(),
+                            status: format!("error: persistence failed ({})", err),
+                        });
                         return;
                     }
                     set_deskzap_device_auth_state(&DeskzapDeviceAuthState {
@@ -2396,6 +2416,11 @@ fn run_deskzap_device_authorization(api_server: &str) {
                 }
                 Err(err) => {
                     log::error!("Deskzap device enrollment failed: {}", err);
+                    set_deskzap_device_auth_state(&DeskzapDeviceAuthState {
+                        user_code: auth.user_code.clone(),
+                        verification_uri: auth.verification_uri.clone(),
+                        status: format!("error: enrollment failed ({})", err),
+                    });
                 }
             }
             return;

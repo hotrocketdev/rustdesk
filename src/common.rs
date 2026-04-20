@@ -1928,10 +1928,13 @@ pub fn bootstrap_deskzap_host() {
         let is_ui_process = arg1.is_empty();
         let is_installed_host = crate::platform::is_installed();
 
+        let has_profile_env = std::env::var(DESKZAP_PROFILE_RUNTIME_ENV_KEY).is_ok();
         // On installed Windows hosts, the background server process should own
         // OAuth bootstrap so the foreground UI does not request duplicate
         // device codes. On portable hosts without a service, let the UI own it.
-        if is_installed_host && !is_server_process {
+        // We also allow the UI to own it if a Deskzap profile is explicitly
+        // provided via environment variable (e.g. from the installer launcher).
+        if is_installed_host && !is_server_process && !has_profile_env {
             log::info!(
                 "Deskzap host bootstrap skipped because installed Windows host bootstrap is owned by the server process"
             );

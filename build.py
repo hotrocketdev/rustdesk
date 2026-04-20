@@ -442,6 +442,15 @@ def build_flutter_windows(version, features, skip_portable_pack):
     os.chdir('..')
     shutil.copy2('target/release/deps/dylib_virtual_display.dll',
                  flutter_build_dir_2)
+    shutil.copy2('target/release/librustdesk.dll',
+                 flutter_build_dir_2)
+    
+    # Copy Sciter if available in vendor or common locations
+    sciter_src = 'vendor/windows/sciter.dll' 
+    if os.path.exists(sciter_src):
+        shutil.copy2(sciter_src, flutter_build_dir_2)
+    elif os.path.exists('../../vendor/windows/sciter.dll'):
+        shutil.copy2('../../vendor/windows/sciter.dll', flutter_build_dir_2)
     if skip_portable_pack:
         return
     os.chdir('libs/portable')

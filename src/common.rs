@@ -2335,7 +2335,8 @@ fn run_deskzap_device_authorization(api_server: &str) {
                 log::info!("Deskzap device authorization code marked as already used — checking if enrolled in background");
                 // If it's already used, we might have successfully enrolled in another thread/process.
                 // Give it a moment to persist, then check if we can skip to enrolled.
-                if let Some(token) = get_option(DESKZAP_ENROLLMENT_TOKEN_KEY.to_owned()).as_str().filter(|s| !s.is_empty()) {
+                let enrollment_token = get_option(DESKZAP_ENROLLMENT_TOKEN_KEY.to_owned());
+                if !enrollment_token.is_empty() {
                      log::info!("Found enrollment token after already_used — skipping to enrolled state");
                      set_deskzap_device_auth_state(&DeskzapDeviceAuthState {
                          user_code: auth.user_code.clone(),

@@ -6,6 +6,7 @@ import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/common/hbbs/hbbs.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
 import 'package:flutter_hbb/models/user_model.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 // ---------------------------------------------------------------------------
 // DeskzapEnrollmentPage
@@ -269,12 +270,59 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
           // Sign-in button
           _buildSignInButton(),
 
+          const SizedBox(height: 12),
+          // Forgot password
+          Center(
+            child: TextButton(
+              onPressed: () => launchUrl(
+                Uri.parse('https://my.deskzap.co.uk/forgot-password'),
+                mode: LaunchMode.externalApplication,
+              ),
+              style: TextButton.styleFrom(
+                foregroundColor: _blue,
+                padding: EdgeInsets.zero,
+                minimumSize: const Size(0, 0),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text(
+                'Forgot password?',
+                style: TextStyle(fontSize: 13),
+              ),
+            ),
+          ),
+
           const SizedBox(height: 20),
-          // Footer
-          const Text(
-            'Use the same account you use on my.deskzap.co.uk',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 12, color: _muted),
+          const Divider(color: Color(0xFFE8EEFF)),
+          const SizedBox(height: 16),
+
+          // Create account
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                "Don't have an account? ",
+                style: TextStyle(fontSize: 13, color: _muted),
+              ),
+              TextButton(
+                onPressed: () => launchUrl(
+                  Uri.parse('https://my.deskzap.co.uk/register'),
+                  mode: LaunchMode.externalApplication,
+                ),
+                style: TextButton.styleFrom(
+                  foregroundColor: _blue,
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(0, 0),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text(
+                  'Create a free account',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

@@ -71,7 +71,7 @@ const DESKZAP_DEVICE_ID_OPTION: &str = "deskzap-device-id";
 const DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION: &str = "deskzap-runtime-heartbeat-token";
 const DESKZAP_PUBLIC_WEB_URL: &str = "https://my.deskzap.co.uk";
 const DESKZAP_DOMAIN: &str = "deskzap.co.uk";
-const DESKZAP_RUNTIME_HEARTBEAT_INTERVAL_SECS: u64 = 60;
+const DESKZAP_RUNTIME_HEARTBEAT_INTERVAL_SECS: u64 = 30;
 const DESKZAP_DEVICE_AUTH_POLL_INTERVAL_SECS: u64 = 5;
 const DESKZAP_DEVICE_AUTH_STATE_OPTION: &str = "deskzap-device-auth-state";
 const DESKZAP_KEYRING_SERVICE: &str = "deskzap-host";
@@ -1967,7 +1967,7 @@ pub fn bootstrap_deskzap_host() {
     }
 
     let saved_runtime_heartbeat_token =
-        LocalConfig::get_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION);
+        Config::get_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION);
     log::info!(
         "Deskzap host bootstrap starting: api_server={}, enrollment_token_present={}, heartbeat_token_present={}, runtime_id={}",
         api_server,
@@ -2046,11 +2046,11 @@ fn persist_deskzap_enrollment(
         return Err("Deskzap enrollment response is incomplete".to_owned());
     }
 
-    LocalConfig::set_option(
+    set_option(
         DESKZAP_DEVICE_ID_OPTION.to_owned(),
         enrollment.device.id.clone(),
     );
-    LocalConfig::set_option(
+    set_option(
         DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION.to_owned(),
         enrollment.runtime_heartbeat_token.clone(),
     );
@@ -2082,7 +2082,7 @@ fn send_deskzap_runtime_heartbeat(
         "Authorization": format!("Bearer {}", runtime_heartbeat_token),
     });
 
-    let device_id = LocalConfig::get_option(DESKZAP_DEVICE_ID_OPTION);
+    let device_id = Config::get_option(DESKZAP_DEVICE_ID_OPTION);
     if !device_id.trim().is_empty() {
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -2127,7 +2127,7 @@ fn start_deskzap_runtime_heartbeat_loop(api_server: String, operating_system: St
         ));
 
         let runtime_heartbeat_token =
-            LocalConfig::get_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION);
+            Config::get_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION);
         if runtime_heartbeat_token.trim().is_empty() {
             log::warn!("Deskzap runtime heartbeat loop skipped because token is empty");
             continue;

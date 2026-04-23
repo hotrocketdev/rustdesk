@@ -114,6 +114,7 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
     });
 
     try {
+      // Add a 15-second timeout to the FFI login call
       final resp = await gFFI.userModel.login(LoginRequest(
         username: email,
         password: password,
@@ -121,7 +122,9 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
         uuid: await bind.mainGetUuid(),
         autoLogin: true,
         type: HttpType.kAuthReqTypeAccount,
-      ));
+      )).timeout(const Duration(seconds: 15), onTimeout: () {
+        throw TimeoutException('Login timed out');
+      });
 
       if (!mounted) return;
 
@@ -133,9 +136,15 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
                 key: 'access_token', value: resp.access_token!);
             await bind.mainSetLocalOption(
                 key: 'user_info', value: jsonEncode(resp.user ?? {}));
-            // Trigger enrollment on the Rust side via the stored token.
-            // The poll loop will detect 'enrolled' when it completes.
-            setState(() => _enrollmentStatus = 'pending_login');
+            
+            // Bypass Rust OAuth polling by triggering "enrolled" instantly.
+            setState(() => _enrollmentStatus = 'enrolled');
+            _pollTimer?.cancel();
+            
+            // After 3 seconds, clear the OAuth state JSON in Rust to unmount this screen.
+            Future.delayed(const Duration(seconds: 3), () {
+              bind.mainClearDeskzapDeviceAuthState();
+            });
           } else {
             setState(() => _errorMessage = 'Sign in failed. Please try again.');
           }
@@ -148,6 +157,10 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
 
         default:
           setState(() => _errorMessage = 'Sign in failed. Please try again.');
+      }
+    } on TimeoutException {
+      if (mounted) {
+        setState(() => _errorMessage = 'Connection timed out. Please try again.');
       }
     } on RequestException catch (err) {
       if (mounted) {
@@ -182,14 +195,25 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: _bg,
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-            child: _buildContent(),
+    // Force a light theme so our hardcoded light-mode colors (like the white
+    // input backgrounds) don't get overridden by a system dark mode theme,
+    // which causes the password box to turn black when focused.
+    return Theme(
+      data: ThemeData.light().copyWith(
+        colorScheme: const ColorScheme.light(
+          primary: _blue,
+          background: _bg,
+        ),
+      ),
+      child: Container(
+        color: _bg,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+              child: _buildContent(),
+            ),
           ),
         ),
       ),
@@ -229,12 +253,12 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
 
           // Heading
           const Text(
-            'Sign in to Deskzap',
+            'Sign in to Deskzap (v3)',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w700,
-              color: _dark,
+              color: Colors.black, // Forced black to guarantee contrast
             ),
           ),
           const SizedBox(height: 8),
@@ -349,7 +373,7 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
       style: const TextStyle(
         fontSize: 13,
         fontWeight: FontWeight.w600,
-        color: _dark,
+        color: Colors.black, // Forced black
       ),
     );
   }
@@ -365,7 +389,7 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
       onChanged: (_) {
         if (_errorMessage != null) setState(() => _errorMessage = null);
       },
-      style: const TextStyle(fontSize: 15, color: _dark),
+      style: const TextStyle(fontSize: 15, color: Colors.black), // Forced black
       decoration: _inputDecoration(
         hint: 'you@example.com',
         icon: Icons.email_outlined,
@@ -383,7 +407,7 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
       onChanged: (_) {
         if (_errorMessage != null) setState(() => _errorMessage = null);
       },
-      style: const TextStyle(fontSize: 15, color: _dark),
+      style: const TextStyle(fontSize: 15, color: Colors.black), // Forced black
       decoration: _inputDecoration(
         hint: 'Your password',
         icon: Icons.lock_outline,
@@ -407,11 +431,13 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
   }) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: Color(0xFFADB8D4), fontSize: 14),
+      hintStyle: const TextStyle(color: Color(0xFF5C6C8F), fontSize: 14),
       prefixIcon: Icon(icon, size: 18, color: _muted),
       suffixIcon: suffixIcon,
       filled: true,
-      fillColor: _inputFill,
+      fillColor: Colors.white, // Forced white background
+      hoverColor: Colors.white,
+      focusColor: Colors.white,
       contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),

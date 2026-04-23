@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_hbb/common.dart';
@@ -137,6 +139,49 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
             await bind.mainSetLocalOption(
                 key: 'user_info', value: jsonEncode(resp.user ?? {}));
             
+            // Perform the device enrollment API call directly from Flutter
+            try {
+              final apiServer = await bind.mainGetApiServer();
+              final hostName = Platform.localHostname;
+              final osName = Platform.operatingSystem == 'windows' ? 'Windows' : 
+                             Platform.operatingSystem == 'macos' ? 'macOS' : 
+                             Platform.operatingSystem == 'linux' ? 'Linux' : Platform.operatingSystem;
+              
+              final payload = jsonEncode({
+                "rustdesk_runtime_id": await bind.mainGetMyId(),
+                "hostname": hostName,
+                "display_name": hostName,
+                "operating_system": osName,
+                "agent_version": await bind.mainGetVersion(),
+              });
+
+              final client = HttpClient();
+              // Remove trailing slash if any
+              final baseUrl = apiServer.endsWith('/') ? apiServer.substring(0, apiServer.length - 1) : apiServer;
+              final req = await client.postUrl(Uri.parse('$baseUrl/api/v1/devices/enroll'));
+              req.headers.set(HttpHeaders.authorizationHeader, 'Bearer ${resp.access_token!}');
+              req.headers.set(HttpHeaders.contentTypeHeader, 'application/json');
+              req.write(payload);
+              final response = await req.close();
+              final responseBody = await response.transform(utf8.decoder).join();
+              client.close();
+
+              if (response.statusCode >= 200 && response.statusCode < 300) {
+                final data = jsonDecode(responseBody) as Map<String, dynamic>;
+                final deviceId = data['device']?['id'] as String?;
+                final heartbeatToken = data['runtime_heartbeat_token'] as String?;
+
+                if (deviceId != null && heartbeatToken != null) {
+                  await bind.mainSetLocalOption(key: 'deskzap-device-id', value: deviceId);
+                  await bind.mainSetLocalOption(key: 'deskzap-runtime-heartbeat-token', value: heartbeatToken);
+                }
+              } else {
+                debugPrint('Enrollment API error: status ${response.statusCode}');
+              }
+            } catch (err) {
+              debugPrint('Enrollment API exception: $err');
+            }
+
             // Bypass Rust OAuth polling by triggering "enrolled" instantly.
             setState(() => _enrollmentStatus = 'enrolled');
             _pollTimer?.cancel();
@@ -604,7 +649,7 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
           ),
           const SizedBox(height: 10),
           const Text(
-            'This computer is now in your Deskzap workspace.\nYou can see it in the web app and in Deskzap Connect.',
+            'This computer is now in your Deskzap workspace.\nPlease restart Deskzap to complete the setup.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 14, color: _muted, height: 1.55),
           ),

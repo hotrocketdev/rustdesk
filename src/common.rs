@@ -1960,20 +1960,38 @@ pub fn bootstrap_deskzap_host() {
         .get(DESKZAP_ENROLLMENT_TOKEN_KEY)
         .cloned()
         .unwrap_or_default();
-    let api_server = Config::get_option(keys::OPTION_API_SERVER);
+    // 1. Ensure we have the correct identity from the service (critical on Windows SYSTEM vs User)
+    let _ = crate::ui_interface::get_id();
+
+    // 2. Load API server with IPC fallback
+    let mut api_server = Config::get_option(keys::OPTION_API_SERVER);
+    if api_server.trim().is_empty() {
+        if let Ok(Some(v)) = crate::ipc::get_config(keys::OPTION_API_SERVER) {
+            api_server = v;
+            Config::set_option(keys::OPTION_API_SERVER.to_owned(), api_server.clone());
+        }
+    }
+
     if api_server.trim().is_empty() {
         log::warn!("Deskzap host bootstrap skipped because api-server is empty");
         return;
     }
 
-    let saved_runtime_heartbeat_token =
-        Config::get_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION);
+    // 3. Load heartbeat token with IPC fallback
+    let mut saved_runtime_heartbeat_token = Config::get_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION);
+    if saved_runtime_heartbeat_token.trim().is_empty() {
+        if let Ok(Some(v)) = crate::ipc::get_config(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION) {
+            saved_runtime_heartbeat_token = v;
+            Config::set_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION.to_owned(), saved_runtime_heartbeat_token.clone());
+        }
+    }
+
     log::info!(
         "Deskzap host bootstrap starting: api_server={}, enrollment_token_present={}, heartbeat_token_present={}, runtime_id={}",
         api_server,
         !enrollment_token.trim().is_empty(),
         !saved_runtime_heartbeat_token.trim().is_empty(),
-        Config::get_id()
+        crate::ui_interface::get_id()
     );
 
     // Always start the heartbeat loop. It will poll LocalConfig and start 
@@ -2006,7 +2024,7 @@ pub fn bootstrap_deskzap_host() {
 
     let body = json!({
         "enrollment_token": enrollment_token,
-        "rustdesk_runtime_id": Config::get_id(),
+        "rustdesk_runtime_id": crate::ui_interface::get_id(),
         "hostname": hostname,
         "display_name": display_name,
         "operating_system": operating_system,

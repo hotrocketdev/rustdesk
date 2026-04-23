@@ -1977,10 +1977,12 @@ pub fn bootstrap_deskzap_host() {
         return;
     }
 
-    // 3. Load heartbeat token with IPC fallback
+    // 3. Sync heartbeat token from Service (Source of Truth)
+    // We always try to get the latest from the Service to stay in sync.
     let mut saved_runtime_heartbeat_token = Config::get_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION);
-    if saved_runtime_heartbeat_token.trim().is_empty() {
-        if let Ok(Some(v)) = crate::ipc::get_config(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION) {
+    if let Ok(Some(v)) = crate::ipc::get_config(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION) {
+        if v != saved_runtime_heartbeat_token {
+            log::info!("Syncing heartbeat token from service via IPC");
             saved_runtime_heartbeat_token = v;
             Config::set_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION.to_owned(), saved_runtime_heartbeat_token.clone());
         }
@@ -2120,9 +2122,20 @@ fn send_deskzap_runtime_heartbeat(
         }
     }
 
-    post_request_sync(url, body, &headers_obj.to_string())
-        .map(|_| ())
-        .map_err(|err| format!("failed to send Deskzap runtime heartbeat: {err}"))
+    let res = post_request_sync(url, body, &headers_obj.to_string()).await;
+    match res {
+        Ok(_) => Ok(()),
+        Err(err) => {
+            let err_str = err.to_string();
+            // If the server explicitly says the token is invalid (401), we must clear it locally.
+            // This prevents the "Zombie State" where a device thinks it's enrolled but is being ignored.
+            if err_str.contains("401") || err_str.contains("Unauthorized") {
+                log::error!("Deskzap heartbeat rejected (401). Clearing invalid token to force re-enrollment.");
+                crate::ui_interface::set_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION.to_owned(), "".to_owned());
+            }
+            Err(format!("failed to send Deskzap runtime heartbeat: {err_str}"))
+        }
+    }
 }
 
 fn operating_system_label() -> &'static str {

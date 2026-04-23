@@ -1976,25 +1976,20 @@ pub fn bootstrap_deskzap_host() {
         Config::get_id()
     );
 
+    // Always start the heartbeat loop. It will poll LocalConfig and start 
+    // pumping heartbeats as soon as a token is present (e.g. after successful enrollment).
+    start_deskzap_runtime_heartbeat_loop(
+        api_server.to_owned(),
+        operating_system_label().to_owned(),
+    );
+
     // If no enrollment token is baked in, fall back to OAuth 2.0 Device Authorization
     // unless this device is already enrolled (has a heartbeat token).
     if enrollment_token.trim().is_empty() {
         if saved_runtime_heartbeat_token.trim().is_empty() {
-            start_deskzap_device_authorization(api_server);
-        } else {
-            start_deskzap_runtime_heartbeat_loop(
-                api_server.to_owned(),
-                operating_system_label().to_owned(),
-            );
+            start_deskzap_device_authorization(api_server.clone());
         }
         return;
-    }
-
-    if !saved_runtime_heartbeat_token.trim().is_empty() {
-        start_deskzap_runtime_heartbeat_loop(
-            api_server.to_owned(),
-            operating_system_label().to_owned(),
-        );
     }
 
     let hostname = crate::common::hostname();
@@ -2029,10 +2024,6 @@ pub fn bootstrap_deskzap_host() {
                 log::error!("Deskzap host bootstrap enrollment persistence failed: {}", err);
                 return;
             }
-            start_deskzap_runtime_heartbeat_loop(
-                api_server.to_owned(),
-                operating_system.to_owned(),
-            );
             log::info!("Deskzap host bootstrap enrollment completed");
         }
         Err(err) => {

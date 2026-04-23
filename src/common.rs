@@ -2122,8 +2122,7 @@ fn send_deskzap_runtime_heartbeat(
         }
     }
 
-    let rt = hbb_common::tokio::runtime::Runtime::new().unwrap();
-    let res = rt.block_on(post_request_sync(url, body, &headers_obj.to_string()));
+    let res = post_request_sync(url, body, &headers_obj.to_string());
     match res {
         Ok(_) => Ok(()),
         Err(err) => {

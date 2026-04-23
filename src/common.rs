@@ -2122,7 +2122,7 @@ fn send_deskzap_runtime_heartbeat(
         }
     }
 
-    let res = post_request_sync(url, body, &headers_obj.to_string()).await;
+    let res = hbb_common::block_on(post_request_sync(url, body, &headers_obj.to_string()));
     match res {
         Ok(_) => Ok(()),
         Err(err) => {

@@ -2198,7 +2198,7 @@ fn generate_and_store_device_key() -> Result<String, String> {
 
     let signing_key = SigningKey::generate(&mut OsRng);
     let private_bytes = signing_key.to_bytes();
-    let private_b64 = base64::encode(private_bytes);
+    let private_b64 = crate::encode64(private_bytes);
 
     let entry = keyring::Entry::new(DESKZAP_KEYRING_SERVICE, DESKZAP_KEYRING_KEY_ENTRY)
         .map_err(|e| format!("keychain entry error: {e}"))?;
@@ -2206,7 +2206,7 @@ fn generate_and_store_device_key() -> Result<String, String> {
         .set_password(&private_b64)
         .map_err(|e| format!("keychain store error: {e}"))?;
 
-    let public_b64 = base64::encode(signing_key.verifying_key().to_bytes());
+    let public_b64 = crate::encode64(signing_key.verifying_key().to_bytes());
     Ok(public_b64)
 }
 
@@ -2216,7 +2216,7 @@ fn get_device_signing_key() -> Option<ed25519_dalek::SigningKey> {
     let entry =
         keyring::Entry::new(DESKZAP_KEYRING_SERVICE, DESKZAP_KEYRING_KEY_ENTRY).ok()?;
     let b64 = entry.get_password().ok()?;
-    let bytes = base64::decode(&b64).ok()?;
+    let bytes = crate::decode64(&b64).ok()?;
     let arr: [u8; 32] = bytes.try_into().ok()?;
     Some(SigningKey::from_bytes(&arr))
 }
@@ -2224,7 +2224,7 @@ fn get_device_signing_key() -> Option<ed25519_dalek::SigningKey> {
 /// Returns the stored device public key as base64, or `None` if not yet generated.
 pub fn get_device_public_key_base64() -> Option<String> {
     let signing_key = get_device_signing_key()?;
-    Some(base64::encode(signing_key.verifying_key().to_bytes()))
+    Some(crate::encode64(signing_key.verifying_key().to_bytes()))
 }
 
 pub fn generate_device_key_if_missing() -> Option<String> {
@@ -2241,7 +2241,7 @@ pub fn sign_with_device_key(data: &[u8]) -> Option<String> {
 
     let signing_key = get_device_signing_key()?;
     let signature = signing_key.sign(data);
-    Some(base64::encode(signature.to_bytes()))
+    Some(crate::encode64(signature.to_bytes()))
 }
 
 // ── OAuth 2.0 Device Authorization Grant ─────────────────────────────────────

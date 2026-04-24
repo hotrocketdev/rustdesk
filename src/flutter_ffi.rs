@@ -2296,6 +2296,14 @@ fn set_cur_session_id_(session_id: SessionID, _keyboard_mode: &str) {
     crate::keyboard::update_grab_get_key_name(_keyboard_mode);
 }
 
+pub fn main_get_device_public_key_base64() -> SyncReturn<String> {
+    SyncReturn(crate::common::get_device_public_key_base64().unwrap_or_default())
+}
+
+pub fn main_generate_device_key() -> SyncReturn<String> {
+    SyncReturn(crate::common::generate_device_key_if_missing().unwrap_or_default())
+}
+
 pub fn install_show_run_without_install() -> SyncReturn<bool> {
     SyncReturn(show_run_without_install())
 }

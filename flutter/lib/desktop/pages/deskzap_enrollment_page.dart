@@ -147,12 +147,19 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
                              Platform.operatingSystem == 'macos' ? 'macOS' : 
                              Platform.operatingSystem == 'linux' ? 'Linux' : Platform.operatingSystem;
               
+              // Ensure we have a device signing key generated before enrolling.
+              var pubKey = await bind.mainGetDevicePublicKeyBase64();
+              if (pubKey.isEmpty) {
+                pubKey = await bind.mainGenerateDeviceKey();
+              }
+
               final payload = jsonEncode({
                 "rustdesk_runtime_id": await bind.mainGetMyId(),
                 "hostname": hostName,
                 "display_name": hostName,
                 "operating_system": osName,
                 "agent_version": await bind.mainGetVersion(),
+                "device_public_key": pubKey,
               });
 
               final client = HttpClient();
@@ -175,21 +182,23 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
                   await bind.mainSetLocalOption(key: 'deskzap-device-id', value: deviceId);
                   await bind.mainSetLocalOption(key: 'deskzap-runtime-heartbeat-token', value: heartbeatToken);
                 }
+
+                // Bypass Rust OAuth polling by triggering "enrolled" instantly.
+                setState(() => _enrollmentStatus = 'enrolled');
+                _pollTimer?.cancel();
+                
+                // After 3 seconds, clear the OAuth state JSON in Rust to unmount this screen.
+                Future.delayed(const Duration(seconds: 3), () {
+                  bind.mainClearDeskzapDeviceAuthState();
+                });
               } else {
-                debugPrint('Enrollment API error: status ${response.statusCode}');
+                debugPrint('Enrollment API error: status ${response.statusCode} - $responseBody');
+                setState(() => _errorMessage = 'Enrollment failed: $responseBody');
               }
             } catch (err) {
               debugPrint('Enrollment API exception: $err');
+              setState(() => _errorMessage = 'Could not complete enrollment: $err');
             }
-
-            // Bypass Rust OAuth polling by triggering "enrolled" instantly.
-            setState(() => _enrollmentStatus = 'enrolled');
-            _pollTimer?.cancel();
-            
-            // After 3 seconds, clear the OAuth state JSON in Rust to unmount this screen.
-            Future.delayed(const Duration(seconds: 3), () {
-              bind.mainClearDeskzapDeviceAuthState();
-            });
           } else {
             setState(() => _errorMessage = 'Sign in failed. Please try again.');
           }
@@ -649,7 +658,7 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
           ),
           const SizedBox(height: 10),
           const Text(
-            'This computer is now in your Deskzap workspace.\nPlease restart Deskzap to complete the setup.',
+            'This computer is now linked to your workspace.\nIt will appear in your dashboard in a few moments.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 14, color: _muted, height: 1.55),
           ),

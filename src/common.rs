@@ -2227,6 +2227,13 @@ pub fn get_device_public_key_base64() -> Option<String> {
     Some(base64::encode(signing_key.verifying_key().to_bytes()))
 }
 
+pub fn generate_device_key_if_missing() -> Option<String> {
+    if let Some(key) = get_device_public_key_base64() {
+        return Some(key);
+    }
+    generate_and_store_device_key().ok()
+}
+
 /// Signs `data` with the device's Ed25519 private key.
 /// Returns the signature as base64, or `None` if no key is stored.
 pub fn sign_with_device_key(data: &[u8]) -> Option<String> {

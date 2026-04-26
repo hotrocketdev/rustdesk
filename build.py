@@ -8,6 +8,7 @@ import urllib.request
 import shutil
 import hashlib
 import argparse
+import plistlib
 import sys
 from pathlib import Path
 
@@ -411,7 +412,7 @@ def build_flutter_dmg(version, features):
         "cp target/release/liblibrustdesk.dylib target/release/librustdesk.dylib")
     os.chdir('flutter')
     system2('flutter build macos --release')
-    product_name = os.environ.get('DESKZAP_BUILD_PRODUCT_NAME', 'Deskzap')
+    product_name = macos_product_name()
     app_candidates = [f'{product_name}.app', 'Deskzap.app', 'Runner.app']
     actual_app = None
     for cand in app_candidates:
@@ -429,6 +430,10 @@ def build_flutter_dmg(version, features):
         system2(f'mv ./build/macos/Build/Products/Release/{actual_app} ./build/macos/Build/Products/Release/{product_name}.app')
         actual_app = f'{product_name}.app'
 
+    app_path = f'./build/macos/Build/Products/Release/{actual_app}'
+    patch_macos_app_metadata(app_path, product_name)
+    system2(f'/usr/bin/codesign --force --deep --sign - "{app_path}"')
+
     if os.environ.get('SKIP_DMG') != '1':
         # Ensure icon path exists or use a default
         icon_path = 'flutter/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_1024.png'
@@ -438,6 +443,41 @@ def build_flutter_dmg(version, features):
         os.rename(f"{product_name}.dmg", f"../{product_name}-{version}.dmg")
 
     os.chdir("..")
+
+
+def macos_product_name():
+    product_name = os.environ.get('DESKZAP_BUILD_PRODUCT_NAME')
+    if product_name:
+        return product_name
+    role = os.environ.get('DESKZAP_ROLE', '').strip().lower()
+    if role == 'connect':
+        return 'Deskzap Connect'
+    if role == 'host':
+        return 'Deskzap Host'
+    return 'Deskzap'
+
+
+def macos_bundle_identifier(product_name):
+    bundle_identifier = os.environ.get('DESKZAP_BUILD_BUNDLE_IDENTIFIER')
+    if bundle_identifier:
+        return bundle_identifier
+    role = os.environ.get('DESKZAP_ROLE', '').strip().lower()
+    if role == 'connect':
+        return 'co.uk.deskzap.connect'
+    if role == 'host':
+        return 'co.uk.deskzap.host'
+    return 'co.uk.deskzap'
+
+
+def patch_macos_app_metadata(app_path, product_name):
+    info_plist_path = os.path.join(app_path, 'Contents', 'Info.plist')
+    with open(info_plist_path, 'rb') as info_file:
+        info = plistlib.load(info_file)
+    info['CFBundleDisplayName'] = product_name
+    info['CFBundleName'] = product_name
+    info['CFBundleIdentifier'] = macos_bundle_identifier(product_name)
+    with open(info_plist_path, 'wb') as info_file:
+        plistlib.dump(info, info_file)
 
 
 def build_flutter_arch_manjaro(version, features):

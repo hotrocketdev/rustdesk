@@ -282,6 +282,8 @@ def get_features(args):
         features.append('flutter')
     if args.unix_file_copy_paste:
         features.append('unix-file-copy-paste')
+    if linux:
+        features.append('linux-pkg-config')
     if osx:
         if args.screencapturekit:
             features.append('screencapturekit')

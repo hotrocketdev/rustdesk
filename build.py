@@ -411,12 +411,32 @@ def build_flutter_dmg(version, features):
         "cp target/release/liblibrustdesk.dylib target/release/librustdesk.dylib")
     os.chdir('flutter')
     system2('flutter build macos --release')
-    system2('cp -rf ../target/release/service ./build/macos/Build/Products/Release/Deskzap.app/Contents/MacOS/')
-    '''
-    system2(
-        "create-dmg --volname \"RustDesk Installer\" --window-pos 200 120 --window-size 800 400 --icon-size 100 --app-drop-link 600 185 --icon RustDesk.app 200 190 --hide-extension RustDesk.app rustdesk.dmg ./build/macos/Build/Products/Release/RustDesk.app")
-    os.rename("rustdesk.dmg", f"../rustdesk-{version}.dmg")
-    '''
+    product_name = os.environ.get('DESKZAP_BUILD_PRODUCT_NAME', 'Deskzap')
+    app_candidates = [f'{product_name}.app', 'Deskzap.app', 'Runner.app']
+    actual_app = None
+    for cand in app_candidates:
+        if os.path.exists(f'./build/macos/Build/Products/Release/{cand}'):
+            actual_app = cand
+            break
+    
+    if not actual_app:
+        print("Could not find any .app bundle in build directory")
+        sys.exit(-1)
+
+    system2(f'cp -rf ../target/release/service ./build/macos/Build/Products/Release/{actual_app}/Contents/MacOS/')
+    
+    if actual_app != f'{product_name}.app':
+        system2(f'mv ./build/macos/Build/Products/Release/{actual_app} ./build/macos/Build/Products/Release/{product_name}.app')
+        actual_app = f'{product_name}.app'
+
+    if os.environ.get('SKIP_DMG') != '1':
+        # Ensure icon path exists or use a default
+        icon_path = 'flutter/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_1024.png'
+        system2(
+            f'create-dmg --volname "{product_name} Installer" --window-pos 200 120 --window-size 800 400 --icon-size 100 --app-drop-link 600 185 --icon "{actual_app}" 200 190 --hide-extension "{actual_app}" "{product_name}.dmg" "./build/macos/Build/Products/Release/{actual_app}"'
+        )
+        os.rename(f"{product_name}.dmg", f"../{product_name}-{version}.dmg")
+
     os.chdir("..")
 
 

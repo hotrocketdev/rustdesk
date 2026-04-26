@@ -424,10 +424,10 @@ def build_flutter_dmg(version, features):
         print("Could not find any .app bundle in build directory")
         sys.exit(-1)
 
-    system2(f'cp -rf ../target/release/service ./build/macos/Build/Products/Release/{actual_app}/Contents/MacOS/')
+    system2(f'cp -rf ../target/release/service "./build/macos/Build/Products/Release/{actual_app}/Contents/MacOS/"')
     
     if actual_app != f'{product_name}.app':
-        system2(f'mv ./build/macos/Build/Products/Release/{actual_app} ./build/macos/Build/Products/Release/{product_name}.app')
+        system2(f'mv "./build/macos/Build/Products/Release/{actual_app}" "./build/macos/Build/Products/Release/{product_name}.app"')
         actual_app = f'{product_name}.app'
 
     app_path = f'./build/macos/Build/Products/Release/{actual_app}'

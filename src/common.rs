@@ -1822,6 +1822,10 @@ pub fn get_rendezvous_access_token() -> String {
     LocalConfig::get_option("access_token")
 }
 
+pub fn get_deskzap_relay_token() -> String {
+    LocalConfig::get_option(DESKZAP_AUTHORIZATION_TOKEN_OPTION)
+}
+
 pub struct ThrottledInterval {
     interval: Interval,
     next_tick: Instant,

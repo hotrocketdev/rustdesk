@@ -1826,6 +1826,61 @@ pub fn get_deskzap_relay_token() -> String {
     LocalConfig::get_option(DESKZAP_AUTHORIZATION_TOKEN_OPTION)
 }
 
+pub async fn fetch_deskzap_authorization_token(rustdesk_id: &str) -> String {
+    let access_token = LocalConfig::get_option("access_token");
+    if access_token.is_empty() {
+        log::warn!("Deskzap: no access_token stored, cannot fetch authorization");
+        return String::new();
+    }
+    let url = format!("{}/api/v1/runtime/connect-direct", DESKZAP_PUBLIC_WEB_URL);
+    let body = serde_json::json!({
+        "rustdesk_id": rustdesk_id,
+        "session_type": "remote_desktop"
+    });
+    let client = match reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+    {
+        Ok(c) => c,
+        Err(e) => {
+            log::warn!("Deskzap: failed to build HTTP client: {}", e);
+            return String::new();
+        }
+    };
+    let response = match client
+        .post(&url)
+        .header("Authorization", format!("Bearer {}", access_token))
+        .json(&body)
+        .send()
+        .await
+    {
+        Ok(r) => r,
+        Err(e) => {
+            log::warn!("Deskzap: connect-direct request failed: {}", e);
+            return String::new();
+        }
+    };
+    if !response.status().is_success() {
+        log::warn!("Deskzap: connect-direct returned {}", response.status());
+        return String::new();
+    }
+    let json: serde_json::Value = match response.json().await {
+        Ok(j) => j,
+        Err(e) => {
+            log::warn!("Deskzap: failed to parse connect-direct response: {}", e);
+            return String::new();
+        }
+    };
+    let token = json["authorization"]["authorization_token"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
+    if !token.is_empty() {
+        LocalConfig::set_option(DESKZAP_AUTHORIZATION_TOKEN_OPTION.to_owned(), token.clone());
+    }
+    token
+}
+
 pub struct ThrottledInterval {
     interval: Interval,
     next_tick: Instant,

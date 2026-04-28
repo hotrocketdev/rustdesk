@@ -1927,6 +1927,11 @@ pub async fn io_loop<T: InvokeUiSession>(handler: Session<T>, round: u32) {
     let (sender, mut receiver) = mpsc::unbounded_channel::<Data>();
     *handler.sender.write().unwrap() = Some(sender.clone());
     let deskzap_token = crate::common::get_deskzap_relay_token();
+    let deskzap_token = if deskzap_token.is_empty() {
+        crate::common::fetch_deskzap_authorization_token(&handler.get_id()).await
+    } else {
+        deskzap_token
+    };
     let token = if deskzap_token.is_empty() {
         crate::get_rendezvous_access_token()
     } else {

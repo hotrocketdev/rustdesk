@@ -76,6 +76,9 @@ const DESKZAP_DEVICE_AUTH_POLL_INTERVAL_SECS: u64 = 5;
 const DESKZAP_DEVICE_AUTH_STATE_OPTION: &str = "deskzap-device-auth-state";
 const DESKZAP_KEYRING_SERVICE: &str = "deskzap-host";
 const DESKZAP_KEYRING_KEY_ENTRY: &str = "device-signing-key";
+const DESKZAP_SUPPORT_CODE_OPTION: &str = "deskzap-support-code";
+const DESKZAP_SUPPORT_API_REGISTER: &str = "/api/v1/support-sessions/{code}/register";
+const DESKZAP_SUPPORT_API_END: &str = "/api/v1/support-sessions/{code}/end";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeskzapLaunchPayload {
@@ -3290,6 +3293,62 @@ pub fn get_control_permission(
         }
     } else {
         None
+    }
+}
+
+// ─── Deskzap Quick Support ─────────────────────────────────────────────
+
+/// Parses a 6-character support code from the executable filename.
+/// Filename pattern: `deskzap-support-ABC123.exe`
+pub fn parse_support_code_from_exe_name() -> Option<String> {
+    let path = std::env::current_exe().ok()?;
+    let stem = path.file_stem()?.to_str()?;
+    // Expect format: "deskzap-support-<CODE>"
+    let parts: Vec<&str> = stem.split('-').collect();
+    if parts.len() >= 3 && parts[0] == "deskzap" && parts[1] == "support" {
+        let code = parts[2..].join("-");
+        if code.len() == 6 && code.chars().all(|c| c.is_ascii_alphanumeric()) {
+            return Some(code.to_uppercase());
+        }
+    }
+    None
+}
+
+/// Registers the support session with the control plane.
+/// Called when the portable exe starts — sends its RustDesk peer ID to `POST /api/v1/support-sessions/{code}/register`.
+pub fn register_deskzap_support_session(code: &str, peer_id: &str) -> Result<String, String> {
+    let url = format!(
+        "{}/api/v1/support-sessions/{}/register",
+        DESKZAP_PUBLIC_WEB_URL, code
+    );
+    let body = serde_json::json!({ "rustdesk_peer_id": peer_id }).to_string();
+    let headers = serde_json::json!({ "Content-Type": "application/json" }).to_string();
+
+    let res = post_request_sync(url, body, &headers)?;
+    let parsed: serde_json::Value =
+        serde_json::from_str(&res).map_err(|e| format!("invalid register response: {e}"))?;
+
+    if parsed.get("ok").is_some() {
+        log::info!("Deskzap support session {} registered", code);
+        Ok(res)
+    } else if let Some(err) = parsed.get("error").and_then(|v| v.as_str()) {
+        Err(format!("support session register rejected: {err}"))
+    } else {
+        Err("support session register failed".to_owned())
+    }
+}
+
+/// Ends the support session. Called when the end user declines or closes the support dialog.
+pub fn end_deskzap_support_session(code: &str) {
+    let url = format!(
+        "{}/api/v1/support-sessions/{}/end",
+        DESKZAP_PUBLIC_WEB_URL, code
+    );
+    let headers = serde_json::json!({}).to_string();
+    if let Err(e) = post_request_sync(url, String::new(), &headers) {
+        log::warn!("Failed to end Deskzap support session {}: {}", code, e);
+    } else {
+        log::info!("Deskzap support session {} ended", code);
     }
 }
 

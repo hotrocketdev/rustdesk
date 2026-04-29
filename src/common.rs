@@ -3315,7 +3315,7 @@ pub fn parse_support_code_from_exe_name() -> Option<String> {
 }
 
 /// Registers the support session with the control plane.
-/// Called when the portable exe starts — sends its RustDesk peer ID to `POST /api/v1/support-sessions/{code}/register`.
+/// Sets status to 'registered' — user must still click Allow before session becomes active.
 pub fn register_deskzap_support_session(code: &str, peer_id: &str) -> Result<String, String> {
     let url = format!(
         "{}/api/v1/support-sessions/{}/register",
@@ -3335,6 +3335,28 @@ pub fn register_deskzap_support_session(code: &str, peer_id: &str) -> Result<Str
         Err(format!("support session register rejected: {err}"))
     } else {
         Err("support session register failed".to_owned())
+    }
+}
+
+/// Called when the end user clicks Allow. Sets the session status to 'active'.
+pub fn accept_deskzap_support_session(code: &str) -> Result<(), String> {
+    let url = format!(
+        "{}/api/v1/support-sessions/{}/accept",
+        DESKZAP_PUBLIC_WEB_URL, code
+    );
+    let headers = serde_json::json!({ "Content-Type": "application/json" }).to_string();
+
+    let res = post_request_sync(url, String::new(), &headers)?;
+    let parsed: serde_json::Value =
+        serde_json::from_str(&res).map_err(|e| format!("invalid accept response: {e}"))?;
+
+    if parsed.get("ok").is_some() {
+        log::info!("Deskzap support session {} accepted", code);
+        Ok(())
+    } else if let Some(err) = parsed.get("error").and_then(|v| v.as_str()) {
+        Err(format!("support session accept rejected: {err}"))
+    } else {
+        Err("support session accept failed".to_owned())
     }
 }
 

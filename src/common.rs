@@ -2142,14 +2142,10 @@ fn persist_deskzap_enrollment(
         return Err("Deskzap enrollment response is incomplete".to_owned());
     }
 
-    set_option(
-        DESKZAP_DEVICE_ID_OPTION.to_owned(),
-        enrollment.device.id.clone(),
-    );
-    set_option(
-        DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION.to_owned(),
-        enrollment.runtime_heartbeat_token.clone(),
-    );
+    // Write directly to Config so the service-process heartbeat loop
+    // picks up the token without needing a round-trip through IPC.
+    Config::set_option(DESKZAP_DEVICE_ID_OPTION.to_owned(), enrollment.device.id.clone());
+    Config::set_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION.to_owned(), enrollment.runtime_heartbeat_token.clone());
 
     send_deskzap_runtime_heartbeat(
         api_server,
@@ -2207,7 +2203,7 @@ fn send_deskzap_runtime_heartbeat(
             // This prevents the "Zombie State" where a device thinks it's enrolled but is being ignored.
             if err_str.contains("401") || err_str.contains("Unauthorized") {
                 log::error!("Deskzap heartbeat rejected (401). Clearing invalid token to force re-enrollment.");
-                crate::ui_interface::set_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION.to_owned(), "".to_owned());
+                Config::set_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION.to_owned(), "".to_owned());
             }
             Err(format!("failed to send Deskzap runtime heartbeat: {err_str}"))
         }

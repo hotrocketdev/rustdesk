@@ -1834,8 +1834,15 @@ pub async fn fetch_deskzap_authorization_token(rustdesk_id: &str) -> String {
     }
     let url = format!("{}/api/v1/runtime/connect-direct", DESKZAP_PUBLIC_WEB_URL);
     let rustdesk_id = rustdesk_id.to_owned();
+    // Spawn a fresh OS thread so reqwest::blocking has no ambient tokio handle.
+    // spawn_blocking threads still carry the tokio handle which causes reqwest::blocking
+    // to panic when it tries to create its own internal runtime.
+    let (tx, rx) = std::sync::mpsc::channel::<String>();
+    std::thread::spawn(move || {
+        let _ = tx.send(deskzap_connect_direct_blocking(&url, &access_token, &rustdesk_id));
+    });
     let token = hbb_common::tokio::task::spawn_blocking(move || {
-        deskzap_connect_direct_blocking(&url, &access_token, &rustdesk_id)
+        rx.recv_timeout(std::time::Duration::from_secs(12)).unwrap_or_default()
     })
     .await
     .unwrap_or_default();

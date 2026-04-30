@@ -554,7 +554,7 @@ impl Client {
                             rr.uuid,
                             rr.relay_server,
                             &key,
-                            "",
+                            &token,
                             conn_type,
                             my_addr.is_ipv4(),
                         );

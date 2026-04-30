@@ -2169,32 +2169,9 @@ fn send_deskzap_runtime_heartbeat(
     })
     .to_string();
 
-    // Build headers — include an Ed25519 device signature when a key is available.
-    let mut headers_obj = serde_json::json!({
-        "Authorization": format!("Bearer {}", runtime_heartbeat_token),
-    });
-
-    let device_id = Config::get_option(DESKZAP_DEVICE_ID_OPTION);
-    if !device_id.trim().is_empty() {
-        let timestamp = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-        // Signature message: "{device_id}:{timestamp}:{sha256_hex(body)}"
-        let body_hash = {
-            use sha2::{Digest, Sha256};
-            let mut hasher = Sha256::new();
-            hasher.update(body.as_bytes());
-            hex::encode(hasher.finalize())
-        };
-        let message = format!("{device_id}:{timestamp}:{body_hash}");
-        if let Some(sig) = sign_with_device_key(message.as_bytes()) {
-            headers_obj["X-Deskzap-Signature"] =
-                serde_json::json!(format!("{device_id};{timestamp};{sig}"));
-        }
-    }
-
-    let res = post_request_sync(url, body, &headers_obj.to_string());
+    // post_request_sync parses headers as a single "Key: Value" string.
+    let auth_header = format!("Authorization: Bearer {}", runtime_heartbeat_token);
+    let res = post_request_sync(url, body, &auth_header);
     match res {
         Ok(_) => Ok(()),
         Err(err) => {

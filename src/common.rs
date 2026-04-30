@@ -3320,7 +3320,7 @@ pub fn register_deskzap_support_session(code: &str, peer_id: &str) -> Result<Str
     let body = serde_json::json!({ "rustdesk_peer_id": peer_id }).to_string();
     let headers = serde_json::json!({ "Content-Type": "application/json" }).to_string();
 
-    let res = post_request_sync(url, body, &headers)?;
+    let res = post_request_sync(url, body, &headers).map_err(|e| e.to_string())?;
     let parsed: serde_json::Value =
         serde_json::from_str(&res).map_err(|e| format!("invalid register response: {e}"))?;
 
@@ -3342,7 +3342,7 @@ pub fn accept_deskzap_support_session(code: &str) -> Result<(), String> {
     );
     let headers = serde_json::json!({ "Content-Type": "application/json" }).to_string();
 
-    let res = post_request_sync(url, String::new(), &headers)?;
+    let res = post_request_sync(url, String::new(), &headers).map_err(|e| e.to_string())?;
     let parsed: serde_json::Value =
         serde_json::from_str(&res).map_err(|e| format!("invalid accept response: {e}"))?;
 

@@ -995,7 +995,7 @@ class LegacyAb extends BaseAb {
     } finally {
       if (pullError.isNotEmpty) {
         if (statusCode == 401) {
-          gFFI.userModel.reset(resetOther: true);
+          gFFI.userModel.refreshCurrentUser();
         }
       }
     }
@@ -1439,7 +1439,7 @@ class Ab extends BaseAb {
     } finally {
       if (pullError.isNotEmpty) {
         if (statusCode == 401) {
-          gFFI.userModel.reset(resetOther: true);
+          gFFI.userModel.refreshCurrentUser();
         }
       }
     }
@@ -1486,7 +1486,7 @@ class Ab extends BaseAb {
     } finally {
       if (pullError.isNotEmpty) {
         if (statusCode == 401) {
-          gFFI.userModel.reset(resetOther: true);
+          gFFI.userModel.refreshCurrentUser();
         }
       }
     }

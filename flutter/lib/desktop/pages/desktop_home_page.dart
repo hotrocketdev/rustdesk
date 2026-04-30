@@ -12,6 +12,7 @@ import 'package:flutter_hbb/common/widgets/custom_password.dart';
 import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/desktop/pages/connection_page.dart';
 import 'package:flutter_hbb/desktop/pages/deskzap_enrollment_page.dart';
+import 'package:flutter_hbb/desktop/pages/deskzap_quick_support_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_tab_page.dart';
 import 'package:flutter_hbb/desktop/widgets/update_progress.dart';
@@ -63,6 +64,10 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final supportCode = DeskzapQuickSupportPage.supportCodeFromExecutable();
+    if (supportCode != null) {
+      return DeskzapQuickSupportPage(code: supportCode);
+    }
     final isIncomingOnly = bind.isIncomingOnly();
     // Show the OAuth device-authorization enrollment screen when the device
     // auth flow is active (no baked-in enrollment token on first run).

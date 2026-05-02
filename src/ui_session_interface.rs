@@ -1928,11 +1928,13 @@ pub async fn io_loop<T: InvokeUiSession>(handler: Session<T>, round: u32) {
     *handler.sender.write().unwrap() = Some(sender.clone());
     let peer_id = handler.get_id();
     let deskzap_token = crate::common::fetch_deskzap_authorization_token(&peer_id).await;
+    log::info!("Deskzap: io_loop token after fetch — empty={} peer={}", deskzap_token.is_empty(), peer_id);
     let token = if deskzap_token.is_empty() {
         crate::get_rendezvous_access_token()
     } else {
         deskzap_token
     };
+    log::info!("Deskzap: io_loop final token — empty={}", token.is_empty());
     let key = crate::get_key(false).await;
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     if handler.is_port_forward() {

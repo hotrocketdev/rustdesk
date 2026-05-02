@@ -285,7 +285,7 @@ impl Client {
 
         let other_server = interface.get_lch().read().unwrap().other_server.clone();
         let (peer, other_server, key, token) = if let Some((a, b, c)) = other_server.as_ref() {
-            (a.as_ref(), b.as_ref(), c.as_ref(), "")
+            (a.as_ref(), b.as_ref(), c.as_ref(), token)
         } else {
             (peer, "", key, token)
         };

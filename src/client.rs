@@ -849,11 +849,6 @@ impl Client {
                 .await
                 .with_context(|| "Failed to connect to rendezvous server")?;
 
-            if !key.is_empty() && !token.is_empty() {
-                // mainly for the security of token
-                secure_tcp(&mut socket, key).await?;
-            }
-
             ipv4 = socket.local_addr().is_ipv4();
             let mut msg_out = RendezvousMessage::new();
             uuid = Uuid::new_v4().to_string();
@@ -903,7 +898,11 @@ impl Client {
         conn_type: ConnType,
         ipv4: bool,
     ) -> ResultType<Stream> {
-        log::info!("Deskzap: create_relay token empty={} relay_server={}", token.is_empty(), relay_server);
+        let effective_token = {
+            let stored = crate::common::get_deskzap_relay_token();
+            if !stored.is_empty() { stored } else { token.to_owned() }
+        };
+        log::info!("Deskzap: create_relay token empty={} relay_server={}", effective_token.is_empty(), relay_server);
         let mut conn = connect_tcp(
             ipv4_to_ipv6(check_port(relay_server, RELAY_PORT), ipv4),
             CONNECT_TIMEOUT,
@@ -914,7 +913,7 @@ impl Client {
         msg_out.set_request_relay(RequestRelay {
             licence_key: key.to_owned(),
             id: peer.to_owned(),
-            token: token.to_owned(),
+            token: effective_token,
             uuid,
             conn_type: conn_type.into(),
             ..Default::default()

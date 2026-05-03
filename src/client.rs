@@ -902,7 +902,15 @@ impl Client {
             let stored = crate::common::get_deskzap_relay_token();
             if !stored.is_empty() { stored } else { token.to_owned() }
         };
-        log::info!("Deskzap: create_relay token empty={} relay_server={}", effective_token.is_empty(), relay_server);
+        log::info!(
+            "Deskzap: create_relay peer_len={} peer={:?} key_len={} effective_token_len={} effective_token_first8={:?} relay_server={}",
+            peer.len(),
+            peer,
+            key.len(),
+            effective_token.len(),
+            effective_token.chars().take(8).collect::<String>(),
+            relay_server
+        );
         let mut conn = connect_tcp(
             ipv4_to_ipv6(check_port(relay_server, RELAY_PORT), ipv4),
             CONNECT_TIMEOUT,
@@ -910,14 +918,29 @@ impl Client {
         .await
         .with_context(|| "Failed to connect to relay server")?;
         let mut msg_out = RendezvousMessage::new();
-        msg_out.set_request_relay(RequestRelay {
+        let request_relay_msg = RequestRelay {
             licence_key: key.to_owned(),
             id: peer.to_owned(),
-            token: effective_token,
-            uuid,
+            token: effective_token.clone(),
+            uuid: uuid.clone(),
             conn_type: conn_type.into(),
             ..Default::default()
-        });
+        };
+        log::info!(
+            "Deskzap: pre-set RequestRelay id={:?} uuid={:?} licence_key_len={} token_len={}",
+            request_relay_msg.id,
+            request_relay_msg.uuid,
+            request_relay_msg.licence_key.len(),
+            request_relay_msg.token.len()
+        );
+        msg_out.set_request_relay(request_relay_msg);
+        if let Ok(bytes) = msg_out.write_to_bytes() {
+            log::info!(
+                "Deskzap: encoded msg len={} hex={}",
+                bytes.len(),
+                bytes.iter().take(200).map(|b| format!("{:02x}", b)).collect::<String>()
+            );
+        }
         conn.send(&msg_out).await?;
         Ok(conn)
     }

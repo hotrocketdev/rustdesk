@@ -898,18 +898,11 @@ impl Client {
         conn_type: ConnType,
         ipv4: bool,
     ) -> ResultType<Stream> {
-        let effective_token = {
-            let stored = crate::common::get_deskzap_relay_token();
-            if !stored.is_empty() { stored } else { token.to_owned() }
-        };
+        let stored = crate::common::get_deskzap_relay_token();
+        let effective_token = if !stored.is_empty() { stored } else { token.to_owned() };
         log::info!(
-            "Deskzap: create_relay peer_len={} peer={:?} key_len={} effective_token_len={} effective_token_first8={:?} relay_server={}",
-            peer.len(),
-            peer,
-            key.len(),
-            effective_token.len(),
-            effective_token.chars().take(8).collect::<String>(),
-            relay_server
+            "Deskzap: create_relay peer_len={} effective_token_len={} relay_server={}",
+            peer.len(), effective_token.len(), relay_server
         );
         let mut conn = connect_tcp(
             ipv4_to_ipv6(check_port(relay_server, RELAY_PORT), ipv4),
@@ -917,34 +910,29 @@ impl Client {
         )
         .await
         .with_context(|| "Failed to connect to relay server")?;
-        let mut msg_out = RendezvousMessage::new();
-        let request_relay_msg = RequestRelay {
-            licence_key: key.to_owned(),
-            id: peer.to_owned(),
-            token: effective_token.clone(),
-            uuid: uuid.clone(),
-            conn_type: conn_type.into(),
-            ..Default::default()
-        };
+        let mut request_relay = RequestRelay::new();
+        request_relay.id = peer.to_owned();
+        request_relay.uuid = uuid;
+        request_relay.licence_key = key.to_owned();
+        request_relay.token = effective_token.clone();
+        request_relay.conn_type = conn_type.into();
         log::info!(
-            "Deskzap: pre-set RequestRelay id={:?} uuid={:?} licence_key_len={} token_len={}",
-            request_relay_msg.id,
-            request_relay_msg.uuid,
-            request_relay_msg.licence_key.len(),
-            request_relay_msg.token.len()
+            "Deskzap: pre-send id_len={} uuid_len={} licence_key_len={} token_len={}",
+            request_relay.id.len(), request_relay.uuid.len(),
+            request_relay.licence_key.len(), request_relay.token.len()
         );
-        msg_out.set_request_relay(request_relay_msg);
+        let mut msg_out = RendezvousMessage::new();
+        msg_out.set_request_relay(request_relay);
         if let Ok(bytes) = msg_out.write_to_bytes() {
             log::info!(
-                "Deskzap: encoded msg len={} hex={}",
+                "Deskzap: encoded len={} hex={}",
                 bytes.len(),
-                bytes.iter().take(200).map(|b| format!("{:02x}", b)).collect::<String>()
+                bytes.iter().take(80).map(|b| format!("{:02x}", b)).collect::<String>()
             );
         }
         conn.send(&msg_out).await?;
         Ok(conn)
     }
-
     #[inline]
     #[cfg(feature = "flutter")]
     #[cfg(not(target_os = "ios"))]

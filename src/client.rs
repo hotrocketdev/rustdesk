@@ -923,14 +923,13 @@ impl Client {
         );
         let mut msg_out = RendezvousMessage::new();
         msg_out.set_request_relay(request_relay);
-        if let Ok(bytes) = msg_out.write_to_bytes() {
-            log::info!(
-                "Deskzap: encoded len={} hex={}",
-                bytes.len(),
-                bytes.iter().take(80).map(|b| format!("{:02x}", b)).collect::<String>()
-            );
-        }
-        conn.send(&msg_out).await?;
+        let bytes = msg_out.write_to_bytes()?;
+        log::info!(
+            "Deskzap: encoded len={} hex={}",
+            bytes.len(),
+            bytes.iter().take(80).map(|b| format!("{:02x}", b)).collect::<String>()
+        );
+        conn.send_raw(bytes).await?;
         Ok(conn)
     }
     #[inline]

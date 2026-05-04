@@ -904,8 +904,9 @@ impl Client {
             "Deskzap: create_relay peer_len={} effective_token_len={} relay_server={}",
             peer.len(), effective_token.len(), relay_server
         );
-        let mut conn = connect_tcp(
+        let mut conn = connect_tcp_local(
             ipv4_to_ipv6(check_port(relay_server, RELAY_PORT), ipv4),
+            None,
             CONNECT_TIMEOUT,
         )
         .await

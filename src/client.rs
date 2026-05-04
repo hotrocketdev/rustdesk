@@ -929,7 +929,7 @@ impl Client {
             bytes.len(),
             bytes.iter().take(80).map(|b| format!("{:02x}", b)).collect::<String>()
         );
-        conn.send_raw(bytes).await?;
+        conn.send_bytes(bytes.into()).await?;
         Ok(conn)
     }
     #[inline]

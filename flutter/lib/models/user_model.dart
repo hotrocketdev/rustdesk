@@ -79,7 +79,12 @@ class UserModel {
       refreshingUser = false;
       final status = response.statusCode;
       if (status == 401 || status == 400) {
-        reset(resetOther: status == 401);
+        // Host (incoming-only) apps stay enrolled via the runtime heartbeat token
+        // regardless of user session state. Don't clear access_token on 401 — an
+        // expired or missing session should not force re-enrollment on every startup.
+        if (!bind.isIncomingOnly()) {
+          reset(resetOther: status == 401);
+        }
         return;
       }
       final data = json.decode(decode_http_response(response));

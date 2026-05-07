@@ -663,6 +663,8 @@ async fn handle(data: Data, stream: &mut Connection) {
                     value = Some(Config::get_unlock_pin());
                 } else if name == "trusted-devices" {
                     value = Some(Config::get_trusted_devices_json());
+                } else if name.starts_with("deskzap-") {
+                    value = Some(Config::get_option(&name));
                 } else {
                     value = None;
                 }
@@ -682,6 +684,8 @@ async fn handle(data: Data, stream: &mut Connection) {
                     crate::audio_service::set_voice_call_input_device(Some(value), true);
                 } else if name == "unlock-pin" {
                     Config::set_unlock_pin(&value);
+                } else if name.starts_with("deskzap-") {
+                    Config::set_option(name.clone(), value.clone());
                 } else {
                     return;
                 }
@@ -1121,6 +1125,11 @@ pub async fn set_config_async(name: &str, value: String) -> ResultType<()> {
     let mut c = connect(1000, "").await?;
     c.send_config(name, value).await?;
     Ok(())
+}
+
+#[tokio::main(flavor = "current_thread")]
+pub async fn set_config(name: &str, value: String) -> ResultType<()> {
+    set_config_async(name, value).await
 }
 
 #[tokio::main(flavor = "current_thread")]

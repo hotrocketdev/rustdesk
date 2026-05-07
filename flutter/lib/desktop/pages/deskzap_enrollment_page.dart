@@ -179,6 +179,10 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
                 final heartbeatToken = data['runtime_heartbeat_token'] as String?;
 
                 if (deviceId != null && heartbeatToken != null) {
+                  // Write to Config (not just LocalConfig) so the Rust heartbeat loop
+                  // and SYSTEM service process can both read the token.
+                  bind.mainDeskzapPersistEnrollmentResult(deviceId: deviceId, heartbeatToken: heartbeatToken);
+                  // Also keep LocalConfig copies for Flutter-side reads.
                   await bind.mainSetLocalOption(key: 'deskzap-device-id', value: deviceId);
                   await bind.mainSetLocalOption(key: 'deskzap-runtime-heartbeat-token', value: heartbeatToken);
                 }

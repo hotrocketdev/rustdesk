@@ -2344,6 +2344,12 @@ pub fn main_on_main_window_close() {
     crate::portable_service::client::drop_portable_service_shared_memory();
 }
 
+/// Persists enrollment result from the Flutter direct-enrollment path into Config
+/// (not LocalConfig) so the heartbeat loop and service process can both access the token.
+pub fn main_deskzap_persist_enrollment_result(device_id: String, heartbeat_token: String) {
+    crate::common::deskzap_store_enrollment_result(device_id, heartbeat_token);
+}
+
 pub fn main_current_is_wayland() -> SyncReturn<bool> {
     SyncReturn(current_is_wayland())
 }

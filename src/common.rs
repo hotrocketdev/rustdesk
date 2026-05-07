@@ -2142,10 +2142,22 @@ fn persist_deskzap_enrollment(
         return Err("Deskzap enrollment response is incomplete".to_owned());
     }
 
-    // Write directly to Config so the service-process heartbeat loop
-    // picks up the token without needing a round-trip through IPC.
     Config::set_option(DESKZAP_DEVICE_ID_OPTION.to_owned(), enrollment.device.id.clone());
     Config::set_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION.to_owned(), enrollment.runtime_heartbeat_token.clone());
+
+    // Push tokens to the service process via IPC. The service runs as SYSTEM on Windows
+    // and reads from a different profile path than the UI user — Config::set_option above
+    // only writes to the UI user's config and the service would never see it.
+    let token_for_svc = enrollment.runtime_heartbeat_token.clone();
+    let id_for_svc = enrollment.device.id.clone();
+    thread::spawn(move || {
+        if let Err(e) = crate::ipc::set_config(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION, token_for_svc) {
+            log::warn!("Deskzap: failed to push heartbeat token to service: {e}");
+        }
+        if let Err(e) = crate::ipc::set_config(DESKZAP_DEVICE_ID_OPTION, id_for_svc) {
+            log::warn!("Deskzap: failed to push device ID to service: {e}");
+        }
+    });
 
     send_deskzap_runtime_heartbeat(
         api_server,
@@ -2235,6 +2247,24 @@ fn set_deskzap_device_auth_state(state: &DeskzapDeviceAuthState) {
 
 pub fn clear_deskzap_device_auth_state() {
     LocalConfig::set_option(DESKZAP_DEVICE_AUTH_STATE_OPTION.to_owned(), String::new());
+}
+
+/// Called from the Flutter direct-enrollment path after a successful enroll API call.
+/// The Flutter page stores via mainSetLocalOption (→ LocalConfig) but the heartbeat loop
+/// reads Config::get_option and the service reads from its own (SYSTEM) Config.
+/// This function writes to Config so both the UI heartbeat loop and the service IPC
+/// push can access the token.
+pub fn deskzap_store_enrollment_result(device_id: String, heartbeat_token: String) {
+    Config::set_option(DESKZAP_DEVICE_ID_OPTION.to_owned(), device_id.clone());
+    Config::set_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION.to_owned(), heartbeat_token.clone());
+    thread::spawn(move || {
+        if let Err(e) = crate::ipc::set_config(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION, heartbeat_token) {
+            log::warn!("Deskzap: failed to push heartbeat token to service (enrollment): {e}");
+        }
+        if let Err(e) = crate::ipc::set_config(DESKZAP_DEVICE_ID_OPTION, device_id) {
+            log::warn!("Deskzap: failed to push device ID to service (enrollment): {e}");
+        }
+    });
 }
 
 // ── Ed25519 device identity (Step 7) ─────────────────────────────────────────

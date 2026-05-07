@@ -283,6 +283,13 @@ class _ConnectionPageState extends State<ConnectionPage>
 
   @override
   void onWindowClose() {
+    if (bind.isIncomingOnly()) {
+      // Host app: hide to system tray instead of closing. The service keeps
+      // running regardless; this prevents killing the UI process (and the
+      // heartbeat loop) on every window close.
+      windowManager.hide();
+      return;
+    }
     super.onWindowClose();
     bind.mainOnMainWindowClose();
   }

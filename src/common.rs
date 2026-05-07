@@ -2016,13 +2016,21 @@ pub fn preload_deskzap_app_identity() {
 }
 
 pub fn bootstrap_deskzap_host() {
+    bootstrap_deskzap_host_inner(false);
+}
+
+pub fn bootstrap_deskzap_host_as_service() {
+    bootstrap_deskzap_host_inner(true);
+}
+
+fn bootstrap_deskzap_host_inner(from_os_service: bool) {
     if !config::is_incoming_only() {
         log::info!("Deskzap host bootstrap skipped because conn-type is not incoming");
         return;
     }
 
     #[cfg(windows)]
-    {
+    if !from_os_service {
         let arg1 = std::env::args().nth(1).unwrap_or_default();
         let is_server_process = arg1 == "--server";
         let is_ui_process = arg1.is_empty();
@@ -2031,21 +2039,16 @@ pub fn bootstrap_deskzap_host() {
         let profile_env_val = std::env::var(DESKZAP_PROFILE_RUNTIME_ENV_KEY).unwrap_or_default();
         let has_profile_env = !profile_env_val.is_empty();
 
-        // If a Deskzap profile is explicitly provided (e.g. from the installer launcher),
-        // we allow enrollment to proceed in THIS process (UI or Server) to ensure
-        // it completes immediately.
         if !has_profile_env {
-            // Standard background logic for already-installed hosts without a specific launch profile:
-            // The server process owns persistent heartbeat/re-enrollment.
             if is_installed_host && !is_server_process {
                 log::info!(
-                    "Deskzap host bootstrap skipped because installed Windows host bootstrap is owned by the server process"
+                    "Deskzap host bootstrap skipped: installed Windows host owned by server process"
                 );
                 return;
             }
             if !is_installed_host && !is_ui_process {
                 log::info!(
-                    "Deskzap host bootstrap skipped because portable Windows host bootstrap is owned by the UI process"
+                    "Deskzap host bootstrap skipped: portable Windows host owned by UI process"
                 );
                 return;
             }
@@ -2054,27 +2057,36 @@ pub fn bootstrap_deskzap_host() {
         }
     }
 
-    let enrollment_token = config::HARD_SETTINGS
-        .read()
-        .unwrap()
-        .get(DESKZAP_ENROLLMENT_TOKEN_KEY)
-        .cloned()
-        .unwrap_or_default();
+    let enrollment_token = {
+        let hard = config::HARD_SETTINGS
+            .read()
+            .unwrap()
+            .get(DESKZAP_ENROLLMENT_TOKEN_KEY)
+            .cloned()
+            .unwrap_or_default();
+        if hard.trim().is_empty() {
+            read_machine_enrollment_token().unwrap_or_default()
+        } else {
+            hard
+        }
+    };
     // 1. Ensure we have the correct identity from the service (critical on Windows SYSTEM vs User)
     let _ = crate::ui_interface::get_id();
 
     // 2. Load API server with IPC fallback
     let mut api_server = Config::get_option(keys::OPTION_API_SERVER);
     if api_server.trim().is_empty() {
-        if let Ok(Some(v)) = crate::ipc::get_config(keys::OPTION_API_SERVER) {
-            api_server = v;
-            Config::set_option(keys::OPTION_API_SERVER.to_owned(), api_server.clone());
+        if !from_os_service {
+            if let Ok(Some(v)) = crate::ipc::get_config(keys::OPTION_API_SERVER) {
+                api_server = v;
+                Config::set_option(keys::OPTION_API_SERVER.to_owned(), api_server.clone());
+            }
         }
-    }
-
-    if api_server.trim().is_empty() {
-        log::warn!("Deskzap host bootstrap skipped because api-server is empty");
-        return;
+        // When running as OS service, skip IPC (may not be ready yet) and
+        // fall back to the well-known Deskzap URL.
+        if api_server.trim().is_empty() {
+            api_server = DESKZAP_PUBLIC_WEB_URL.to_owned();
+        }
     }
 
     // 3. Sync heartbeat token from Service (Source of Truth)

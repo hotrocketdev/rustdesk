@@ -5,7 +5,7 @@ use hbb_common::{
     allow_err,
     anyhow::anyhow,
     bail,
-    config::{keys::OPTION_ALLOW_LINUX_HEADLESS, Config},
+    config::{self, keys::OPTION_ALLOW_LINUX_HEADLESS, Config},
     libc::{c_char, c_int, c_long, c_uint, c_void},
     log,
     message_proto::{DisplayInfo, Resolution},

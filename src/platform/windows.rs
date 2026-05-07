@@ -609,6 +609,19 @@ async fn run_service(_arguments: Vec<OsString>) -> ResultType<()> {
     log::info!("session id {}", session_id);
     let mut h_process = launch_server(session_id, true).await.unwrap_or(NULL);
     let mut incoming = ipc::new_listener(crate::POSTFIX_SERVICE).await?;
+
+    // Spawn Deskzap enrollment + heartbeat from the SYSTEM service process.
+    // The IPC listener is already up at this point, so Config IPC reads from
+    // user-session processes will be served correctly.
+    if config::is_incoming_only() {
+        std::thread::spawn(|| {
+            // Brief delay to let the service finish initialising before
+            // making outbound HTTP requests.
+            std::thread::sleep(std::time::Duration::from_secs(5));
+            crate::common::bootstrap_deskzap_host_as_service();
+        });
+    }
+
     let mut stored_usid = None;
     loop {
         let sids: Vec<_> = get_available_sessions(false)

@@ -62,6 +62,17 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
   @override
   void initState() {
     super.initState();
+
+    // Fast-path: if the device is already enrolled (heartbeat token present),
+    // skip login form and show enrolled state immediately.
+    final existingToken = bind.mainGetLocalOption(
+      key: 'deskzap-runtime-heartbeat-token',
+    );
+    if (existingToken.isNotEmpty) {
+      _enrollmentStatus = 'enrolled';
+      return;
+    }
+
     // Poll for enrollment state so we catch success set from the Rust side.
     _pollTimer = Timer.periodic(const Duration(seconds: 2), (_) => _pollEnrollment());
   }

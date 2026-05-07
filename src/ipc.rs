@@ -1143,11 +1143,6 @@ async fn set_data_async(data: &Data) -> ResultType<()> {
     Ok(())
 }
 
-#[tokio::main(flavor = "current_thread")]
-pub async fn set_config(name: &str, value: String) -> ResultType<()> {
-    set_config_async(name, value).await
-}
-
 pub fn update_temporary_password() -> ResultType<()> {
     set_config("temporary-password", "".to_owned())
 }

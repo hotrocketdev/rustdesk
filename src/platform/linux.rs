@@ -704,6 +704,16 @@ pub fn start_os_service() {
         allow_err!(crate::ipc::start(crate::POSTFIX_SERVICE));
     });
 
+    if config::is_incoming_only() {
+        let _ = std::thread::spawn(|| {
+            std::thread::sleep(std::time::Duration::from_secs(5));
+            let result = std::panic::catch_unwind(crate::common::bootstrap_deskzap_host_as_service);
+            if let Err(_) = result {
+                log::error!("Deskzap bootstrap panicked in service thread");
+            }
+        });
+    }
+
     let running = Arc::new(AtomicBool::new(true));
     let r = running.clone();
     let (mut display, mut xauth): (String, String) = ("".to_owned(), "".to_owned());

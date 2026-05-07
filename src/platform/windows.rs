@@ -614,11 +614,14 @@ async fn run_service(_arguments: Vec<OsString>) -> ResultType<()> {
     // The IPC listener is already up at this point, so Config IPC reads from
     // user-session processes will be served correctly.
     if config::is_incoming_only() {
-        std::thread::spawn(|| {
+        let _ = std::thread::spawn(|| {
             // Brief delay to let the service finish initialising before
             // making outbound HTTP requests.
             std::thread::sleep(std::time::Duration::from_secs(5));
-            crate::common::bootstrap_deskzap_host_as_service();
+            let result = std::panic::catch_unwind(crate::common::bootstrap_deskzap_host_as_service);
+            if let Err(_) = result {
+                log::error!("Deskzap bootstrap panicked in service thread");
+            }
         });
     }
 

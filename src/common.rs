@@ -82,25 +82,24 @@ const DESKZAP_SUPPORT_API_END: &str = "/api/v1/support-sessions/{code}/end";
 const DESKZAP_MACHINE_CONFIG_FILE: &str = "deskzap-machine.json";
 
 fn deskzap_machine_config_path() -> std::path::PathBuf {
-    #[cfg(windows)]
-    {
-        std::path::PathBuf::from(r"C:\ProgramData\Deskzap").join(DESKZAP_MACHINE_CONFIG_FILE)
+    cfg_if::cfg_if! {
+        if #[cfg(windows)] {
+            let base = std::path::PathBuf::from(r"C:\ProgramData\Deskzap");
+        } else if #[cfg(target_os = "macos")] {
+            let base = std::path::PathBuf::from("/Library/Application Support/Deskzap");
+        } else {
+            let base = std::path::PathBuf::from("/etc/deskzap");
+        }
     }
-    #[cfg(target_os = "macos")]
-    {
-        std::path::PathBuf::from("/Library/Application Support/Deskzap")
-            .join(DESKZAP_MACHINE_CONFIG_FILE)
-    }
-    #[cfg(not(any(windows, target_os = "macos")))]
-    {
-        std::path::PathBuf::from("/etc/deskzap").join(DESKZAP_MACHINE_CONFIG_FILE)
-    }
+    base.join(DESKZAP_MACHINE_CONFIG_FILE)
 }
 
 fn read_machine_enrollment_token() -> Option<String> {
     let path = deskzap_machine_config_path();
     let content = std::fs::read_to_string(&path).ok()?;
-    let json: serde_json::Value = serde_json::from_str(&content).ok()?;
+    let json: serde_json::Value = serde_json::from_str(&content)
+        .map_err(|e| log::warn!("deskzap-machine.json parse error: {e}"))
+        .ok()?;
     let token = json.get("enrollment_token")?.as_str()?.to_owned();
     if token.trim().is_empty() { None } else { Some(token) }
 }

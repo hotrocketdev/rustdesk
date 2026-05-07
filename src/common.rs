@@ -2092,11 +2092,13 @@ fn bootstrap_deskzap_host_inner(from_os_service: bool) {
     // 3. Sync heartbeat token from Service (Source of Truth)
     // We always try to get the latest from the Service to stay in sync.
     let mut saved_runtime_heartbeat_token = Config::get_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION);
-    if let Ok(Some(v)) = crate::ipc::get_config(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION) {
-        if v != saved_runtime_heartbeat_token {
-            log::info!("Syncing heartbeat token from service via IPC");
-            saved_runtime_heartbeat_token = v;
-            Config::set_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION.to_owned(), saved_runtime_heartbeat_token.clone());
+    if !from_os_service {
+        if let Ok(Some(v)) = crate::ipc::get_config(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION) {
+            if v != saved_runtime_heartbeat_token {
+                log::info!("Syncing heartbeat token from service via IPC");
+                saved_runtime_heartbeat_token = v;
+                Config::set_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION.to_owned(), saved_runtime_heartbeat_token.clone());
+            }
         }
     }
 

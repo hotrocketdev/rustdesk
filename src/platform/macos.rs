@@ -730,6 +730,18 @@ pub fn lock_screen() {
 
 pub fn start_os_service() {
     log::info!("Username: {}", crate::username());
+
+    if hbb_common::config::is_incoming_only() {
+        let _ = std::thread::spawn(|| {
+            std::thread::sleep(std::time::Duration::from_secs(5));
+            let result =
+                std::panic::catch_unwind(crate::common::bootstrap_deskzap_host_as_service);
+            if let Err(_) = result {
+                log::error!("Deskzap bootstrap panicked in service thread");
+            }
+        });
+    }
+
     if let Err(err) = crate::ipc::start("_service") {
         log::error!("Failed to start ipc_service: {}", err);
     }

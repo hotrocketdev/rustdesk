@@ -2094,7 +2094,11 @@ fn bootstrap_deskzap_host_inner(from_os_service: bool) {
     let mut saved_runtime_heartbeat_token = Config::get_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION);
     if !from_os_service {
         if let Ok(Some(v)) = crate::ipc::get_config(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION) {
-            if v != saved_runtime_heartbeat_token {
+            // Only sync if the service has a non-empty token. When the device was enrolled
+            // via the UI form (not machine config), the OS service (SYSTEM) has no token and
+            // returns "". Overwriting a valid user-side token with "" destroys it, causing
+            // bootstrap to trigger the auth flow on every restart.
+            if !v.is_empty() && v != saved_runtime_heartbeat_token {
                 log::info!("Syncing heartbeat token from service via IPC");
                 saved_runtime_heartbeat_token = v;
                 Config::set_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION.to_owned(), saved_runtime_heartbeat_token.clone());

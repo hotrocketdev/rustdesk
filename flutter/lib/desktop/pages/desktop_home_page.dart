@@ -76,10 +76,21 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         final map = jsonDecode(_enrollmentStateJson) as Map<String, dynamic>;
         final status = map['status'] as String? ?? '';
         if (status.isNotEmpty) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            windowManager.setSize(_deskzapEnrollmentWindowSize);
-          });
-          return const DeskzapEnrollmentPage();
+          // If already enrolled (token in LocalConfig), clear stale auth state
+          // rather than showing the enrollment page. Guards against the IPC sync
+          // bug where the OS service's empty token overwrites the user's Config
+          // token, causing bootstrap to re-trigger the auth flow on every restart.
+          final existingToken = bind.mainGetLocalOption(key: 'deskzap-runtime-heartbeat-token');
+          if (existingToken.isNotEmpty) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              bind.mainClearDeskzapDeviceAuthState();
+            });
+          } else {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              windowManager.setSize(_deskzapEnrollmentWindowSize);
+            });
+            return const DeskzapEnrollmentPage();
+          }
         }
       } catch (_) {}
     }

@@ -107,6 +107,18 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
         Future.delayed(const Duration(seconds: 5), () {
           bind.mainClearDeskzapDeviceAuthState();
         });
+      } else if ((status == 'expired' || status.startsWith('error:')) &&
+                 _enrollmentStatus != 'enrolled') {
+        // OAuth device code expired/errored — check if the user already enrolled via
+        // the email/password path (token written to LocalConfig during sign-in).
+        final token = bind.mainGetLocalOption(key: 'deskzap-runtime-heartbeat-token');
+        if (token.isNotEmpty && mounted) {
+          setState(() => _enrollmentStatus = 'enrolled');
+          _pollTimer?.cancel();
+          Future.delayed(const Duration(seconds: 2), () {
+            bind.mainClearDeskzapDeviceAuthState();
+          });
+        }
       }
     } catch (_) {}
   }

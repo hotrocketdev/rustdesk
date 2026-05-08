@@ -2106,6 +2106,20 @@ fn bootstrap_deskzap_host_inner(from_os_service: bool) {
         }
     }
 
+    // Sync Config heartbeat token → LocalConfig so Flutter's enrollment guard can read it.
+    // The guard calls mainGetLocalOption (→ LocalConfig::get_option) and has no direct path
+    // to Config.  Without this sync, when the OAuth device code expires (~5 min after a
+    // fresh launch), the guard finds LocalConfig empty and incorrectly shows the sign-in form.
+    if !saved_runtime_heartbeat_token.trim().is_empty() {
+        let local = LocalConfig::get_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION);
+        if local != saved_runtime_heartbeat_token {
+            LocalConfig::set_option(
+                DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION.to_owned(),
+                saved_runtime_heartbeat_token.clone(),
+            );
+        }
+    }
+
     log::info!(
         "Deskzap host bootstrap starting: api_server={}, enrollment_token_present={}, heartbeat_token_present={}, runtime_id={}",
         api_server,

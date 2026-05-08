@@ -70,6 +70,12 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
     );
     if (existingToken.isNotEmpty) {
       _enrollmentStatus = 'enrolled';
+      // Clear the Rust auth state so the parent widget unmounts this page
+      // and shows the main host screen. Without this, the success screen
+      // stays visible forever because the poll timer is never started.
+      Future.delayed(const Duration(seconds: 2), () {
+        bind.mainClearDeskzapDeviceAuthState();
+      });
       return;
     }
 

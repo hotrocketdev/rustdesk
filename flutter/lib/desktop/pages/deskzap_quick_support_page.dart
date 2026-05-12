@@ -118,8 +118,16 @@ class _DeskzapQuickSupportPageState extends State<DeskzapQuickSupportPage> {
       }
 
       if (!_registered && nextPeerId.isNotEmpty) {
-        await _post('register', body: {'rustdesk_peer_id': nextPeerId});
+        final regData = await _request(
+          '/api/v1/support-sessions/${widget.code}/register',
+          method: 'POST',
+          body: {'rustdesk_peer_id': nextPeerId},
+        );
         _registered = true;
+        final token = (regData['authorization_token'] as String?) ?? '';
+        if (token.isNotEmpty) {
+          await bind.mainSetPermanentPassword(password: token);
+        }
       }
 
       if (!mounted) return;
@@ -164,6 +172,7 @@ class _DeskzapQuickSupportPageState extends State<DeskzapQuickSupportPage> {
       await _post('end');
     } catch (_) {
     } finally {
+      await bind.mainSetPermanentPassword(password: '');
       if (Platform.isWindows) {
         exit(0);
       }

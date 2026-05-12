@@ -2236,6 +2236,13 @@ bool handleUriLink({List<String>? cmdArgs, Uri? uri, String? uriString}) {
     return true;
   }
 
+  if (args[0] == '--deskzap-connect') {
+    if (args.length >= 2) {
+      _handleDeskzapConnect(args[1]);
+    }
+    return true;
+  }
+
   UriLinkType? type;
   String? id;
   String? password;
@@ -2341,6 +2348,44 @@ bool handleUriLink({List<String>? cmdArgs, Uri? uri, String? uriString}) {
   }
 
   return false;
+}
+
+Future<void> _handleDeskzapConnect(String encodedPayload) async {
+  try {
+    // Web encodes as URL-safe base64 (no padding); restore standard alphabet before decoding
+    final normalized =
+        encodedPayload.replaceAll('-', '+').replaceAll('_', '/');
+    final padded =
+        normalized.padRight((normalized.length + 3) ~/ 4 * 4, '=');
+    final Map<String, dynamic> payload =
+        jsonDecode(utf8.decode(base64.decode(padded)));
+
+    final remoteId = (payload['remote_id'] ?? '') as String;
+    final authToken = (payload['authorization_token'] ?? '') as String;
+    final sessionId = (payload['session_id'] ?? '') as String;
+    final deviceId = (payload['device_id'] ?? '') as String;
+    final forceRelay = payload['force_relay'] == true;
+    final password = (payload['password'] ?? '') as String;
+
+    if (remoteId.isEmpty || authToken.isEmpty || sessionId.isEmpty) {
+      debugPrint('deskzap-connect: incomplete payload');
+      return;
+    }
+
+    await bind.mainSetLocalOption(
+        key: 'deskzap-launch-payload', value: jsonEncode(payload));
+    await bind.mainSetLocalOption(
+        key: 'deskzap-session-id', value: sessionId);
+    await bind.mainSetLocalOption(
+        key: 'deskzap-authorization-token', value: authToken);
+    await bind.mainSetLocalOption(
+        key: 'deskzap-device-id', value: deviceId);
+
+    rustDeskWinManager.newRemoteDesktop(remoteId,
+        password: password, forceRelay: forceRelay);
+  } catch (e) {
+    debugPrint('deskzap-connect: failed to handle payload: $e');
+  }
 }
 
 List<String>? urlLinkToCmdArgs(Uri uri) {

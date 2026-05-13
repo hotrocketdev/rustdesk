@@ -2615,12 +2615,15 @@ fn run_deskzap_device_authorization(api_server: &str) {
 }
 
 pub fn apply_deskzap_launch_args(args: &[String]) -> Result<Option<Vec<String>>, String> {
-    if args.first().map(|arg| arg.as_str()) != Some("--deskzap-connect") {
+    let source: &str = if args.first().map(|arg| arg.as_str()) == Some("--deskzap-connect") {
+        let Some(s) = args.get(1) else {
+            return Err("missing Deskzap launch payload".to_owned());
+        };
+        s.as_str()
+    } else if args.first().map(|a| a.starts_with("deskzap://")).unwrap_or(false) {
+        args[0].as_str()
+    } else {
         return Ok(None);
-    }
-
-    let Some(source) = args.get(1) else {
-        return Err("missing Deskzap launch payload".to_owned());
     };
 
     let payload = parse_deskzap_launch_payload(source)?;
@@ -2663,8 +2666,21 @@ fn parse_deskzap_launch_payload(source: &str) -> Result<DeskzapLaunchPayload, St
     } else if source.trim_start().starts_with('{') {
         source.to_owned()
     } else {
-        let decoded = base64::decode(source);
-        let decoded = decoded.map_err(|err| format!("failed to decode Deskzap launch payload: {err}"))?;
+        let encoded = if source.starts_with("deskzap://") {
+            source.trim_end_matches('/').rsplit('/').next()
+                .ok_or_else(|| "malformed deskzap:// URL".to_owned())?
+        } else {
+            source
+        };
+        // Normalise base64url (- _) → standard base64 (+ /) and restore padding
+        let std_b64 = encoded.replace('-', "+").replace('_', "/");
+        let padded = match std_b64.len() % 4 {
+            2 => format!("{}==", std_b64),
+            3 => format!("{}=", std_b64),
+            _ => std_b64,
+        };
+        let decoded = base64::decode(&padded)
+            .map_err(|err| format!("failed to decode Deskzap launch payload: {err}"))?;
         String::from_utf8(decoded).map_err(|err| format!("Deskzap launch payload is not valid UTF-8: {err}"))?
     };
 

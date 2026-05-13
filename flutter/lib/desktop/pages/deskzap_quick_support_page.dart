@@ -48,8 +48,15 @@ class _DeskzapQuickSupportPageState extends State<DeskzapQuickSupportPage> {
     super.initState();
     windowManager.setTitle('Deskzap Quick Support');
     windowManager.setSize(const Size(540, 560));
+    _configure();
     _pollTimer = Timer.periodic(const Duration(seconds: 2), (_) => _sync());
     _sync();
+  }
+
+  Future<void> _configure() async {
+    await bind.mainSetOption(key: 'approve-mode', value: 'password');
+    await bind.mainSetOption(key: 'verification-method', value: 'use-permanent-password');
+    await bind.mainSetOption(key: 'allow-hide-cm', value: 'Y');
   }
 
   @override
@@ -118,15 +125,20 @@ class _DeskzapQuickSupportPageState extends State<DeskzapQuickSupportPage> {
       }
 
       if (!_registered && nextPeerId.isNotEmpty) {
-        final regData = await _request(
-          '/api/v1/support-sessions/${widget.code}/register',
-          method: 'POST',
-          body: {'rustdesk_peer_id': nextPeerId},
-        );
         _registered = true;
-        final token = (regData['authorization_token'] as String?) ?? '';
-        if (token.isNotEmpty) {
-          await bind.mainSetPermanentPassword(password: token);
+        try {
+          final regData = await _request(
+            '/api/v1/support-sessions/${widget.code}/register',
+            method: 'POST',
+            body: {'rustdesk_peer_id': nextPeerId},
+          );
+          final token = (regData['authorization_token'] as String?) ?? '';
+          if (token.isNotEmpty) {
+            await bind.mainSetPermanentPassword(password: token);
+          }
+        } catch (_) {
+          _registered = false;
+          rethrow;
         }
       }
 

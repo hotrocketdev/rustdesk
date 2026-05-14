@@ -567,6 +567,13 @@ class ServerModel with ChangeNotifier {
           return;
         }
         _clients.add(client);
+        Future.microtask(() async {
+          final pending = await bind.mainGetOption(key: 'deskzap-pending-accept');
+          if (pending == 'Y') {
+            await bind.mainSetOption(key: 'deskzap-pending-accept', value: '');
+            sendLoginResponse(client, true);
+          }
+        });
       }
       _addTab(client);
       // remove disconnected

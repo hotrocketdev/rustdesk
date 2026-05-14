@@ -54,8 +54,7 @@ class _DeskzapQuickSupportPageState extends State<DeskzapQuickSupportPage> {
   }
 
   Future<void> _configure() async {
-    await bind.mainSetOption(key: 'approve-mode', value: 'password');
-    await bind.mainSetOption(key: 'verification-method', value: 'use-permanent-password');
+    await bind.mainSetOption(key: 'approve-mode', value: 'click');
     await bind.mainSetOption(key: 'allow-hide-cm', value: 'Y');
   }
 
@@ -167,6 +166,7 @@ class _DeskzapQuickSupportPageState extends State<DeskzapQuickSupportPage> {
       if (!_registered) {
         await _sync();
       }
+      await bind.mainSetOption(key: 'deskzap-pending-accept', value: 'Y');
       await _post('accept');
       if (!mounted) return;
       setState(() => _status = 'active');
@@ -184,6 +184,7 @@ class _DeskzapQuickSupportPageState extends State<DeskzapQuickSupportPage> {
       await _post('end');
     } catch (_) {
     } finally {
+      await bind.mainSetOption(key: 'deskzap-pending-accept', value: '');
       await bind.mainSetPermanentPassword(password: '');
       if (Platform.isWindows) {
         exit(0);

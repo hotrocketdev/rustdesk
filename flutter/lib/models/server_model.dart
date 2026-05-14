@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_hbb/consts.dart';
@@ -568,9 +569,9 @@ class ServerModel with ChangeNotifier {
         }
         _clients.add(client);
         Future.microtask(() async {
-          final pending = await bind.mainGetOption(key: 'deskzap-pending-accept');
-          if (pending == 'Y') {
-            await bind.mainSetOption(key: 'deskzap-pending-accept', value: '');
+          final flag = File('${Directory.systemTemp.path}/deskzap_qs_accept.flag');
+          if (await flag.exists()) {
+            await flag.delete();
             sendLoginResponse(client, true);
           }
         });

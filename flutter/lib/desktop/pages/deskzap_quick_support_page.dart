@@ -2,6 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+File get _pendingAcceptFlag =>
+    File('${Directory.systemTemp.path}/deskzap_qs_accept.flag');
+
 import 'package:flutter/material.dart';
 import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
@@ -166,7 +169,7 @@ class _DeskzapQuickSupportPageState extends State<DeskzapQuickSupportPage> {
       if (!_registered) {
         await _sync();
       }
-      await bind.mainSetOption(key: 'deskzap-pending-accept', value: 'Y');
+      await _pendingAcceptFlag.writeAsString('Y');
       await _post('accept');
       if (!mounted) return;
       setState(() => _status = 'active');
@@ -184,7 +187,7 @@ class _DeskzapQuickSupportPageState extends State<DeskzapQuickSupportPage> {
       await _post('end');
     } catch (_) {
     } finally {
-      await bind.mainSetOption(key: 'deskzap-pending-accept', value: '');
+      await _pendingAcceptFlag.delete().catchError((_) {});
       await bind.mainSetPermanentPassword(password: '');
       if (Platform.isWindows) {
         exit(0);

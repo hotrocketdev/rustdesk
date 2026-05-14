@@ -2,13 +2,13 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-File get _pendingAcceptFlag =>
-    File('${Directory.systemTemp.path}/deskzap_qs_accept.flag');
-
 import 'package:flutter/material.dart';
 import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
 import 'package:window_manager/window_manager.dart';
+
+File get _pendingAcceptFlag =>
+    File('${Directory.systemTemp.path}/deskzap_qs_accept.flag');
 
 class DeskzapQuickSupportPage extends StatefulWidget {
   const DeskzapQuickSupportPage({Key? key, required this.code})

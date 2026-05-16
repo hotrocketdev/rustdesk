@@ -28,11 +28,12 @@ class DeskzapQuickSupportPage extends StatefulWidget {
 
 class _DeskzapQuickSupportPageState extends State<DeskzapQuickSupportPage> {
   static const _publicBaseUrl = 'https://my.deskzap.co.uk';
-  static const _blue = Color(0xFF2963F2);
-  static const _dark = Color(0xFF16213D);
-  static const _muted = Color(0xFF5C6C8F);
-  static const _bg = Color(0xFFF4F8FF);
-  static const _border = Color(0xFFDCE7FF);
+  static const _bg = Color(0xFF0A0A0A);
+  static const _surface = Color(0xFF141414);
+  static const _ink = Color(0xFFFFFFFF);
+  static const _accent = Color(0xFF5577FF);
+  static const _muted = Color(0xFFA3A3A3);
+  static const _line = Color(0xFF2A2A2A);
 
   Timer? _pollTimer;
   bool _registered = false;
@@ -203,102 +204,108 @@ class _DeskzapQuickSupportPageState extends State<DeskzapQuickSupportPage> {
       backgroundColor: _bg,
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 460),
-          child: Container(
-            margin: const EdgeInsets.all(24),
-            padding: const EdgeInsets.all(28),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: _border),
-              boxShadow: [
-                BoxShadow(
-                  blurRadius: 40,
-                  offset: const Offset(0, 20),
-                  color: _dark.withOpacity(0.10),
-                )
-              ],
-            ),
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const CircleAvatar(
-                  radius: 34,
-                  backgroundColor: Color(0xFFEAF1FF),
-                  child: Icon(Icons.computer, size: 34, color: _blue),
-                ),
-                const SizedBox(height: 22),
+                // Kicker
                 Text(
-                  active ? 'Support session approved' : 'Deskzap Quick Support',
+                  'DESKZAP QUICK SUPPORT',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: _dark,
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
+                  style: TextStyle(
+                    color: _accent,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 3,
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
+                // Title
+                Text(
+                  active ? 'Session Active' : 'Remote Support Request',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: _ink,
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    height: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 8),
                 Text(
                   active
                       ? 'You can leave this window open while $_technicianName helps you.'
                       : '$_technicianName from $_organizationName is requesting access to your computer.',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: _muted,
-                    fontSize: 16,
-                    height: 1.45,
+                  style: TextStyle(color: _muted, fontSize: 13, height: 1.5),
+                ),
+                const SizedBox(height: 20),
+                // Code panel
+                Container(
+                  decoration: BoxDecoration(
+                    color: _surface,
+                    border: Border.all(color: _line, width: 2),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  child: Column(
+                    children: [
+                      Text(
+                        'SESSION CODE',
+                        style: TextStyle(color: _muted, fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 2.5),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        widget.code,
+                        style: TextStyle(color: _accent, fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: 6),
+                      ),
+                      if (_peerId.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          'ID: $_peerId',
+                          style: TextStyle(color: _muted, fontSize: 11),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-                const SizedBox(height: 18),
-                _CodeRow(code: widget.code, peerId: _peerId),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
+                // Status / error
                 if (_error != null)
-                  _MessageBox(text: _error!, color: const Color(0xFFB42318))
+                  _MessageBox(text: _error!, color: const Color(0xFFE5484D), bg: _surface, line: _line)
                 else if (waitingForId)
-                  const _MessageBox(
-                    text: 'Starting secure support service...',
-                    color: _muted,
-                  )
+                  _MessageBox(text: 'Starting secure support service...', color: _muted, bg: _surface, line: _line)
                 else if (active)
-                  const _MessageBox(
-                    text: 'The technician can now connect. Close this window to end support.',
-                    color: Color(0xFF0A7A55),
-                  )
+                  _MessageBox(text: 'The technician can now connect. Close this window to end support.', color: const Color(0xFF22C55E), bg: _surface, line: _line)
                 else
-                  const _MessageBox(
-                    text: 'Only click Allow if the technician name and company are correct.',
-                    color: _muted,
-                  ),
-                const SizedBox(height: 22),
+                  _MessageBox(text: 'Only click Allow if the technician name and company above are correct.', color: _muted, bg: _surface, line: _line),
+                const SizedBox(height: 20),
+                // Buttons
                 if (active)
-                  ElevatedButton(
+                  _BrutalistButton(
+                    label: 'End Support',
                     onPressed: _busy ? null : _decline,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE5484D),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                    ),
-                    child: const Text('End Support'),
+                    bg: const Color(0xFFE5484D),
+                    fg: Colors.white,
+                    border: const Color(0xFFE5484D),
                   )
                 else ...[
-                  ElevatedButton(
+                  _BrutalistButton(
+                    label: _busy ? 'Please wait...' : 'Allow Support',
                     onPressed: _busy || waitingForId ? null : _allow,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _blue,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                    ),
-                    child: Text(_busy ? 'Please wait...' : 'Allow Support'),
+                    bg: _accent,
+                    fg: Colors.white,
+                    border: _accent,
                   ),
                   const SizedBox(height: 10),
-                  OutlinedButton(
+                  _BrutalistButton(
+                    label: 'Decline',
                     onPressed: _busy ? null : _decline,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: _dark,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                    ),
-                    child: const Text('Decline'),
+                    bg: Colors.transparent,
+                    fg: _muted,
+                    border: _line,
                   ),
                 ],
               ],
@@ -310,60 +317,68 @@ class _DeskzapQuickSupportPageState extends State<DeskzapQuickSupportPage> {
   }
 }
 
-class _CodeRow extends StatelessWidget {
-  const _CodeRow({required this.code, required this.peerId});
+class _MessageBox extends StatelessWidget {
+  const _MessageBox({required this.text, required this.color, required this.bg, required this.line});
 
-  final String code;
-  final String peerId;
+  final String text;
+  final Color color;
+  final Color bg;
+  final Color line;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3F7FF),
-        borderRadius: BorderRadius.circular(12),
+        color: bg,
+        border: Border.all(color: line, width: 2),
       ),
-      child: Column(
-        children: [
-          Text(
-            'Code: $code',
-            style: const TextStyle(
-              color: Color(0xFF263B66),
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          if (peerId.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(
-              'Secure ID: $peerId',
-              style: const TextStyle(color: Color(0xFF5C6C8F), fontSize: 12),
-            ),
-          ],
-        ],
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: TextStyle(color: color, fontSize: 12, height: 1.45),
       ),
     );
   }
 }
 
-class _MessageBox extends StatelessWidget {
-  const _MessageBox({required this.text, required this.color});
+class _BrutalistButton extends StatelessWidget {
+  const _BrutalistButton({
+    required this.label,
+    required this.onPressed,
+    required this.bg,
+    required this.fg,
+    required this.border,
+  });
 
-  final String text;
-  final Color color;
+  final String label;
+  final VoidCallback? onPressed;
+  final Color bg;
+  final Color fg;
+  final Color border;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: TextStyle(color: color, fontSize: 13, height: 1.4),
+    return SizedBox(
+      height: 48,
+      child: TextButton(
+        onPressed: onPressed,
+        style: TextButton.styleFrom(
+          backgroundColor: onPressed == null ? bg.withOpacity(0.4) : bg,
+          foregroundColor: fg,
+          shape: const RoundedRectangleBorder(),
+          side: BorderSide(color: border, width: 2),
+          padding: EdgeInsets.zero,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+            color: onPressed == null ? fg.withOpacity(0.5) : fg,
+            letterSpacing: 0.5,
+          ),
+        ),
       ),
     );
   }

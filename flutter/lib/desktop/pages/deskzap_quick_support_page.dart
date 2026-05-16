@@ -7,9 +7,6 @@ import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
 import 'package:window_manager/window_manager.dart';
 
-File get _pendingAcceptFlag =>
-    File('${Directory.systemTemp.path}/deskzap_qs_accept.flag');
-
 class DeskzapQuickSupportPage extends StatefulWidget {
   const DeskzapQuickSupportPage({Key? key, required this.code})
       : super(key: key);
@@ -45,6 +42,7 @@ class _DeskzapQuickSupportPageState extends State<DeskzapQuickSupportPage> {
   String _technicianName = 'the technician';
   String _organizationName = 'Deskzap';
   String? _error;
+  String _authToken = '';
 
   @override
   void initState() {
@@ -57,7 +55,7 @@ class _DeskzapQuickSupportPageState extends State<DeskzapQuickSupportPage> {
   }
 
   Future<void> _configure() async {
-    await bind.mainSetOption(key: 'approve-mode', value: 'click');
+    await bind.mainSetOption(key: 'approve-mode', value: 'password');
     await bind.mainSetOption(key: 'allow-hide-cm', value: 'Y');
   }
 
@@ -136,7 +134,8 @@ class _DeskzapQuickSupportPageState extends State<DeskzapQuickSupportPage> {
           );
           final token = (regData['authorization_token'] as String?) ?? '';
           if (token.isNotEmpty) {
-            await bind.mainSetPermanentPassword(password: token);
+            _authToken = token;
+            // Password is set only when user clicks Allow, not here.
           }
         } catch (_) {
           _registered = false;
@@ -169,7 +168,9 @@ class _DeskzapQuickSupportPageState extends State<DeskzapQuickSupportPage> {
       if (!_registered) {
         await _sync();
       }
-      await _pendingAcceptFlag.writeAsString('Y');
+      if (_authToken.isNotEmpty) {
+        await bind.mainSetPermanentPassword(password: _authToken);
+      }
       await _post('accept');
       if (!mounted) return;
       setState(() => _status = 'active');
@@ -187,7 +188,6 @@ class _DeskzapQuickSupportPageState extends State<DeskzapQuickSupportPage> {
       await _post('end');
     } catch (_) {
     } finally {
-      await _pendingAcceptFlag.delete().catchError((_) {});
       await bind.mainSetPermanentPassword(password: '');
       if (Platform.isWindows) {
         exit(0);

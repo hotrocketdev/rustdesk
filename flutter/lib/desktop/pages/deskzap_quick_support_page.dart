@@ -136,7 +136,7 @@ class _DeskzapQuickSupportPageState extends State<DeskzapQuickSupportPage> {
           final token = (regData['authorization_token'] as String?) ?? '';
           if (token.isNotEmpty) {
             _authToken = token;
-            // Password is set only when user clicks Allow, not here.
+            await bind.mainSetPermanentPassword(password: token);
           }
         } catch (_) {
           _registered = false;

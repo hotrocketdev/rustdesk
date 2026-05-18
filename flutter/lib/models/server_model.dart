@@ -147,6 +147,11 @@ class ServerModel with ChangeNotifier {
         _initVerificationMethod == kUsePermanentPassword)) {
       hideCm = false;
     }
+    if (hideCm && desktopType == DesktopType.cm) {
+      Future.delayed(Duration.zero, () async {
+        await hideCmWindow();
+      });
+    }
 
     timerCallback() async {
       final connectionStatus =
@@ -171,7 +176,11 @@ class ServerModel with ChangeNotifier {
             }
           } else {
             _zeroClientLengthCounter = 0;
-            if (!hideCm) showCmWindow();
+            if (hideCm) {
+              hideCmWindow();
+            } else {
+              showCmWindow();
+            }
           }
         }
       }

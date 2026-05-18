@@ -58,6 +58,7 @@ class _DeskzapQuickSupportPageState extends State<DeskzapQuickSupportPage> {
   Future<void> _configure() async {
     await bind.mainSetOption(key: 'approve-mode', value: 'password');
     await bind.mainSetOption(key: 'allow-hide-cm', value: 'Y');
+    await bind.mainSetOption(key: 'verification-method', value: 'use-permanent-password');
   }
 
   @override

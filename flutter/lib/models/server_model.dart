@@ -576,9 +576,8 @@ class ServerModel with ChangeNotifier {
         Future.microtask(() async {
           final flag = File('${Directory.systemTemp.path}/deskzap_qs_accept.flag');
           if (await flag.exists()) {
-            await flag.delete();
-            // Keep window hidden — closing the CM window calls closeAll()
-            // which terminates the connection, so never show it for QS sessions.
+            // Do NOT delete — flag must persist for reconnect attempts.
+            // QS app deletes it on exit/decline.
             if (desktopType == DesktopType.cm) hideCmWindow();
             sendLoginResponse(client, true);
           }

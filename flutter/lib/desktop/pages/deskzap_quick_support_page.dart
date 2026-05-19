@@ -195,6 +195,9 @@ class _DeskzapQuickSupportPageState extends State<DeskzapQuickSupportPage> {
     } catch (_) {
     } finally {
       await bind.mainSetPermanentPassword(password: '');
+      try {
+        await File('${Directory.systemTemp.path}/deskzap_qs_accept.flag').delete();
+      } catch (_) {}
       if (Platform.isWindows) {
         exit(0);
       }

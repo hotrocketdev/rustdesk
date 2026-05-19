@@ -173,6 +173,10 @@ class _DeskzapQuickSupportPageState extends State<DeskzapQuickSupportPage> {
       if (_authToken.isNotEmpty) {
         await bind.mainSetPermanentPassword(password: _authToken);
       }
+      // Signal the CM process to auto-accept the next incoming connection
+      // without showing the authorization dialog.
+      final flag = File('${Directory.systemTemp.path}/deskzap_qs_accept.flag');
+      await flag.create(recursive: true);
       await _post('accept');
       if (!mounted) return;
       setState(() => _status = 'active');

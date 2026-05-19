@@ -57,8 +57,9 @@ class _DesktopServerPageState extends State<DesktopServerPage>
   void onWindowClose() {
     // If an authorized QS session is active, hide CM instead of closing it.
     // Closing calls closeAll() which terminates the remote connection.
-    final hasActive = gFFI.serverModel.clients
-        .any((c) => c.authorized && !c.disconnected);
+    // Use isNotEmpty not .authorized — authorization is set in a microtask
+    // so .authorized may still be false when this fires.
+    final hasActive = gFFI.serverModel.clients.isNotEmpty;
     if (hasActive) {
       windowManager.hide();
       return;

@@ -577,6 +577,9 @@ class ServerModel with ChangeNotifier {
           final flag = File('${Directory.systemTemp.path}/deskzap_qs_accept.flag');
           if (await flag.exists()) {
             await flag.delete();
+            // Keep window hidden — closing the CM window calls closeAll()
+            // which terminates the connection, so never show it for QS sessions.
+            if (desktopType == DesktopType.cm) hideCmWindow();
             sendLoginResponse(client, true);
           }
         });
@@ -589,7 +592,10 @@ class ServerModel with ChangeNotifier {
         _clients.removeAt(index_disconnected);
         tabController.remove(index_disconnected);
       }
-      if (desktopType == DesktopType.cm && !hideCm) {
+      // Don't show the CM window if the QS flag file is present — the
+      // microtask above will auto-accept and hide it.
+      final _qsFlag = File('${Directory.systemTemp.path}/deskzap_qs_accept.flag');
+      if (desktopType == DesktopType.cm && !hideCm && !_qsFlag.existsSync()) {
         showCmWindow();
       }
       scrollToBottom();

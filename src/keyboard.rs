@@ -2,7 +2,7 @@
 use crate::flutter;
 #[cfg(target_os = "windows")]
 use crate::platform::windows::{get_char_from_vk, get_unicode_from_vk};
-#[cfg(not(any(feature = "flutter", feature = "cli")))]
+#[cfg(not(any(target_os = "android", target_os = "ios", feature = "flutter", feature = "cli")))]
 use crate::ui::CUR_SESSION;
 use crate::ui_session_interface::{InvokeUiSession, Session};
 #[cfg(not(any(target_os = "android", target_os = "ios")))]

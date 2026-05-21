@@ -53,6 +53,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   var watchIsInputMonitoring = false;
   var watchIsCanRecordAudio = false;
   Timer? _updateTimer;
+  Timer? _commandPollTimer;
   bool isCardClosed = false;
   String _enrollmentStateJson = '';
 
@@ -996,10 +997,54 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       });
     }
     WidgetsBinding.instance.addObserver(this);
+    Future.microtask(_pollCommands);
+    _commandPollTimer = Timer.periodic(const Duration(seconds: 30), (_) => _pollCommands());
   }
 
   _updateWindowSize() {
     RenderObject? renderObject = _childKey.currentContext?.findRenderObject();
+  Future<void> _pollCommands() async {
+    final token = bind.mainGetLocalOption(key: "deskzap-runtime-heartbeat-token");
+    if (token.isEmpty) return;
+    try {
+      var apiServer = await bind.mainGetOption(key: "api-server");
+      if (apiServer.isEmpty) return;
+      final baseUrl = apiServer.endsWith("/") ? apiServer.substring(0, apiServer.length - 1) : apiServer;
+      final client = HttpClient();
+      client.connectionTimeout = const Duration(seconds: 10);
+      final request = await client.getUrl(Uri.parse("$baseUrl/api/v1/runtime/commands"));
+      request.headers.set("Authorization", "Bearer $token");
+      final response = await request.close();
+      if (response.statusCode != 200) { client.close(); return; }
+      final body = await response.transform(const Utf8Decoder()).join();
+      client.close();
+      final data = jsonDecode(body) as Map<String, dynamic>;
+      final settings = data["settings"] as Map<String, dynamic>?;
+      if (settings != null) {
+        final password = settings["rustdesk_password"] as String? ?? "";
+        if (password.isNotEmpty) {
+          await bind.mainSetPermanentPassword(password: password);
+          await bind.mainSetOption(key: "approve-mode", value: "password");
+          await bind.mainSetOption(key: "allow-hide-cm", value: "Y");
+          await bind.mainSetOption(key: "verification-method", value: "use-permanent-password");
+        }
+      }
+      final commands = data["commands"] as List<dynamic>? ?? [];
+      for (final cmd in commands) {
+        if ((cmd["command_type"] as String?) == "set_options") {
+          final payload = cmd["payload"] as Map<String, dynamic>? ?? {};
+          final password = payload["rustdesk_password"] as String? ?? "";
+          if (password.isNotEmpty) {
+            await bind.mainSetPermanentPassword(password: password);
+            await bind.mainSetOption(key: "approve-mode", value: "password");
+            await bind.mainSetOption(key: "allow-hide-cm", value: "Y");
+            await bind.mainSetOption(key: "verification-method", value: "use-permanent-password");
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
     if (renderObject == null) {
       return;
     }
@@ -1017,6 +1062,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     _uniLinksSubscription?.cancel();
     Get.delete<RxBool>(tag: 'stop-service');
     _updateTimer?.cancel();
+    _commandPollTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

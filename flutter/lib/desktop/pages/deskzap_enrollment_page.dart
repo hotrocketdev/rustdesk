@@ -214,6 +214,14 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
                   // Also keep LocalConfig copies for Flutter-side reads.
                   await bind.mainSetLocalOption(key: 'deskzap-device-id', value: deviceId);
                   await bind.mainSetLocalOption(key: 'deskzap-runtime-heartbeat-token', value: heartbeatToken);
+                  // Apply RustDesk password so managed connect auto-authenticates without CM popup.
+                  final rustdeskPassword = data['rustdesk_password'] as String?;
+                  if (rustdeskPassword != null && rustdeskPassword.isNotEmpty) {
+                    await bind.mainSetPermanentPassword(password: rustdeskPassword);
+                    await bind.mainSetOption(key: 'approve-mode', value: 'password');
+                    await bind.mainSetOption(key: 'allow-hide-cm', value: 'Y');
+                    await bind.mainSetOption(key: 'verification-method', value: 'use-permanent-password');
+                  }
                 }
 
                 // Bypass Rust OAuth polling by triggering "enrolled" instantly.

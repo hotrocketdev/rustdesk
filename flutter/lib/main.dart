@@ -293,7 +293,10 @@ void runConnectionManagerScreen() async {
     const DesktopServerPage(),
     MyTheme.currentThemeMode(),
   );
-  final hide = await bind.cmGetConfig(name: "hide_cm") == 'true';
+  // Preserve hideCm=true computed by ServerModel from approve-mode options
+  // (set by QS _configure()). cmGetConfig("hide_cm") is always false by
+  // default, so without this OR the CM window shows during QS sessions.
+  final hide = await bind.cmGetConfig(name: "hide_cm") == 'true' || gFFI.serverModel.hideCm;
   gFFI.serverModel.hideCm = hide;
   if (hide) {
     await hideCmWindow(isStartup: true);

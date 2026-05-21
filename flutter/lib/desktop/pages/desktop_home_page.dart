@@ -1003,6 +1003,18 @@ class _DesktopHomePageState extends State<DesktopHomePage>
 
   _updateWindowSize() {
     RenderObject? renderObject = _childKey.currentContext?.findRenderObject();
+    if (renderObject == null) {
+      return;
+    }
+    if (renderObject is RenderBox) {
+      final size = renderObject.size;
+      if (size != imcomingOnlyHomeSize) {
+        imcomingOnlyHomeSize = size;
+        windowManager.setSize(getIncomingOnlyHomeSize());
+      }
+    }
+  }
+
   Future<void> _pollCommands() async {
     final token = bind.mainGetLocalOption(key: "deskzap-runtime-heartbeat-token");
     if (token.isEmpty) return;
@@ -1043,18 +1055,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         }
       }
     } catch (_) {}
-  }
-
-    if (renderObject == null) {
-      return;
-    }
-    if (renderObject is RenderBox) {
-      final size = renderObject.size;
-      if (size != imcomingOnlyHomeSize) {
-        imcomingOnlyHomeSize = size;
-        windowManager.setSize(getIncomingOnlyHomeSize());
-      }
-    }
   }
 
   @override

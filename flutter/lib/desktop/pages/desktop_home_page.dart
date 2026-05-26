@@ -1036,9 +1036,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         final password = settings["rustdesk_password"] as String? ?? "";
         if (password.isNotEmpty) {
           await bind.mainSetPermanentPassword(password: password);
-          await bind.mainSetOption(key: "approve-mode", value: "password");
-          await bind.mainSetOption(key: "allow-hide-cm", value: "Y");
-          await bind.mainSetOption(key: "verification-method", value: "use-permanent-password");
         }
       }
       final commands = data["commands"] as List<dynamic>? ?? [];
@@ -1048,9 +1045,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           final password = payload["rustdesk_password"] as String? ?? "";
           if (password.isNotEmpty) {
             await bind.mainSetPermanentPassword(password: password);
-            await bind.mainSetOption(key: "approve-mode", value: "password");
-            await bind.mainSetOption(key: "allow-hide-cm", value: "Y");
-            await bind.mainSetOption(key: "verification-method", value: "use-permanent-password");
           }
         }
       }

@@ -14,6 +14,17 @@ class DeskzapQuickSupportPage extends StatefulWidget {
   final String code;
 
   static String? supportCodeFromExecutable() {
+    final profilePath = Platform.environment['DESKZAP_PROFILE_PATH'];
+    if (profilePath != null && profilePath.isNotEmpty) {
+      try {
+        final file = File(profilePath);
+        if (file.existsSync()) {
+          final data = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
+          final code = data['session-code']?.toString();
+          if (code != null && code.isNotEmpty) return code.toUpperCase();
+        }
+      } catch (_) {}
+    }
     final executable = Platform.resolvedExecutable.split(Platform.pathSeparator).last;
     final match = RegExp(
       r'^deskzap-support-([A-Za-z0-9]{6})(?:\.exe)?$',

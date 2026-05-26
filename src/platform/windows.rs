@@ -1422,7 +1422,7 @@ fn get_after_install(
     reg_value_printer: Option<String>,
 ) -> String {
     let app_name = crate::get_app_name();
-    let ext = app_name.to_lowercase();
+    let ext = crate::common::get_protocol_scheme();
 
     // reg delete HKEY_CURRENT_USER\Software\Classes for
     // https://github.com/rustdesk/rustdesk/commit/f4bdfb6936ae4804fc8ab1cf560db192622ad01a
@@ -1690,7 +1690,7 @@ pub fn run_before_uninstall() -> ResultType<()> {
 fn get_before_uninstall(kill_self: bool) -> String {
     let app_name = crate::get_app_name();
     let app_exe_name = get_app_exe_name();
-    let ext = app_name.to_lowercase();
+    let ext = crate::common::get_protocol_scheme();
     let filter = if kill_self {
         "".to_string()
     } else {

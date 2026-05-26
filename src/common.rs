@@ -1115,9 +1115,22 @@ pub fn is_rustdesk() -> bool {
     hbb_common::config::APP_NAME.read().unwrap().eq("RustDesk")
 }
 
+/// Returns the URL protocol scheme name (e.g. "deskzap") without the "://" suffix.
+/// Deskzap builds always use "deskzap" regardless of the full app name
+/// (e.g. "Deskzap Connect" or "Deskzap Host") so the Windows protocol handler
+/// matches the scheme hardcoded in the web console deep-link generator.
+#[inline]
+pub fn get_protocol_scheme() -> String {
+    let name = get_app_name().to_lowercase();
+    if name.contains("deskzap") {
+        return "deskzap".to_owned();
+    }
+    name
+}
+
 #[inline]
 pub fn get_uri_prefix() -> String {
-    format!("{}://", get_app_name().to_lowercase())
+    format!("{}://", get_protocol_scheme())
 }
 
 #[cfg(target_os = "macos")]

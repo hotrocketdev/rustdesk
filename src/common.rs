@@ -2287,8 +2287,21 @@ fn start_deskzap_runtime_heartbeat_loop(api_server: String, operating_system: St
             DESKZAP_RUNTIME_HEARTBEAT_INTERVAL_SECS,
         ));
 
-        let runtime_heartbeat_token =
+        let mut runtime_heartbeat_token =
             Config::get_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION);
+        // Fallback: if Config is empty (e.g. token only written to LocalConfig by Flutter),
+        // try LocalConfig and sync it back to Config so subsequent polls pick it up.
+        if runtime_heartbeat_token.trim().is_empty() {
+            let local = LocalConfig::get_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION);
+            if !local.trim().is_empty() {
+                log::info!("Deskzap heartbeat: syncing token from LocalConfig to Config");
+                runtime_heartbeat_token = local;
+                Config::set_option(
+                    DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION.to_owned(),
+                    runtime_heartbeat_token.clone(),
+                );
+            }
+        }
         if runtime_heartbeat_token.trim().is_empty() {
             log::warn!("Deskzap runtime heartbeat loop skipped because token is empty");
             continue;

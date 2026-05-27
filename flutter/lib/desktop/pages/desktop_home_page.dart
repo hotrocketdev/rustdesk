@@ -999,7 +999,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       });
     }
     WidgetsBinding.instance.addObserver(this);
-    Future.microtask(_pollCommands);
     _commandPollTimer = Timer.periodic(const Duration(seconds: 30), (_) => _pollCommands());
   }
 

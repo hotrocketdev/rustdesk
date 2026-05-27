@@ -25,6 +25,16 @@ class DeskzapQuickSupportPage extends StatefulWidget {
         }
       } catch (_) {}
     }
+    // Try profile JSON in the same directory as the executable (SFX install dir)
+    try {
+      final exeDir = File(Platform.resolvedExecutable).parent.path;
+      final profileFile = File('$exeDir${Platform.pathSeparator}deskzap-profile.json');
+      if (profileFile.existsSync()) {
+        final data = jsonDecode(profileFile.readAsStringSync()) as Map<String, dynamic>;
+        final code = data['session-code']?.toString();
+        if (code != null && code.isNotEmpty) return code.toUpperCase();
+      }
+    } catch (_) {}
     final executable = Platform.resolvedExecutable.split(Platform.pathSeparator).last;
     final match = RegExp(
       r'^deskzap-support-([A-Za-z0-9]{6})(?:\.exe)?$',

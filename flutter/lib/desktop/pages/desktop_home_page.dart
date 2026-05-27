@@ -1018,6 +1018,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   }
 
   Future<void> _pollCommands() async {
+    if (!bind.isIncomingOnly()) return;
     final token = bind.mainGetLocalOption(key: "deskzap-runtime-heartbeat-token");
     if (token.isEmpty) return;
     try {

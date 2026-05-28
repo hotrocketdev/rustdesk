@@ -14,6 +14,9 @@ class DeskzapQuickSupportPage extends StatefulWidget {
   final String code;
 
   static String? supportCodeFromExecutable() {
+    // Direct path: launcher embeds code as env var — most reliable
+    final sessionCode = Platform.environment['DESKZAP_SESSION_CODE'];
+    if (sessionCode != null && sessionCode.isNotEmpty) return sessionCode.toUpperCase();
     final profilePath = Platform.environment['DESKZAP_PROFILE_PATH'];
     if (profilePath != null && profilePath.isNotEmpty) {
       try {

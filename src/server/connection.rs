@@ -2137,6 +2137,7 @@ impl Connection {
                     if !crate::platform::is_prelogin()
                         && !err.to_string().contains(crate::platform::EXPLORER_EXE)
                         && !crate::hbbs_http::sync::is_pro()
+                        && !hbb_common::config::is_incoming_only()
                     {
                         allow_err!(tx_from_cm_clone.send(Data::CmErr(err.to_string())));
                     }
@@ -4847,7 +4848,7 @@ async fn start_ipc(
                 .unwrap()
                 .push(crate::run_me(args)?);
         }
-        for _ in 0..20 {
+        for _ in 0..40 {
             sleep(0.3).await;
             if let Ok(s) = crate::ipc::connect(1000, "_cm").await {
                 stream = Some(s);

@@ -1000,6 +1000,10 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     }
     WidgetsBinding.instance.addObserver(this);
     _commandPollTimer = Timer.periodic(const Duration(seconds: 30), (_) => _pollCommands());
+    // Fire immediately on startup so Host has the correct permanent password
+    // before the first 30s interval elapses. _pollCommands guards itself with
+    // isIncomingOnly() so this is a no-op for QS and Connect.
+    Future.microtask(_pollCommands);
   }
 
   _updateWindowSize() {

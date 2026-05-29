@@ -1934,6 +1934,14 @@ pub async fn io_loop<T: InvokeUiSession>(handler: Session<T>, round: u32) {
     } else {
         deskzap_token
     };
+    // If connect-direct returned a rustdesk_password and no password was supplied
+    // via deep link args, inject it so the host's approve-mode=password check passes.
+    if handler.password.is_empty() {
+        let pending_pw = crate::common::get_deskzap_pending_peer_password();
+        if !pending_pw.is_empty() {
+            handler.password = pending_pw;
+        }
+    }
     log::info!("Deskzap: io_loop final token — empty={}", token.is_empty());
     let key = crate::get_key(false).await;
     #[cfg(not(any(target_os = "android", target_os = "ios")))]

@@ -69,6 +69,7 @@ const DESKZAP_SESSION_ID_OPTION: &str = "deskzap-session-id";
 const DESKZAP_AUTHORIZATION_TOKEN_OPTION: &str = "deskzap-authorization-token";
 const DESKZAP_DEVICE_ID_OPTION: &str = "deskzap-device-id";
 const DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION: &str = "deskzap-runtime-heartbeat-token";
+const DESKZAP_PENDING_PEER_PASSWORD_OPTION: &str = "deskzap-pending-peer-password";
 const DESKZAP_PUBLIC_WEB_URL: &str = "https://my.deskzap.co.uk";
 const DESKZAP_DOMAIN: &str = "deskzap.co.uk";
 const DESKZAP_RUNTIME_HEARTBEAT_INTERVAL_SECS: u64 = 30;
@@ -1866,6 +1867,10 @@ pub fn get_deskzap_relay_token() -> String {
     LocalConfig::get_option(DESKZAP_AUTHORIZATION_TOKEN_OPTION)
 }
 
+pub fn get_deskzap_pending_peer_password() -> String {
+    LocalConfig::get_option(DESKZAP_PENDING_PEER_PASSWORD_OPTION)
+}
+
 pub async fn fetch_deskzap_authorization_token(rustdesk_id: &str) -> String {
     let access_token = LocalConfig::get_option("access_token");
     if access_token.is_empty() {
@@ -1924,10 +1929,23 @@ fn deskzap_connect_direct_blocking(url: &str, access_token: &str, rustdesk_id: &
         return String::new();
     }
     match resp.json::<serde_json::Value>() {
-        Ok(json) => json["authorization"]["authorization_token"]
-            .as_str()
-            .unwrap_or("")
-            .to_string(),
+        Ok(json) => {
+            let token = json["authorization"]["authorization_token"]
+                .as_str()
+                .unwrap_or("")
+                .to_string();
+            let password = json["authorization"]["rustdesk_password"]
+                .as_str()
+                .unwrap_or("")
+                .to_string();
+            if !password.is_empty() {
+                LocalConfig::set_option(
+                    DESKZAP_PENDING_PEER_PASSWORD_OPTION.to_owned(),
+                    password,
+                );
+            }
+            token
+        }
         Err(e) => {
             log::warn!("Deskzap: parse error: {}", e);
             String::new()

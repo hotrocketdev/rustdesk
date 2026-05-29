@@ -1920,7 +1920,7 @@ impl<T: InvokeUiSession> Session<T> {
 }
 
 #[tokio::main(flavor = "current_thread")]
-pub async fn io_loop<T: InvokeUiSession>(handler: Session<T>, round: u32) {
+pub async fn io_loop<T: InvokeUiSession>(mut handler: Session<T>, round: u32) {
     #[cfg(any(target_os = "android", target_os = "ios"))]
     let (sender, receiver) = mpsc::unbounded_channel::<Data>();
     #[cfg(not(any(target_os = "android", target_os = "ios")))]

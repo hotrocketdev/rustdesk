@@ -2292,11 +2292,26 @@ impl Connection {
             let is_logon = || crate::platform::is_prelogin();
 
             if config::is_incoming_only() {
-                let runtime_token = hbb_common::config::LocalConfig::get_option(
-                    "deskzap-runtime-heartbeat-token",
-                );
+                // For QS (deskzap-support.exe), LocalConfig may carry the host's heartbeat
+                // token when host is co-installed on the same machine/user. Detect QS by
+                // exe name so we never accidentally run the host's API auth check for a
+                // QS session — relay verification is the sole gate for QS.
+                let is_qs_exe = std::env::current_exe()
+                    .ok()
+                    .and_then(|p| {
+                        p.file_name()
+                            .map(|n| n.to_string_lossy().contains("deskzap-support"))
+                    })
+                    .unwrap_or(false);
+                let runtime_token = if is_qs_exe {
+                    String::new()
+                } else {
+                    hbb_common::config::LocalConfig::get_option(
+                        "deskzap-runtime-heartbeat-token",
+                    )
+                };
                 let approved = if runtime_token.is_empty() {
-                    true // QS — no runtime token, relay is the only gate
+                    true // QS — relay is the only gate
                 } else {
                     crate::common::verify_deskzap_active_authorization().await
                 };

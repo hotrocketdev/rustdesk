@@ -1928,22 +1928,11 @@ pub async fn io_loop<T: InvokeUiSession>(mut handler: Session<T>, round: u32) {
     *handler.sender.write().unwrap() = Some(sender.clone());
     let peer_id = handler.get_id();
     let deskzap_token = crate::common::fetch_deskzap_authorization_token(&peer_id).await;
-    let has_deskzap_token = !deskzap_token.is_empty();
-    log::info!("Deskzap: io_loop token after fetch — empty={} peer={}", !has_deskzap_token, peer_id);
-    let token = if has_deskzap_token {
+    let token = if !deskzap_token.is_empty() {
         deskzap_token
     } else {
         crate::get_rendezvous_access_token()
     };
-    // Only inject the pending password for connect-direct sessions (has_deskzap_token).
-    // QS sessions have no deskzap token and must not receive a stale password from a prior session.
-    if handler.password.is_empty() && has_deskzap_token {
-        let pending_pw = crate::common::get_deskzap_pending_peer_password();
-        if !pending_pw.is_empty() {
-            handler.password = pending_pw;
-        }
-    }
-    log::info!("Deskzap: io_loop final token — empty={}", token.is_empty());
     let key = crate::get_key(false).await;
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     if handler.is_port_forward() {

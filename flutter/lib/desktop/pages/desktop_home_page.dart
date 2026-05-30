@@ -1000,10 +1000,6 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     }
     WidgetsBinding.instance.addObserver(this);
     _commandPollTimer = Timer.periodic(const Duration(seconds: 30), (_) => _pollCommands());
-    // Fire immediately on startup so Host has the correct permanent password
-    // before the first 30s interval elapses. _pollCommands guards itself with
-    // isIncomingOnly() so this is a no-op for QS and Connect.
-    Future.microtask(_pollCommands);
   }
 
   _updateWindowSize() {
@@ -1037,21 +1033,11 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       final body = await response.transform(const Utf8Decoder()).join();
       client.close();
       final data = jsonDecode(body) as Map<String, dynamic>;
-      final settings = data["settings"] as Map<String, dynamic>?;
-      if (settings != null) {
-        final password = settings["rustdesk_password"] as String? ?? "";
-        if (password.isNotEmpty) {
-          await bind.mainSetPermanentPassword(password: password);
-        }
-      }
       final commands = data["commands"] as List<dynamic>? ?? [];
       for (final cmd in commands) {
-        if ((cmd["command_type"] as String?) == "set_options") {
-          final payload = cmd["payload"] as Map<String, dynamic>? ?? {};
-          final password = payload["rustdesk_password"] as String? ?? "";
-          if (password.isNotEmpty) {
-            await bind.mainSetPermanentPassword(password: password);
-          }
+        final cmdType = cmd["command_type"] as String? ?? "";
+        if (cmdType == "set_options") {
+          // reserved for future remote option updates (Task 7)
         }
       }
     } catch (_) {}

@@ -69,7 +69,6 @@ const DESKZAP_SESSION_ID_OPTION: &str = "deskzap-session-id";
 const DESKZAP_AUTHORIZATION_TOKEN_OPTION: &str = "deskzap-authorization-token";
 const DESKZAP_DEVICE_ID_OPTION: &str = "deskzap-device-id";
 const DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION: &str = "deskzap-runtime-heartbeat-token";
-const DESKZAP_PENDING_PEER_PASSWORD_OPTION: &str = "deskzap-pending-peer-password";
 const DESKZAP_PUBLIC_WEB_URL: &str = "https://my.deskzap.co.uk";
 const DESKZAP_DOMAIN: &str = "deskzap.co.uk";
 const DESKZAP_RUNTIME_HEARTBEAT_INTERVAL_SECS: u64 = 30;
@@ -1867,8 +1866,28 @@ pub fn get_deskzap_relay_token() -> String {
     LocalConfig::get_option(DESKZAP_AUTHORIZATION_TOKEN_OPTION)
 }
 
-pub fn get_deskzap_pending_peer_password() -> String {
-    LocalConfig::get_option(DESKZAP_PENDING_PEER_PASSWORD_OPTION)
+pub async fn verify_deskzap_active_authorization() -> bool {
+    let runtime_token = LocalConfig::get_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION);
+    if runtime_token.is_empty() {
+        return false;
+    }
+    let api_server = Config::get_option(keys::OPTION_API_SERVER);
+    if api_server.is_empty() {
+        return false;
+    }
+    let url = format!(
+        "{}/api/v1/runtime/authorizations/active",
+        api_server.trim_end_matches('/')
+    );
+    let client = create_http_client_async(TlsType::Rustls, false);
+    let fut = client
+        .get(&url)
+        .header("Authorization", format!("Bearer {}", runtime_token))
+        .send();
+    match tokio::time::timeout(StdDuration::from_secs(5), fut).await {
+        Ok(Ok(resp)) => resp.status().as_u16() == 200,
+        _ => false,
+    }
 }
 
 pub async fn fetch_deskzap_authorization_token(rustdesk_id: &str) -> String {
@@ -1929,23 +1948,10 @@ fn deskzap_connect_direct_blocking(url: &str, access_token: &str, rustdesk_id: &
         return String::new();
     }
     match resp.json::<serde_json::Value>() {
-        Ok(json) => {
-            let token = json["authorization"]["authorization_token"]
-                .as_str()
-                .unwrap_or("")
-                .to_string();
-            let password = json["authorization"]["rustdesk_password"]
-                .as_str()
-                .unwrap_or("")
-                .to_string();
-            if !password.is_empty() {
-                LocalConfig::set_option(
-                    DESKZAP_PENDING_PEER_PASSWORD_OPTION.to_owned(),
-                    password,
-                );
-            }
-            token
-        }
+        Ok(json) => json["authorization"]["authorization_token"]
+            .as_str()
+            .unwrap_or("")
+            .to_string(),
         Err(e) => {
             log::warn!("Deskzap: parse error: {}", e);
             String::new()

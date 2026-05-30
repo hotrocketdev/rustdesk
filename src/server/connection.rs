@@ -2291,6 +2291,31 @@ impl Connection {
             #[cfg(any(target_os = "android", target_os = "ios"))]
             let is_logon = || crate::platform::is_prelogin();
 
+            if config::is_incoming_only() {
+                let runtime_token = hbb_common::config::LocalConfig::get_option(
+                    "deskzap-runtime-heartbeat-token",
+                );
+                let approved = if runtime_token.is_empty() {
+                    true // QS — no runtime token, relay is the only gate
+                } else {
+                    crate::common::verify_deskzap_active_authorization().await
+                };
+                if approved {
+                    if err_msg.is_empty() {
+                        #[cfg(target_os = "linux")]
+                        self.linux_headless_handle.wait_desktop_cm_ready().await;
+                        if !self.send_logon_response_and_keep_alive().await {
+                            return false;
+                        }
+                        self.try_start_cm(lr.my_id.clone(), lr.my_name.clone(), true);
+                    } else {
+                        self.send_login_error(err_msg).await;
+                    }
+                    return true;
+                }
+                // API returned false — fall through to password check (backward compat)
+            }
+
             if !hbb_common::is_ip_str(&lr.username)
                 && !hbb_common::is_domain_port_str(&lr.username)
                 && lr.username != Config::get_id()

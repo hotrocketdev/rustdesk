@@ -2863,6 +2863,8 @@ fn apply_deskzap_role_from_exe_name() {
 
     let (app_name, conn_type) = if exe_name.contains("deskzap-host") {
         ("Deskzap Host", "incoming")
+    } else if exe_name.contains("deskzap-support") {
+        ("Deskzap Quick Support", "incoming")
     } else if exe_name.contains("deskzap-connect") {
         ("Deskzap Connect", "outgoing")
     } else {

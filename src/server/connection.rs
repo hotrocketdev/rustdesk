@@ -2120,6 +2120,16 @@ impl Connection {
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     fn try_start_cm_ipc(&mut self) {
         if let Some(p) = self.start_cm_ipc_para.take() {
+            // Compute before the move so the async task can capture it.
+            // is_incoming_only() returns false in the portable service process
+            // (HARD_SETTINGS not populated), so check the exe name directly.
+            let is_qs_exe = std::env::current_exe()
+                .ok()
+                .and_then(|p| {
+                    p.file_name()
+                        .map(|n| n.to_string_lossy().contains("deskzap-support"))
+                })
+                .unwrap_or(false);
             tokio::spawn(async move {
                 #[cfg(windows)]
                 let tx_from_cm_clone = p.tx_from_cm.clone();
@@ -2138,6 +2148,7 @@ impl Connection {
                         && !err.to_string().contains(crate::platform::EXPLORER_EXE)
                         && !crate::hbbs_http::sync::is_pro()
                         && !hbb_common::config::is_incoming_only()
+                        && !is_qs_exe
                     {
                         allow_err!(tx_from_cm_clone.send(Data::CmErr(err.to_string())));
                     }
@@ -4523,6 +4534,17 @@ impl Connection {
     #[cfg(windows)]
     fn portable_check(&mut self) {
         if self.portable.is_installed || !self.is_remote() || !self.keyboard {
+            return;
+        }
+        // The QS portable service process never sets the client-side RUNNING flag,
+        // so portable_client::running() always returns false here. Skip the check
+        // entirely for QS to avoid sending a spurious elevation request that closes
+        // the controller's session window.
+        if std::env::current_exe()
+            .ok()
+            .and_then(|p| p.file_name().map(|n| n.to_string_lossy().contains("deskzap-support")))
+            .unwrap_or(false)
+        {
             return;
         }
         let running = portable_client::running();

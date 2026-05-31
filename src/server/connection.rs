@@ -2291,18 +2291,20 @@ impl Connection {
             #[cfg(any(target_os = "android", target_os = "ios"))]
             let is_logon = || crate::platform::is_prelogin();
 
-            if config::is_incoming_only() {
-                // For QS (deskzap-support.exe), LocalConfig may carry the host's heartbeat
-                // token when host is co-installed on the same machine/user. Detect QS by
-                // exe name so we never accidentally run the host's API auth check for a
-                // QS session — relay verification is the sole gate for QS.
-                let is_qs_exe = std::env::current_exe()
-                    .ok()
-                    .and_then(|p| {
-                        p.file_name()
-                            .map(|n| n.to_string_lossy().contains("deskzap-support"))
-                    })
-                    .unwrap_or(false);
+            // Detect QS exe by name — must happen before is_incoming_only() so QS
+            // auto-approves even when HARD_SETTINGS["conn-type"] isn't set in the
+            // server/portable-service process (where profile env may not propagate).
+            let is_qs_exe = std::env::current_exe()
+                .ok()
+                .and_then(|p| {
+                    p.file_name()
+                        .map(|n| n.to_string_lossy().contains("deskzap-support"))
+                })
+                .unwrap_or(false);
+            if is_qs_exe || config::is_incoming_only() {
+                // QS: relay is the sole gate — never use LocalConfig token (co-installed
+                // host shares LocalConfig and would trigger the wrong API verify path).
+                // Host: use LocalConfig token and verify active authorization via API.
                 let runtime_token = if is_qs_exe {
                     String::new()
                 } else {

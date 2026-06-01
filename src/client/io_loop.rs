@@ -180,12 +180,16 @@ impl<T: InvokeUiSession> Remote<T> {
                     .lock()
                     .unwrap()
                     .set_connected();
-                crate::common::report_deskzap_runtime_session_state(
+                // Fire-and-forget: do NOT await here — blocking the io_loop
+                // before peer.next() is reached causes hbbr inactivity timeout (~3s)
+                // to fire, which RSTs the relay before any LoginRequest is sent.
+                let _session_id = format!("{}-{}", self.handler.get_id(), round);
+                let _network = if direct { "direct" } else { "relay" };
+                tokio::spawn(crate::common::report_deskzap_runtime_session_state(
                     "active",
-                    Some(format!("{}-{}", self.handler.get_id(), round)),
-                    Some(if direct { "direct" } else { "relay" }),
-                )
-                .await;
+                    Some(_session_id),
+                    Some(_network),
+                ));
                 self.handler
                     .set_connection_type(peer.is_secured(), direct, stream_type); // flutter -> connection_ready
                 self.handler.update_direct(Some(direct));
@@ -350,12 +354,11 @@ impl<T: InvokeUiSession> Remote<T> {
             .set_disconnected(round);
 
         if _set_disconnected_ok {
-            crate::common::report_deskzap_runtime_session_state(
+            tokio::spawn(crate::common::report_deskzap_runtime_session_state(
                 "completed",
                 Some(format!("{}-{}", self.handler.get_id(), round)),
                 None,
-            )
-            .await;
+            ));
         }
 
         #[cfg(not(target_os = "ios"))]

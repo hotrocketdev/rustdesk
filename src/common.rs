@@ -2796,7 +2796,7 @@ pub async fn report_deskzap_runtime_session_state(
         "{}/api/v1/runtime/sessions/state",
         Config::get_option(keys::OPTION_API_SERVER).trim_end_matches('/')
     );
-    if let Err(err) = post_request_sync(url, body.to_string(), "{}") {
+    if let Err(err) = post_request(url, body.to_string(), "{}").await {
         log::warn!(
             "Failed to report Deskzap runtime session state {}: {}",
             status,

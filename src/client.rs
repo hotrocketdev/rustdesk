@@ -3879,7 +3879,10 @@ pub fn check_if_retry(msgtype: &str, title: &str, text: &str, retry_for_relay: b
                 && !text.to_lowercase().contains("resolve")
                 && !text.to_lowercase().contains("mismatch")
                 && !text.to_lowercase().contains("manually")
-                && !text.to_lowercase().contains("not allowed")))
+                && !text.to_lowercase().contains("not allowed")
+                // "Reset by the peer" = remote deliberately closed — never auto-reconnect.
+                // Network drops produce TCP error codes (10054/104), not this message.
+                && text != "Reset by the peer"))
 }
 
 pub async fn hc_connection(

@@ -493,6 +493,7 @@ impl sciter::EventHandler for SciterSession {
         fn input_os_password(String, bool);
         fn save_close_state(String, String);
         fn is_file_transfer();
+        fn get_session_feature(String);
         fn is_port_forward();
         fn is_rdp();
         fn login(String, String, String, bool);

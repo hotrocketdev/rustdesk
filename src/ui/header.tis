@@ -17,6 +17,12 @@ var svg_secure_relay = <svg viewBox="0 0 347.97 347.97"><path d="M317.469 61.615
 var svg_recording_off = <svg t="1663505560063" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5393" width="32" height="32"><path d="M1002.666667 260.266667c-12.8-8.533333-29.866667-4.266667-42.666667 4.266666L725.333333 430.933333V298.666667c0-72.533333-55.466667-128-128-128H128C55.466667 170.666667 0 226.133333 0 298.666667v426.666666c0 72.533333 55.466667 128 128 128h469.333333c72.533333 0 128-55.466667 128-128v-132.266666l230.4 166.4c17.066667 12.8 46.933333 8.533333 59.733334-8.533334 4.266667-8.533333 8.533333-17.066667 8.533333-25.6V298.666667c0-17.066667-8.533333-29.866667-21.333333-38.4zM640 725.333333c0 25.6-17.066667 42.666667-42.666667 42.666667H128c-25.6 0-42.666667-17.066667-42.666667-42.666667V298.666667c0-25.6 17.066667-42.666667 42.666667-42.666667h469.333333c25.6 0 42.666667 17.066667 42.666667 42.666667v426.666666z m298.666667-81.066666L755.2 512 938.666667 379.733333v264.533334z" p-id="5394" fill="#8a8a8a"></path></svg>;
 var svg_recording_on = <svg t="1663505598640" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="5644" width="32" height="32"><path d="M1002.666667 260.266667c-12.8-8.533333-29.866667-4.266667-42.666667 4.266666L725.333333 430.933333V298.666667c0-72.533333-55.466667-128-128-128H128C55.466667 170.666667 0 226.133333 0 298.666667v426.666666c0 72.533333 55.466667 128 128 128h469.333333c72.533333 0 128-55.466667 128-128v-132.266666l230.4 166.4c17.066667 12.8 46.933333 8.533333 59.733334-8.533334 4.266667-8.533333 8.533333-17.066667 8.533333-25.6V298.666667c0-17.066667-8.533333-29.866667-21.333333-38.4z" p-id="5645" fill="#2C8CFF"></path></svg>;
 
+// Deskzap: read per-tier feature flags from the persisted launch payload.
+// When a feature is missing or absent, it defaults to true (unrestricted).
+var chat_allowed = handler.get_session_feature("chat");
+var multi_monitor_allowed = handler.get_session_feature("multi_monitor");
+var file_transfer_allowed = handler.get_session_feature("file_transfer");
+
 var cur_window_state = view.windowState;
 function check_state_change() {
     if (view.windowState != cur_window_state) {
@@ -147,9 +153,9 @@ class Header: Reactor.Component {
                 <div style="flow:horizontal;border-spacing: 0.5em;">{screens}</div>
                 {this.renderGlobalScreens()}
             </div>
-            <span #chat>{svg_chat}</span>
+            {chat_allowed ? <span #chat>{svg_chat}</span> : ""}
             <span #action>{svg_action}</span>
-            <span #display>{svg_display}</span>
+            {multi_monitor_allowed ? <span #display>{svg_display}</span> : ""}
             <span #keyboard>{svg_keyboard}</span>
             {recording_enabled ? <span #recording>{recording ? svg_recording_on : svg_recording_off}</span> : ""}
             {this.renderKeyboardPop()}
@@ -229,7 +235,7 @@ class Header: Reactor.Component {
         return <popup>
             <menu.context #action-options>
                 {keyboard_enabled ? <li #os-password>{translate('OS Password')}<EditOsPassword /></li> : ""}
-                <li #transfer-file>{translate('Transfer file')}</li> 
+                {file_transfer_allowed ? <li #transfer-file>{translate('Transfer file')}</li> : ""}
                 <li #tunnel>{translate('TCP tunneling')}</li> 
                 {handler.get_audit_server("conn") && <li #note>{translate('Note')}</li>}
                 <div .separator />
@@ -297,6 +303,7 @@ class Header: Reactor.Component {
     }
     
     event click $(#chat) {
+        if (!chat_allowed) return;
         startChat();
     }
     
@@ -306,6 +313,7 @@ class Header: Reactor.Component {
     }
 
     event click $(#display) (_, me) {
+        if (!multi_monitor_allowed) return;
         var menu = $(menu#display-options);
         me.popup(menu);
     }
@@ -321,11 +329,13 @@ class Header: Reactor.Component {
     }
 
     event click $(#screen) (_, me) {
+        if (!multi_monitor_allowed) return;
         if (pi.current_display == me.index) return;
         handler.switch_display(me.index);
     }
     
     event keyup (evt) {
+        if (!multi_monitor_allowed) return;
         if((pi.displays || []).length > 0 && evt.keyCode == 220)
         { 
             if (pi.displays.length > pi.current_display) 
@@ -336,6 +346,7 @@ class Header: Reactor.Component {
     }
 
     event click $(#transfer-file) {
+        if (!file_transfer_allowed) return;
         handler.transfer_file();
     }
     

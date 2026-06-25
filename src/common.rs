@@ -2764,6 +2764,15 @@ fn get_deskzap_launch_payload() -> Option<DeskzapLaunchPayload> {
         .ok()
 }
 
+pub fn get_deskzap_session_feature(name: &str) -> bool {
+    if let Some(payload) = get_deskzap_launch_payload() {
+        if let Some(ref features) = payload.session_features {
+            return features.get(name).copied().unwrap_or(false);
+        }
+    }
+    true
+}
+
 pub async fn report_deskzap_runtime_session_state(
     status: &str,
     rustdesk_session_id: Option<String>,

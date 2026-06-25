@@ -204,6 +204,10 @@ impl<T: InvokeUiSession> Session<T> {
             .eq(&ConnType::FILE_TRANSFER)
     }
 
+    pub fn get_session_feature(&self, name: &str) -> bool {
+        crate::common::get_deskzap_session_feature(name)
+    }
+
     pub fn is_default(&self) -> bool {
         self.lc
             .read()

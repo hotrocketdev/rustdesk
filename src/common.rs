@@ -120,6 +120,8 @@ pub struct DeskzapLaunchPayload {
     pub force_relay: bool,
     #[serde(default)]
     pub password: String,
+    #[serde(default)]
+    pub session_features: Option<std::collections::HashMap<String, bool>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

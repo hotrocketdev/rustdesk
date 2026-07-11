@@ -2122,14 +2122,8 @@ impl Connection {
         if let Some(p) = self.start_cm_ipc_para.take() {
             // Compute before the move so the async task can capture it.
             // is_incoming_only() returns false in the portable service process
-            // (HARD_SETTINGS not populated), so check the exe name directly.
-            let is_qs_exe = std::env::current_exe()
-                .ok()
-                .and_then(|p| {
-                    p.file_name()
-                        .map(|n| n.to_string_lossy().contains("deskzap-support"))
-                })
-                .unwrap_or(false);
+            // (HARD_SETTINGS not populated), so check the process identity directly.
+            let is_qs_exe = crate::common::is_deskzap_qs_process();
             tokio::spawn(async move {
                 #[cfg(windows)]
                 let tx_from_cm_clone = p.tx_from_cm.clone();
@@ -2302,16 +2296,10 @@ impl Connection {
             #[cfg(any(target_os = "android", target_os = "ios"))]
             let is_logon = || crate::platform::is_prelogin();
 
-            // Detect QS exe by name — must happen before is_incoming_only() so QS
+            // Detect QS process — must happen before is_incoming_only() so QS
             // auto-approves even when HARD_SETTINGS["conn-type"] isn't set in the
             // server/portable-service process (where profile env may not propagate).
-            let is_qs_exe = std::env::current_exe()
-                .ok()
-                .and_then(|p| {
-                    p.file_name()
-                        .map(|n| n.to_string_lossy().contains("deskzap-support"))
-                })
-                .unwrap_or(false);
+            let is_qs_exe = crate::common::is_deskzap_qs_process();
             if is_qs_exe || config::is_incoming_only() {
                 // QS: relay is the sole gate — never use LocalConfig token (co-installed
                 // host shares LocalConfig and would trigger the wrong API verify path).
@@ -4540,11 +4528,7 @@ impl Connection {
         // so portable_client::running() always returns false here. Skip the check
         // entirely for QS to avoid sending a spurious elevation request that closes
         // the controller's session window.
-        if std::env::current_exe()
-            .ok()
-            .and_then(|p| p.file_name().map(|n| n.to_string_lossy().contains("deskzap-support")))
-            .unwrap_or(false)
-        {
+        if crate::common::is_deskzap_qs_process() {
             return;
         }
         let running = portable_client::running();

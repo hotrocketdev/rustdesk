@@ -2859,8 +2859,26 @@ fn deskzap_role_is_set() -> bool {
 
     matches!(
         (app_name.as_str(), conn_type),
-        ("Deskzap Host", "incoming") | ("Deskzap Connect", "outgoing")
+        ("Deskzap Host", "incoming")
+            | ("Deskzap Connect", "outgoing")
+            | ("Deskzap Quick Support", "incoming")
     )
+}
+
+/// True when this process is the Deskzap Quick Support client. Windows names
+/// the exe `deskzap-support[-CODE].exe`; macOS bundles name the binary
+/// `Deskzap Support`, so also match the spaced form and the profile-set
+/// app name (macOS QS role comes from deskzap-profile.json in Resources).
+pub fn is_deskzap_qs_process() -> bool {
+    if let Ok(path) = std::env::current_exe() {
+        if let Some(name) = path.file_name() {
+            let name = name.to_string_lossy().to_ascii_lowercase();
+            if name.contains("deskzap-support") || name.contains("deskzap support") {
+                return true;
+            }
+        }
+    }
+    config::APP_NAME.read().unwrap().as_str() == "Deskzap Quick Support"
 }
 
 fn apply_deskzap_role_from_exe_name() {

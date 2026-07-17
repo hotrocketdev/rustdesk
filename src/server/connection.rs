@@ -2311,8 +2311,16 @@ impl Connection {
                         "deskzap-runtime-heartbeat-token",
                     )
                 };
-                let approved = if runtime_token.is_empty() {
+                // is_qs_exe always approves (relay is the only gate — unchanged).
+                // Host (is_incoming_only(), not QS) previously auto-approved here
+                // too whenever runtime_token was empty (not yet enrolled / token
+                // cleared) — that's a stock RustDesk password-free, API-free
+                // bypass on a live Deskzap Host binary. Fixed: Host with no token
+                // is now explicitly denied, same as a failed API check.
+                let approved = if is_qs_exe {
                     true // QS — relay is the only gate
+                } else if runtime_token.is_empty() {
+                    false // Host not yet enrolled (or token cleared) — deny
                 } else {
                     crate::common::verify_deskzap_active_authorization().await
                 };
@@ -2329,7 +2337,18 @@ impl Connection {
                     }
                     return true;
                 }
-                // API returned false — fall through to password check (backward compat)
+                if !is_qs_exe {
+                    // Managed Deskzap Host: never fall back to local RustDesk
+                    // password auth. Denial here — explicit deny, unreachable
+                    // control plane, timeout, or no enrollment token — must
+                    // fail CLOSED, not silently downgrade to a weaker gate.
+                    // See docs/security/rustdesk-host-auth-audit.md.
+                    self.send_login_error(crate::client::LOGIN_MSG_DESKZAP_AUTHORIZATION_REQUIRED)
+                        .await;
+                    return true;
+                }
+                // is_qs_exe is always approved above, so this is unreachable in
+                // practice; kept only as a defensive fallback.
             }
 
             if !hbb_common::is_ip_str(&lr.username)

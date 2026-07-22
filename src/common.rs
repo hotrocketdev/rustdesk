@@ -70,6 +70,9 @@ const DESKZAP_AUTHORIZATION_TOKEN_OPTION: &str = "deskzap-authorization-token";
 const DESKZAP_DEVICE_ID_OPTION: &str = "deskzap-device-id";
 const DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION: &str = "deskzap-runtime-heartbeat-token";
 const DESKZAP_PUBLIC_WEB_URL: &str = "https://my.deskzap.co.uk";
+const DESKZAP_RENDEZVOUS_SERVER: &str = "relay.deskzap.co.uk:21116";
+const DESKZAP_RELAY_SERVER: &str = "relay.deskzap.co.uk:21117";
+const DESKZAP_PUBLIC_KEY: &str = "vL07g9WNiauCkQndQdYRttzIRyIq1uww6qeJx4eO9kM=";
 const DESKZAP_DOMAIN: &str = "deskzap.co.uk";
 const DESKZAP_RUNTIME_HEARTBEAT_INTERVAL_SECS: u64 = 30;
 const DESKZAP_DEVICE_AUTH_POLL_INTERVAL_SECS: u64 = 5;
@@ -2051,7 +2054,7 @@ pub fn preload_deskzap_app_identity() {
         }
     }
 
-    apply_deskzap_role_from_exe_name();
+    apply_deskzap_role_from_application_path();
 }
 
 pub fn bootstrap_deskzap_host() {
@@ -2868,7 +2871,7 @@ fn deskzap_role_is_set() -> bool {
 /// True when this process is the Deskzap Quick Support client. Windows names
 /// the exe `deskzap-support[-CODE].exe`; macOS bundles name the binary
 /// `Deskzap Support`, so also match the spaced form and the profile-set
-/// app name (macOS QS role comes from deskzap-profile.json in Resources).
+/// app name.
 pub fn is_deskzap_qs_process() -> bool {
     if let Ok(path) = std::env::current_exe() {
         if let Some(name) = path.file_name() {
@@ -2881,22 +2884,11 @@ pub fn is_deskzap_qs_process() -> bool {
     config::APP_NAME.read().unwrap().as_str() == "Deskzap Quick Support"
 }
 
-fn apply_deskzap_role_from_exe_name() {
+fn apply_deskzap_role_from_application_path() {
     let Ok(current_exe) = std::env::current_exe() else {
         return;
     };
-    let exe_name = current_exe
-        .file_name()
-        .map(|name| name.to_string_lossy().to_ascii_lowercase())
-        .unwrap_or_default();
-
-    let (app_name, conn_type) = if exe_name.contains("deskzap-host") {
-        ("Deskzap Host", "incoming")
-    } else if exe_name.contains("deskzap-support") {
-        ("Deskzap Quick Support", "incoming")
-    } else if exe_name.contains("deskzap-connect") {
-        ("Deskzap Connect", "outgoing")
-    } else {
+    let Some((app_name, conn_type)) = deskzap_role_from_path(&current_exe) else {
         return;
     };
 
@@ -2905,12 +2897,48 @@ fn apply_deskzap_role_from_exe_name() {
         .write()
         .unwrap()
         .insert("conn-type".to_owned(), conn_type.to_owned());
+    apply_deskzap_network_defaults(app_name);
     log::info!(
-        "Deskzap role inferred from exe name {}: app_name={}, conn_type={}",
-        exe_name,
+        "Deskzap role inferred from application path {:?}: app_name={}, conn_type={}",
+        current_exe,
         app_name,
         conn_type
     );
+}
+
+fn deskzap_role_from_path(path: &Path) -> Option<(&'static str, &'static str)> {
+    for name in path
+        .ancestors()
+        .filter_map(Path::file_stem)
+        .map(|name| name.to_string_lossy().to_ascii_lowercase())
+    {
+        let normalized = name.replace('-', " ").replace('_', " ");
+        if normalized.contains("deskzap support") {
+            return Some(("Deskzap Quick Support", "incoming"));
+        }
+        if normalized.contains("deskzap host") {
+            return Some(("Deskzap Host", "incoming"));
+        }
+        if normalized.contains("deskzap connect") {
+            return Some(("Deskzap Connect", "outgoing"));
+        }
+    }
+    None
+}
+
+fn apply_deskzap_network_defaults(app_name: &str) {
+    let mut settings = config::OVERWRITE_SETTINGS.write().unwrap();
+    settings.insert("api-server".to_owned(), DESKZAP_PUBLIC_WEB_URL.to_owned());
+    settings.insert(
+        "custom-rendezvous-server".to_owned(),
+        DESKZAP_RENDEZVOUS_SERVER.to_owned(),
+    );
+    settings.insert("relay-server".to_owned(), DESKZAP_RELAY_SERVER.to_owned());
+    settings.insert("key".to_owned(), DESKZAP_PUBLIC_KEY.to_owned());
+    if app_name == "Deskzap Connect" {
+        settings.insert("allow-auto-disconnect".to_owned(), "Y".to_owned());
+        settings.insert("allow-logon-screen-password".to_owned(), "Y".to_owned());
+    }
 }
 
 fn read_custom_client_advanced_settings(
@@ -3692,6 +3720,26 @@ mod tests {
         assert!(!is_public("localhost"));
         assert!(!is_public("https://rustdesk.computer.com"));
         assert!(!is_public("rustdesk.comhello.com"));
+    }
+
+    #[test]
+    fn test_deskzap_role_from_application_path() {
+        assert_eq!(
+            deskzap_role_from_path(Path::new(
+                "/Applications/Deskzap Connect.app/Contents/MacOS/Deskzap"
+            )),
+            Some(("Deskzap Connect", "outgoing"))
+        );
+        assert_eq!(
+            deskzap_role_from_path(Path::new("C:/Program Files/Deskzap Host/deskzap-host.exe")),
+            Some(("Deskzap Host", "incoming"))
+        );
+        assert_eq!(
+            deskzap_role_from_path(Path::new(
+                "/Applications/RustDesk.app/Contents/MacOS/RustDesk"
+            )),
+            None
+        );
     }
 
     #[test]

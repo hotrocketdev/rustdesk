@@ -2888,7 +2888,10 @@ fn apply_deskzap_role_from_application_path() {
     let Ok(current_exe) = std::env::current_exe() else {
         return;
     };
-    let Some((app_name, conn_type)) = deskzap_role_from_path(&current_exe) else {
+    let Some((app_name, conn_type)) = option_env!("DESKZAP_ROLE")
+        .and_then(deskzap_role_from_build)
+        .or_else(|| deskzap_role_from_path(&current_exe))
+    else {
         return;
     };
 
@@ -2904,6 +2907,15 @@ fn apply_deskzap_role_from_application_path() {
         app_name,
         conn_type
     );
+}
+
+fn deskzap_role_from_build(role: &str) -> Option<(&'static str, &'static str)> {
+    match role.trim().to_ascii_lowercase().as_str() {
+        "connect" => Some(("Deskzap Connect", "outgoing")),
+        "host" => Some(("Deskzap Host", "incoming")),
+        "support" => Some(("Deskzap Quick Support", "incoming")),
+        _ => None,
+    }
 }
 
 fn deskzap_role_from_path(path: &Path) -> Option<(&'static str, &'static str)> {
@@ -3724,6 +3736,14 @@ mod tests {
 
     #[test]
     fn test_deskzap_role_from_application_path() {
+        assert_eq!(
+            deskzap_role_from_build("connect"),
+            Some(("Deskzap Connect", "outgoing"))
+        );
+        assert_eq!(
+            deskzap_role_from_build("host"),
+            Some(("Deskzap Host", "incoming"))
+        );
         assert_eq!(
             deskzap_role_from_path(Path::new(
                 "/Applications/Deskzap Connect.app/Contents/MacOS/Deskzap"

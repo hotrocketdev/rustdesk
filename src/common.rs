@@ -2951,6 +2951,14 @@ fn apply_deskzap_network_defaults(app_name: &str) {
         settings.insert("allow-auto-disconnect".to_owned(), "Y".to_owned());
         settings.insert("allow-logon-screen-password".to_owned(), "Y".to_owned());
     }
+    drop(settings);
+    if app_name == "Deskzap Connect" {
+        // Stock default is "balanced" (~0.67x base bitrate), visibly soft text.
+        // Defaults only: per-session toolbar choices still override.
+        let mut display = config::DEFAULT_DISPLAY_SETTINGS.write().unwrap();
+        display.insert(config::keys::OPTION_IMAGE_QUALITY.to_owned(), "best".to_owned());
+        display.insert(config::keys::OPTION_CUSTOM_FPS.to_owned(), "60".to_owned());
+    }
 }
 
 fn read_custom_client_advanced_settings(

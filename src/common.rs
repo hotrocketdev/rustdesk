@@ -2790,6 +2790,19 @@ pub enum DeskzapStateReport {
     Failed,
 }
 
+/// Error the control plane returns (HTTP 409) for a session that is no longer
+/// active. Part of the lease contract: keep in sync with the control plane's
+/// ErrSessionNotActive response ("session is not active").
+pub const DESKZAP_SESSION_NOT_ACTIVE: &str = "session is not active";
+
+/// Per-round lease state shared by io_loop and its heartbeat callback, changed
+/// only by compare-and-swap so "server ended the session" and "round is over"
+/// are mutually exclusive.
+pub const DESKZAP_ROUND_IDLE: u8 = 0;
+pub const DESKZAP_ROUND_LIVE: u8 = 1;
+pub const DESKZAP_ROUND_OVER: u8 = 2;
+pub const DESKZAP_ROUND_ENDED_BY_SERVER: u8 = 3;
+
 /// Session lease heartbeat interval. Must match the control plane contract
 /// (apps/control-plane/internal/sessionlease: HeartbeatInterval = 30s; a
 /// session with no heartbeat for 90s is ended by its reaper).
@@ -2864,12 +2877,13 @@ pub async fn report_deskzap_runtime_session_state(
     // error, or a non-JSON body such as a proxy's 502 page — is a failure.
     match post_request(url, body.to_string(), "{}").await {
         Ok(response) => match serde_json::from_str::<Value>(&response) {
-            Ok(Value::Object(obj)) => match obj.get("error").and_then(Value::as_str) {
+            Ok(Value::Object(obj)) => match obj.get("error") {
                 None => DeskzapStateReport::Sent,
-                Some("session is not active") => {
+                Some(Value::String(error)) if error == DESKZAP_SESSION_NOT_ACTIVE => {
                     log::info!("Deskzap session lease ended server-side ({})", status);
                     DeskzapStateReport::SessionEnded
                 }
+                // Any other error, string or not, is a rejection.
                 Some(error) => {
                     log::warn!("Deskzap runtime session state {} rejected: {}", status, error);
                     DeskzapStateReport::Failed

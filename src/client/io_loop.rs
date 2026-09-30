@@ -48,7 +48,7 @@ use std::{
     num::NonZeroI64,
     path::PathBuf,
     sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
+        atomic::{AtomicU8, AtomicUsize, Ordering},
         Arc, RwLock,
     },
 };
@@ -79,13 +79,13 @@ pub struct Remote<T: InvokeUiSession> {
     last_record_state: bool,
     sent_close_reason: bool,
     // Deskzap session lease (see common::deskzap_session_heartbeat_loop).
-    // Remote is built fresh for every connection round, so these are
-    // per-round. deskzap_round_live gates the lease-ended callback (abort()
-    // only takes effect at an await point); deskzap_lease_ended records that
-    // the control plane ended the session, so no "completed" is reported.
+    // Remote is built fresh for every connection round, so this is per-round.
+    // deskzap_round_state (common::DESKZAP_ROUND_*) is shared with the
+    // heartbeat callback and changed only by compare-and-swap: the callback
+    // acts only if it moves LIVE -> ENDED_BY_SERVER, teardown moves it to OVER,
+    // so exactly one of them wins (abort() alone only lands at an await point).
     deskzap_lease: Option<tokio::task::JoinHandle<()>>,
-    deskzap_round_live: Arc<AtomicBool>,
-    deskzap_lease_ended: Arc<AtomicBool>,
+    deskzap_round_state: Arc<AtomicU8>,
     // Why this round ended, when it is a deliberate end (user closed, or the
     // controlled side closed). None = connection lost: no "completed" report;
     // the lease expires on its own if the session does not recover.
@@ -140,8 +140,7 @@ impl<T: InvokeUiSession> Remote<T> {
             last_record_state: false,
             sent_close_reason: false,
             deskzap_lease: None,
-            deskzap_round_live: Arc::new(AtomicBool::new(false)),
-            deskzap_lease_ended: Arc::new(AtomicBool::new(false)),
+            deskzap_round_state: Arc::new(AtomicU8::new(crate::common::DESKZAP_ROUND_IDLE)),
             deskzap_end_reason: None,
         }
     }
@@ -207,20 +206,27 @@ impl<T: InvokeUiSession> Remote<T> {
                     Some(_network),
                     None,
                 ));
-                self.deskzap_round_live.store(true, Ordering::SeqCst);
-                let round_live = self.deskzap_round_live.clone();
-                let lease_ended = self.deskzap_lease_ended.clone();
+                self.deskzap_round_state
+                    .store(crate::common::DESKZAP_ROUND_LIVE, Ordering::SeqCst);
+                let round_state = self.deskzap_round_state.clone();
                 let lease_sender = self.sender.clone();
                 let lease_handler = self.handler.clone();
                 self.deskzap_lease = Some(tokio::spawn(
                     crate::common::deskzap_session_heartbeat_loop(move || {
-                        // The round may have ended while the report was in
-                        // flight: never act on (or show a dialog in) a round
-                        // that is over.
-                        if !round_live.load(Ordering::SeqCst) {
+                        // Act only if the round is still live; if teardown got
+                        // there first the round is over and there is nothing
+                        // to close (or to show a dialog in).
+                        if round_state
+                            .compare_exchange(
+                                crate::common::DESKZAP_ROUND_LIVE,
+                                crate::common::DESKZAP_ROUND_ENDED_BY_SERVER,
+                                Ordering::SeqCst,
+                                Ordering::SeqCst,
+                            )
+                            .is_err()
+                        {
                             return;
                         }
-                        lease_ended.store(true, Ordering::SeqCst);
                         lease_handler.msgbox(
                             "error",
                             "Session ended",
@@ -397,15 +403,21 @@ impl<T: InvokeUiSession> Remote<T> {
             .unwrap()
             .set_disconnected(round);
 
-        self.deskzap_round_live.store(false, Ordering::SeqCst);
+        let previous_round_state = self
+            .deskzap_round_state
+            .swap(crate::common::DESKZAP_ROUND_OVER, Ordering::SeqCst);
         if let Some(lease) = self.deskzap_lease.take() {
             lease.abort();
         }
         // Ended server-side (lease expired / administrator): the control plane
         // already recorded the end, so there is nothing to report.
-        if self.deskzap_lease_ended.load(Ordering::SeqCst) {
+        if previous_round_state == crate::common::DESKZAP_ROUND_ENDED_BY_SERVER {
             self.deskzap_end_reason = None;
         }
+        // An automatic reconnect also sends Data::Close, but Session::reconnect
+        // calls new_round() (under connection_round_state's lock) before this
+        // round tears down, so set_disconnected(round) is false here and no
+        // end is reported — the new round renews the same lease.
         // Report a deliberate end and wait for it (bounded): the old
         // fire-and-forget report was often lost when the app exited right
         // after the window closed, leaving the session "active". A lost

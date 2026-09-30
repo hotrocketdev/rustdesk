@@ -78,6 +78,12 @@ pub struct Remote<T: InvokeUiSession> {
     chroma: Arc<RwLock<Option<Chroma>>>,
     last_record_state: bool,
     sent_close_reason: bool,
+    // Deskzap session lease (see common::deskzap_session_heartbeat_loop).
+    deskzap_lease: Option<tokio::task::JoinHandle<()>>,
+    // Why this round ended, when it is a deliberate end (user closed, or the
+    // controlled side closed). None = connection lost: no "completed" report;
+    // the lease expires on its own if the session does not recover.
+    deskzap_end_reason: Option<&'static str>,
 }
 
 #[derive(Default)]
@@ -127,6 +133,8 @@ impl<T: InvokeUiSession> Remote<T> {
             chroma: Default::default(),
             last_record_state: false,
             sent_close_reason: false,
+            deskzap_lease: None,
+            deskzap_end_reason: None,
         }
     }
 
@@ -189,6 +197,24 @@ impl<T: InvokeUiSession> Remote<T> {
                     "active",
                     Some(_session_id),
                     Some(_network),
+                    None,
+                ));
+                self.deskzap_end_reason = None;
+                if let Some(previous) = self.deskzap_lease.take() {
+                    previous.abort();
+                }
+                let lease_sender = self.sender.clone();
+                let lease_handler = self.handler.clone();
+                self.deskzap_lease = Some(tokio::spawn(
+                    crate::common::deskzap_session_heartbeat_loop(move || {
+                        lease_handler.msgbox(
+                            "error",
+                            "Session ended",
+                            "This session was ended by your administrator or is no longer active.",
+                            "",
+                        );
+                        lease_sender.send(Data::Close).ok();
+                    }),
                 ));
                 self.handler
                     .set_connection_type(peer.is_secured(), direct, stream_type); // flutter -> connection_ready
@@ -355,12 +381,26 @@ impl<T: InvokeUiSession> Remote<T> {
             .unwrap()
             .set_disconnected(round);
 
+        if let Some(lease) = self.deskzap_lease.take() {
+            lease.abort();
+        }
+        // Report a deliberate end and wait for it (bounded): the old
+        // fire-and-forget report was often lost when the app exited right
+        // after the window closed, leaving the session "active". A lost
+        // connection reports nothing — the lease expires server-side unless
+        // a reconnect round renews it.
         if _set_disconnected_ok {
-            tokio::spawn(crate::common::report_deskzap_runtime_session_state(
-                "completed",
-                Some(format!("{}-{}", self.handler.get_id(), round)),
-                None,
-            ));
+            if let Some(reason) = self.deskzap_end_reason.take() {
+                let report = crate::common::report_deskzap_runtime_session_state(
+                    "completed",
+                    Some(format!("{}-{}", self.handler.get_id(), round)),
+                    None,
+                    Some(reason),
+                );
+                if tokio::time::timeout(Duration::from_secs(3), report).await.is_err() {
+                    log::warn!("Deskzap session end report timed out; the lease will expire it");
+                }
+            }
         }
 
         #[cfg(not(target_os = "ios"))]
@@ -556,6 +596,7 @@ impl<T: InvokeUiSession> Remote<T> {
     async fn handle_msg_from_ui(&mut self, data: Data, peer: &mut Stream) -> bool {
         match data {
             Data::Close => {
+                self.deskzap_end_reason = Some("client_closed");
                 self.send_close_reason(peer, "").await;
                 return false;
             }
@@ -1797,6 +1838,7 @@ impl<T: InvokeUiSession> Remote<T> {
                         }
                     }
                     Some(misc::Union::CloseReason(c)) => {
+                        self.deskzap_end_reason.get_or_insert("host_closed");
                         self.sent_close_reason = true; // The controlled end will close, no need to send close reason
                         self.handler.msgbox("error", "Connection Error", &c, "");
                         return false;

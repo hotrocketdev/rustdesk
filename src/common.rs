@@ -2776,23 +2776,68 @@ pub fn get_deskzap_session_feature(name: &str) -> bool {
     true
 }
 
+/// Outcome of a Deskzap session-state report.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DeskzapStateReport {
+    /// Accepted by the control plane.
+    Sent,
+    /// The control plane says the session is no longer active (lease
+    /// expired, ended by an admin): stop heartbeating.
+    SessionEnded,
+    /// Not a Deskzap-managed session (no launch payload): nothing to report.
+    Skipped,
+    /// Transport/server failure; a later heartbeat may succeed.
+    Failed,
+}
+
+/// Session lease heartbeat interval. Must match the control plane contract
+/// (apps/control-plane/internal/sessionlease: HeartbeatInterval = 30s; a
+/// session with no heartbeat for 90s is ended by its reaper).
+pub const DESKZAP_SESSION_HEARTBEAT_INTERVAL: std::time::Duration =
+    std::time::Duration::from_secs(30);
+
+/// Renews the session lease until the task is aborted (io_loop aborts it when
+/// the round ends). If the control plane reports the session has ended — the
+/// lease expired, or an administrator ended it — `on_ended` runs once so the
+/// client can close the session instead of streaming without a lease.
+pub async fn deskzap_session_heartbeat_loop<F: FnOnce() + Send + 'static>(on_ended: F) {
+    let mut interval = tokio::time::interval(DESKZAP_SESSION_HEARTBEAT_INTERVAL);
+    interval.tick().await; // first tick is immediate; "active" was just sent
+    loop {
+        interval.tick().await;
+        match report_deskzap_runtime_session_state("heartbeat", None, None, None).await {
+            DeskzapStateReport::SessionEnded => {
+                on_ended();
+                return;
+            }
+            DeskzapStateReport::Skipped => return,
+            DeskzapStateReport::Sent | DeskzapStateReport::Failed => {}
+        }
+    }
+}
+
 pub async fn report_deskzap_runtime_session_state(
     status: &str,
     rustdesk_session_id: Option<String>,
     network_type: Option<&str>,
-) {
+    end_reason: Option<&str>,
+) -> DeskzapStateReport {
     let Some(payload) = get_deskzap_launch_payload() else {
-        return;
+        return DeskzapStateReport::Skipped;
     };
 
     if payload.authorization_token.trim().is_empty() || payload.session_id.trim().is_empty() {
-        return;
+        return DeskzapStateReport::Skipped;
     }
 
     let mut body = json!({
         "authorization_token": payload.authorization_token,
         "status": status,
     });
+
+    if let Some(reason) = end_reason {
+        body["end_reason"] = Value::String(reason.to_owned());
+    }
 
     if let Some(session_id) = rustdesk_session_id {
         if !session_id.trim().is_empty() {
@@ -2810,12 +2855,30 @@ pub async fn report_deskzap_runtime_session_state(
         "{}/api/v1/runtime/sessions/state",
         Config::get_option(keys::OPTION_API_SERVER).trim_end_matches('/')
     );
-    if let Err(err) = post_request(url, body.to_string(), "{}").await {
-        log::warn!(
-            "Failed to report Deskzap runtime session state {}: {}",
-            status,
-            err
-        );
+    // post_request returns the body for any HTTP status; the control plane
+    // answers an ended session with 409 {"error":"session is not active"}.
+    match post_request(url, body.to_string(), "{}").await {
+        Ok(response) if response.contains("session is not active") => {
+            log::info!("Deskzap session lease ended server-side ({})", status);
+            DeskzapStateReport::SessionEnded
+        }
+        Ok(response) if response.contains("\"error\"") => {
+            log::warn!(
+                "Deskzap runtime session state {} rejected: {}",
+                status,
+                response
+            );
+            DeskzapStateReport::Failed
+        }
+        Ok(_) => DeskzapStateReport::Sent,
+        Err(err) => {
+            log::warn!(
+                "Failed to report Deskzap runtime session state {}: {}",
+                status,
+                err
+            );
+            DeskzapStateReport::Failed
+        }
     }
 }
 

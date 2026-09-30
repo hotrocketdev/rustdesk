@@ -2845,8 +2845,12 @@ pub async fn report_deskzap_runtime_session_state(
         return DeskzapStateReport::Skipped;
     }
 
+    // The session authorization token authenticates the report itself (the
+    // /runtime/sessions/lease route); it is sent as a Bearer header, not in the
+    // body. /runtime/sessions/state is the relay adapter's route and needs a
+    // server-only secret this client does not have.
+    let authorization = format!("Authorization: Bearer {}", payload.authorization_token.trim());
     let mut body = json!({
-        "authorization_token": payload.authorization_token,
         "status": status,
     });
 
@@ -2867,7 +2871,7 @@ pub async fn report_deskzap_runtime_session_state(
     }
 
     let url = format!(
-        "{}/api/v1/runtime/sessions/state",
+        "{}/api/v1/runtime/sessions/lease",
         Config::get_option(keys::OPTION_API_SERVER).trim_end_matches('/')
     );
     // post_request returns the body for any HTTP status (the status code is
@@ -2875,7 +2879,7 @@ pub async fn report_deskzap_runtime_session_state(
     // answers success with a JSON object without "error", an ended session
     // with 409 {"error":"session is not active"}. Anything else — another
     // error, or a non-JSON body such as a proxy's 502 page — is a failure.
-    match post_request(url, body.to_string(), "{}").await {
+    match post_request(url, body.to_string(), &authorization).await {
         Ok(response) => match serde_json::from_str::<Value>(&response) {
             Ok(Value::Object(obj)) => match obj.get("error") {
                 None => DeskzapStateReport::Sent,

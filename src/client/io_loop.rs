@@ -48,7 +48,7 @@ use std::{
     num::NonZeroI64,
     path::PathBuf,
     sync::{
-        atomic::{AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         Arc, RwLock,
     },
 };
@@ -79,7 +79,13 @@ pub struct Remote<T: InvokeUiSession> {
     last_record_state: bool,
     sent_close_reason: bool,
     // Deskzap session lease (see common::deskzap_session_heartbeat_loop).
+    // Remote is built fresh for every connection round, so these are
+    // per-round. deskzap_round_live gates the lease-ended callback (abort()
+    // only takes effect at an await point); deskzap_lease_ended records that
+    // the control plane ended the session, so no "completed" is reported.
     deskzap_lease: Option<tokio::task::JoinHandle<()>>,
+    deskzap_round_live: Arc<AtomicBool>,
+    deskzap_lease_ended: Arc<AtomicBool>,
     // Why this round ended, when it is a deliberate end (user closed, or the
     // controlled side closed). None = connection lost: no "completed" report;
     // the lease expires on its own if the session does not recover.
@@ -134,6 +140,8 @@ impl<T: InvokeUiSession> Remote<T> {
             last_record_state: false,
             sent_close_reason: false,
             deskzap_lease: None,
+            deskzap_round_live: Arc::new(AtomicBool::new(false)),
+            deskzap_lease_ended: Arc::new(AtomicBool::new(false)),
             deskzap_end_reason: None,
         }
     }
@@ -199,14 +207,20 @@ impl<T: InvokeUiSession> Remote<T> {
                     Some(_network),
                     None,
                 ));
-                self.deskzap_end_reason = None;
-                if let Some(previous) = self.deskzap_lease.take() {
-                    previous.abort();
-                }
+                self.deskzap_round_live.store(true, Ordering::SeqCst);
+                let round_live = self.deskzap_round_live.clone();
+                let lease_ended = self.deskzap_lease_ended.clone();
                 let lease_sender = self.sender.clone();
                 let lease_handler = self.handler.clone();
                 self.deskzap_lease = Some(tokio::spawn(
                     crate::common::deskzap_session_heartbeat_loop(move || {
+                        // The round may have ended while the report was in
+                        // flight: never act on (or show a dialog in) a round
+                        // that is over.
+                        if !round_live.load(Ordering::SeqCst) {
+                            return;
+                        }
+                        lease_ended.store(true, Ordering::SeqCst);
                         lease_handler.msgbox(
                             "error",
                             "Session ended",
@@ -283,6 +297,8 @@ impl<T: InvokeUiSession> Remote<T> {
                                     self.handler.msgbox("restarting", "Restarting remote device", "remote_restarting_tip", "");
                                 } else {
                                     log::info!("Reset by the peer");
+                                    // Deliberate close by the controlled side.
+                                    self.deskzap_end_reason.get_or_insert("host_closed");
                                     if !self.handler.is_force_relay() {
                                         self.handler.msgbox("error", "Connection Error", "Reset by the peer", "");
                                     }
@@ -381,8 +397,14 @@ impl<T: InvokeUiSession> Remote<T> {
             .unwrap()
             .set_disconnected(round);
 
+        self.deskzap_round_live.store(false, Ordering::SeqCst);
         if let Some(lease) = self.deskzap_lease.take() {
             lease.abort();
+        }
+        // Ended server-side (lease expired / administrator): the control plane
+        // already recorded the end, so there is nothing to report.
+        if self.deskzap_lease_ended.load(Ordering::SeqCst) {
+            self.deskzap_end_reason = None;
         }
         // Report a deliberate end and wait for it (bounded): the old
         // fire-and-forget report was often lost when the app exited right
@@ -596,7 +618,7 @@ impl<T: InvokeUiSession> Remote<T> {
     async fn handle_msg_from_ui(&mut self, data: Data, peer: &mut Stream) -> bool {
         match data {
             Data::Close => {
-                self.deskzap_end_reason = Some("client_closed");
+                self.deskzap_end_reason.get_or_insert("client_closed");
                 self.send_close_reason(peer, "").await;
                 return false;
             }

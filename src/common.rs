@@ -2802,6 +2802,8 @@ pub const DESKZAP_SESSION_HEARTBEAT_INTERVAL: std::time::Duration =
 /// client can close the session instead of streaming without a lease.
 pub async fn deskzap_session_heartbeat_loop<F: FnOnce() + Send + 'static>(on_ended: F) {
     let mut interval = tokio::time::interval(DESKZAP_SESSION_HEARTBEAT_INTERVAL);
+    // A slow report must not trigger a burst of catch-up heartbeats.
+    interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     interval.tick().await; // first tick is immediate; "active" was just sent
     loop {
         interval.tick().await;
@@ -2855,22 +2857,29 @@ pub async fn report_deskzap_runtime_session_state(
         "{}/api/v1/runtime/sessions/state",
         Config::get_option(keys::OPTION_API_SERVER).trim_end_matches('/')
     );
-    // post_request returns the body for any HTTP status; the control plane
-    // answers an ended session with 409 {"error":"session is not active"}.
+    // post_request returns the body for any HTTP status (the status code is
+    // not surfaced), so classify on the parsed JSON body: the control plane
+    // answers success with a JSON object without "error", an ended session
+    // with 409 {"error":"session is not active"}. Anything else — another
+    // error, or a non-JSON body such as a proxy's 502 page — is a failure.
     match post_request(url, body.to_string(), "{}").await {
-        Ok(response) if response.contains("session is not active") => {
-            log::info!("Deskzap session lease ended server-side ({})", status);
-            DeskzapStateReport::SessionEnded
-        }
-        Ok(response) if response.contains("\"error\"") => {
-            log::warn!(
-                "Deskzap runtime session state {} rejected: {}",
-                status,
-                response
-            );
-            DeskzapStateReport::Failed
-        }
-        Ok(_) => DeskzapStateReport::Sent,
+        Ok(response) => match serde_json::from_str::<Value>(&response) {
+            Ok(Value::Object(obj)) => match obj.get("error").and_then(Value::as_str) {
+                None => DeskzapStateReport::Sent,
+                Some("session is not active") => {
+                    log::info!("Deskzap session lease ended server-side ({})", status);
+                    DeskzapStateReport::SessionEnded
+                }
+                Some(error) => {
+                    log::warn!("Deskzap runtime session state {} rejected: {}", status, error);
+                    DeskzapStateReport::Failed
+                }
+            },
+            _ => {
+                log::warn!("Deskzap runtime session state {}: unexpected response", status);
+                DeskzapStateReport::Failed
+            }
+        },
         Err(err) => {
             log::warn!(
                 "Failed to report Deskzap runtime session state {}: {}",

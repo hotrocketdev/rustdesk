@@ -114,7 +114,7 @@ class DeskzapChatController extends ChangeNotifier {
         final message = decoded is Map
             ? DeskzapChatMessage.fromJson(decoded['message'])
             : null;
-        if (message != null) state.merge([message], chatOpen: true);
+        if (message != null) state.addSent(message);
         return true;
       }
       error = switch (response.statusCode) {

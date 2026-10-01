@@ -51,14 +51,17 @@ int _compare(DeskzapChatMessage a, DeskzapChatMessage b) {
 class DeskzapChatState {
   final List<DeskzapChatMessage> _messages = [];
   int _unread = 0;
+  String? _cursor;
 
   List<DeskzapChatMessage> get messages => List.unmodifiable(_messages);
 
   /// Operator messages received while the chat box was closed.
   int get unread => _unread;
 
-  /// The `since` cursor: id of the newest message held (null on first load).
-  String? get cursor => _messages.isEmpty ? null : _messages.last.id;
+  /// The `since` cursor: id of the newest *fetched* message (null on first
+  /// load). A message this device just sent never moves it, or an operator
+  /// message posted just before it would be skipped.
+  String? get cursor => _cursor;
 
   /// Newest message from the operator, for the bubble preview.
   DeskzapChatMessage? get latestFromOperator {
@@ -68,11 +71,22 @@ class DeskzapChatState {
     return null;
   }
 
-  /// Merges a fetched page: no duplicates (overlapping refetch, or a message
-  /// this device just sent), server order kept. Returns the operator messages
-  /// that are new, so the caller can raise the bubble; they count as unread
-  /// unless [chatOpen].
+  /// Merges a fetched page (server order, newest last) and advances the
+  /// cursor. No duplicates (overlapping refetch, or a message this device
+  /// just sent). Returns the operator messages that are new, so the caller can
+  /// raise the bubble; they count as unread unless [chatOpen].
   List<DeskzapChatMessage> merge(List<DeskzapChatMessage> page,
+      {required bool chatOpen}) {
+    if (page.isNotEmpty) {
+      _cursor = page.reduce((a, b) => _compare(a, b) >= 0 ? a : b).id;
+    }
+    return _add(page, chatOpen: chatOpen);
+  }
+
+  /// Shows a message this device just sent, without moving the cursor.
+  void addSent(DeskzapChatMessage message) => _add([message], chatOpen: true);
+
+  List<DeskzapChatMessage> _add(List<DeskzapChatMessage> page,
       {required bool chatOpen}) {
     final known = {for (final m in _messages) m.id};
     final added = <DeskzapChatMessage>[];

@@ -22,6 +22,17 @@ void main() {
       expect(state.messages.map((m) => m.id), ['d1', 'op2']);
     });
 
+    test('sending does not move the cursor, so an earlier operator message is not skipped', () {
+      final state = DeskzapChatState();
+      state.merge([msg('o1', '2026-10-01T10:00:00Z')], chatOpen: true);
+      // The operator posts o2, then this device sends d1 before the next poll.
+      state.addSent(msg('d1', '2026-10-01T10:00:02Z', sender: 'device'));
+      expect(state.cursor, 'o1');
+      state.merge([msg('o2', '2026-10-01T10:00:01Z'), msg('d1', '2026-10-01T10:00:02Z', sender: 'device')], chatOpen: true);
+      expect(state.messages.map((m) => m.id), ['o1', 'o2', 'd1']);
+      expect(state.cursor, 'd1');
+    });
+
     test('server order (created_at, id) is kept and the cursor is the newest id', () {
       final state = DeskzapChatState();
       expect(state.cursor, isNull);

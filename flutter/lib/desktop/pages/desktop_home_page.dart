@@ -15,6 +15,7 @@ import 'package:flutter_hbb/desktop/pages/deskzap_enrollment_page.dart';
 import 'package:flutter_hbb/desktop/pages/deskzap_quick_support_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_tab_page.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_chat.dart';
 import 'package:flutter_hbb/desktop/widgets/update_progress.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
 import 'package:flutter_hbb/models/server_model.dart';
@@ -54,6 +55,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   var watchIsCanRecordAudio = false;
   Timer? _updateTimer;
   Timer? _commandPollTimer;
+  DeskzapChatController? _chat;
+  static const Size _deskzapChatWindowSize = Size(380, 520);
   bool isCardClosed = false;
   String _enrollmentStateJson = '';
 
@@ -95,15 +98,21 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         }
       } catch (_) {}
     }
-    return _buildBlock(
-        child: Row(
+    final home = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         buildLeftPane(context),
         if (!isIncomingOnly) const VerticalDivider(width: 1),
         if (!isIncomingOnly) Expanded(child: buildRightPane(context)),
       ],
-    ));
+    );
+    final chat = _chat;
+    return _buildBlock(
+        child: chat == null
+            ? home
+            : Stack(
+                fit: StackFit.passthrough,
+                children: [home, DeskzapChatOverlay(controller: chat)]));
   }
 
   Widget _buildBlock({required Widget child}) {
@@ -1000,6 +1009,29 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     }
     WidgetsBinding.instance.addObserver(this);
     _commandPollTimer = Timer.periodic(const Duration(seconds: 30), (_) => _pollCommands());
+    if (bind.isIncomingOnly()) {
+      _chat = DeskzapChatController()
+        ..onInbound = _raiseForChat
+        ..onChatOpenChanged = _resizeForChat
+        ..start();
+    }
+  }
+
+  // An inbound operator message brings the Host window up in the
+  // bottom-right corner so the chat bubble is seen.
+  Future<void> _raiseForChat() async {
+    await windowManager.show();
+    await windowManager.setAlignment(Alignment.bottomRight);
+  }
+
+  Future<void> _resizeForChat(bool open) async {
+    if (open) {
+      await windowManager.setSize(_deskzapChatWindowSize);
+      await windowManager.setAlignment(Alignment.bottomRight);
+      await windowManager.focus();
+    } else {
+      await windowManager.setSize(getIncomingOnlyHomeSize());
+    }
   }
 
   _updateWindowSize() {
@@ -1049,6 +1081,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     Get.delete<RxBool>(tag: 'stop-service');
     _updateTimer?.cancel();
     _commandPollTimer?.cancel();
+    _chat?.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }

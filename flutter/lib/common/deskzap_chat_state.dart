@@ -6,6 +6,9 @@
 class DeskzapChatMessage {
   final String id;
 
+  /// The chat_session this message belongs to.
+  final String? sessionId;
+
   /// "operator" (the Deskzap user in the web app) or "device" (this machine).
   final String sender;
   final String body;
@@ -13,6 +16,7 @@ class DeskzapChatMessage {
 
   const DeskzapChatMessage({
     required this.id,
+    this.sessionId,
     required this.sender,
     required this.body,
     required this.createdAt,
@@ -29,8 +33,13 @@ class DeskzapChatMessage {
     if (id is! String || sender is! String || body is! String || created == null) {
       return null;
     }
+    final sessionId = json['session_id'];
     return DeskzapChatMessage(
-        id: id, sender: sender, body: body, createdAt: created.toUtc());
+        id: id,
+        sessionId: sessionId is String ? sessionId : null,
+        sender: sender,
+        body: body,
+        createdAt: created.toUtc());
   }
 
   /// Parses a `{"messages": [...]}` page, skipping malformed entries.
@@ -104,6 +113,23 @@ class DeskzapChatState {
   }
 
   void markRead() => _unread = 0;
+
+  /// True when [probe] (the first message of the device's current chat, from
+  /// a cursorless `limit=1` fetch) belongs to a different session than the
+  /// transcript held. The server scopes `since` to the current session, so a
+  /// cursor from an older session would otherwise return empty pages forever.
+  bool isStale(List<DeskzapChatMessage> probe) {
+    if (probe.isEmpty || _messages.isEmpty) return false;
+    final current = probe.first.sessionId;
+    return current != null && current != _messages.last.sessionId;
+  }
+
+  /// Starts over for a new chat session.
+  void reset() {
+    _messages.clear();
+    _unread = 0;
+    _cursor = null;
+  }
 }
 
 /// Bubble preview text: first line, trimmed to [max] characters.

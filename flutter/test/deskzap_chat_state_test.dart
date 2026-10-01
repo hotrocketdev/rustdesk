@@ -1,9 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_hbb/common/deskzap_chat_state.dart';
 
-DeskzapChatMessage msg(String id, String at, {String sender = 'operator'}) =>
+DeskzapChatMessage msg(String id, String at,
+        {String sender = 'operator', String session = 's1'}) =>
     DeskzapChatMessage(
-        id: id, sender: sender, body: 'body $id', createdAt: DateTime.parse(at));
+        id: id,
+        sessionId: session,
+        sender: sender,
+        body: 'body $id',
+        createdAt: DateTime.parse(at));
 
 void main() {
   group('polling cursor', () {
@@ -43,6 +48,22 @@ void main() {
       ], chatOpen: true);
       expect(state.messages.map((m) => m.id), ['w', 'x', 'y']);
       expect(state.cursor, 'y');
+    });
+  });
+
+  group('new chat session', () {
+    test('a probe from another session marks the transcript stale; reset starts over', () {
+      final state = DeskzapChatState();
+      state.merge([msg('o1', '2026-10-01T10:00:00Z')], chatOpen: false);
+      expect(state.isStale([msg('o1', '2026-10-01T10:00:00Z')]), isFalse);
+      expect(state.isStale([]), isFalse);
+      expect(state.isStale([msg('n1', '2026-10-01T11:00:00Z', session: 's2')]), isTrue);
+      state.reset();
+      expect(state.cursor, isNull);
+      expect(state.unread, 0);
+      final inbound = state.merge([msg('n1', '2026-10-01T11:00:00Z', session: 's2')], chatOpen: false);
+      expect(inbound.map((m) => m.id), ['n1']);
+      expect(state.isStale([msg('n1', '2026-10-01T11:00:00Z', session: 's2')]), isFalse);
     });
   });
 

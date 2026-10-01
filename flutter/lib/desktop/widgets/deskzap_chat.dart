@@ -66,15 +66,33 @@ class DeskzapChatController extends ChangeNotifier {
     try {
       final endpoint = await _endpoint();
       if (endpoint == null) return;
-      final query = {'limit': '100', if (state.cursor != null) 'since': state.cursor!};
-      final uri = Uri.parse('${endpoint.baseUrl}/api/v1/runtime/chat/messages')
-          .replace(queryParameters: query);
-      final request = await client.getUrl(uri);
-      request.headers.set('Authorization', 'Bearer ${endpoint.token}');
-      final response = await request.close();
-      final body = await response.transform(const Utf8Decoder()).join();
-      if (response.statusCode != 200) return;
-      final page = DeskzapChatMessage.listFromPage(jsonDecode(body));
+      Future<List<DeskzapChatMessage>?> fetch(int limit, String? since) async {
+        final uri =
+            Uri.parse('${endpoint.baseUrl}/api/v1/runtime/chat/messages')
+                .replace(queryParameters: {
+          'limit': '$limit',
+          if (since != null) 'since': since,
+        });
+        final request = await client.getUrl(uri);
+        request.headers.set('Authorization', 'Bearer ${endpoint.token}');
+        final response = await request.close();
+        final body = await response.transform(const Utf8Decoder()).join();
+        if (response.statusCode != 200) return null;
+        return DeskzapChatMessage.listFromPage(jsonDecode(body));
+      }
+
+      var page = await fetch(100, state.cursor);
+      if (page == null) return;
+      // ponytail: an idle poll costs a second tiny request to notice that the
+      // operator started a new chat session (the old cursor matches nothing).
+      if (page.isEmpty && state.cursor != null) {
+        final probe = await fetch(1, null);
+        if (probe != null && state.isStale(probe)) {
+          state.reset();
+          page = await fetch(100, null) ?? const [];
+          notifyListeners();
+        }
+      }
       final inbound = state.merge(page, chatOpen: chatOpen);
       if (inbound.isNotEmpty && !chatOpen) {
         bubbleVisible = true;

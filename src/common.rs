@@ -2092,6 +2092,10 @@ fn bootstrap_deskzap_host_inner(from_os_service: bool) {
         log::info!("Deskzap host bootstrap skipped because conn-type is not incoming");
         return;
     }
+    if from_os_service {
+        // Only the SYSTEM service applies remote self-updates.
+        crate::deskzap_update::set_update_owner();
+    }
 
     #[cfg(windows)]
     if !from_os_service {
@@ -2295,17 +2299,28 @@ fn send_deskzap_runtime_heartbeat(
         "{}/api/v1/devices/runtime-heartbeat",
         api_server.trim_end_matches('/')
     );
-    let body = with_build_version(json!({
+    let mut body = with_build_version(json!({
         "agent_version": crate::VERSION,
         "operating_system": operating_system,
-    }))
-    .to_string();
+    }));
+    // A self-update failure is reported once; the server then clears pending_update.
+    let update_error = crate::deskzap_update::take_update_error();
+    if let Some(err) = &update_error {
+        body["update_error"] = json!(err);
+    }
+    let body = body.to_string();
 
     // post_request_sync parses headers as a single "Key: Value" string.
     let auth_header = format!("Authorization: Bearer {}", runtime_heartbeat_token);
     let res = post_request_sync(url, body, &auth_header);
     match res {
-        Ok(_) => Ok(()),
+        Ok(response) => {
+            if update_error.is_some() {
+                crate::deskzap_update::clear_update_error();
+            }
+            crate::deskzap_update::on_heartbeat_response(&response);
+            Ok(())
+        }
         Err(err) => {
             let err_str = err.to_string();
             // If the server explicitly says the token is invalid (401), we must clear it locally.

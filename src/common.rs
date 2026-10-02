@@ -83,6 +83,28 @@ const DESKZAP_SUPPORT_CODE_OPTION: &str = "deskzap-support-code";
 const DESKZAP_SUPPORT_API_REGISTER: &str = "/api/v1/support-sessions/{code}/register";
 const DESKZAP_SUPPORT_API_END: &str = "/api/v1/support-sessions/{code}/end";
 const DESKZAP_MACHINE_CONFIG_FILE: &str = "deskzap-machine.json";
+/// Deskzap build version (the artifact manifest version, e.g.
+/// `0.1.0-preview.123.1`), baked in by CI. Distinct from `crate::VERSION`,
+/// the RustDesk core version that is reported as `agent_version`.
+const DESKZAP_BUILD_VERSION: Option<&str> = option_env!("DESKZAP_BUILD_VERSION");
+
+/// The baked build version, or None for local/unstamped builds.
+pub fn deskzap_build_version() -> Option<&'static str> {
+    normalize_build_version(DESKZAP_BUILD_VERSION)
+}
+
+fn normalize_build_version(raw: Option<&'static str>) -> Option<&'static str> {
+    raw.map(str::trim).filter(|v| !v.is_empty())
+}
+
+/// Adds `build_version` to an enrollment/heartbeat payload when known.
+/// `agent_version` is left untouched (other consumers read it).
+fn with_build_version(mut body: Value) -> Value {
+    if let Some(v) = deskzap_build_version() {
+        body["build_version"] = json!(v);
+    }
+    body
+}
 
 fn deskzap_machine_config_path() -> std::path::PathBuf {
     cfg_if::cfg_if! {
@@ -2198,14 +2220,14 @@ fn bootstrap_deskzap_host_inner(from_os_service: bool) {
 
     let operating_system = operating_system_label();
 
-    let body = json!({
+    let body = with_build_version(json!({
         "enrollment_token": enrollment_token,
         "rustdesk_runtime_id": crate::ui_interface::get_id(),
         "hostname": hostname,
         "display_name": display_name,
         "operating_system": operating_system,
         "agent_version": crate::VERSION,
-    })
+    }))
     .to_string();
 
     let url = format!(
@@ -2273,10 +2295,10 @@ fn send_deskzap_runtime_heartbeat(
         "{}/api/v1/devices/runtime-heartbeat",
         api_server.trim_end_matches('/')
     );
-    let body = json!({
+    let body = with_build_version(json!({
         "agent_version": crate::VERSION,
         "operating_system": operating_system,
-    })
+    }))
     .to_string();
 
     // post_request_sync parses headers as a single "Key: Value" string.
@@ -2616,13 +2638,13 @@ fn run_deskzap_device_authorization(api_server: &str) {
                 "{}/api/v1/devices/enroll",
                 api_server.trim_end_matches('/')
             );
-            let mut enroll_obj = json!({
+            let mut enroll_obj = with_build_version(json!({
                 "rustdesk_runtime_id": Config::get_id(),
                 "hostname": hostname,
                 "display_name": display_name,
                 "operating_system": operating_system,
                 "agent_version": crate::VERSION,
-            });
+            }));
             if let Some(pk) = device_public_key {
                 enroll_obj["device_public_key"] = json!(pk);
             }
@@ -3685,6 +3707,24 @@ mod tests {
             .as_millis()
             + 500)
             / 1000
+    }
+
+    #[test]
+    fn build_version_is_trimmed_and_empty_means_unknown() {
+        assert_eq!(normalize_build_version(Some(" 0.1.0-preview.7.1
+")), Some("0.1.0-preview.7.1"));
+        assert_eq!(normalize_build_version(Some("  ")), None);
+        assert_eq!(normalize_build_version(None), None);
+    }
+
+    #[test]
+    fn build_version_never_replaces_agent_version() {
+        let body = with_build_version(json!({ "agent_version": crate::VERSION }));
+        assert_eq!(body["agent_version"], json!(crate::VERSION));
+        match deskzap_build_version() {
+            Some(v) => assert_eq!(body["build_version"], json!(v)),
+            None => assert!(body.get("build_version").is_none()),
+        }
     }
 
     fn interval_maker() -> Interval {

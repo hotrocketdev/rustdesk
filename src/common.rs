@@ -76,6 +76,9 @@ const DESKZAP_PUBLIC_KEY: &str = "vL07g9WNiauCkQndQdYRttzIRyIq1uww6qeJx4eO9kM=";
 const DESKZAP_DOMAIN: &str = "deskzap.co.uk";
 const DESKZAP_RUNTIME_HEARTBEAT_INTERVAL_SECS: u64 = 30;
 const DESKZAP_DEVICE_AUTH_POLL_INTERVAL_SECS: u64 = 5;
+/// Pause before requesting a new device code after one expired, was denied or
+/// failed.
+const DESKZAP_DEVICE_AUTH_RETRY_SECS: u64 = 15;
 const DESKZAP_DEVICE_AUTH_STATE_OPTION: &str = "deskzap-device-auth-state";
 const DESKZAP_KEYRING_SERVICE: &str = "deskzap-host";
 const DESKZAP_KEYRING_KEY_ENTRY: &str = "device-signing-key";
@@ -2465,9 +2468,26 @@ pub fn start_deskzap_device_authorization(api_server: String) {
         return;
     }
 
-    thread::spawn(move || {
+    // A code lives ~5 minutes. Keep issuing fresh ones until the device is
+    // enrolled, so an unattended device that missed its window is never stuck
+    // until someone restarts it on site.
+    thread::spawn(move || loop {
         run_deskzap_device_authorization(&api_server);
+        if deskzap_device_is_enrolled() {
+            break;
+        }
+        thread::sleep(StdDuration::from_secs(DESKZAP_DEVICE_AUTH_RETRY_SECS));
+        if deskzap_device_is_enrolled() {
+            break;
+        }
     });
+}
+
+fn deskzap_device_is_enrolled() -> bool {
+    !Config::get_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION).trim().is_empty()
+        || !LocalConfig::get_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION)
+            .trim()
+            .is_empty()
 }
 
 fn run_deskzap_device_authorization(api_server: &str) {
@@ -2649,10 +2669,10 @@ fn run_deskzap_device_authorization(api_server: &str) {
                 enroll_obj["device_public_key"] = json!(pk);
             }
             let enroll_body = enroll_obj.to_string();
-            let enroll_header = json!({
-                "Authorization": format!("Bearer {}", access_token),
-            })
-            .to_string();
+            // post_request_sync takes a single "Key: Value" header line. A JSON
+            // object here was silently dropped, so every device-code enrollment
+            // reached the server without credentials and failed with 400.
+            let enroll_header = format!("Authorization: Bearer {}", access_token);
 
             match post_request_sync(enroll_url, enroll_body, &enroll_header) {
                 Ok(response) => {

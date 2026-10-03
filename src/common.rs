@@ -2211,6 +2211,18 @@ fn bootstrap_deskzap_host_inner(from_os_service: bool) {
         return;
     }
 
+    // Already enrolled: don't enroll again. Every enrollment rotates the
+    // device secret, and on an installed Windows Host both the service and the
+    // --server process run this bootstrap — re-enrolling on each start left
+    // one of them holding a stale secret, so incoming connections were refused
+    // ("Deskzap authorization required") while heartbeats still succeeded.
+    // A revoked/invalid token is cleared on heartbeat 401, which re-enables
+    // enrollment here on the next start.
+    if !saved_runtime_heartbeat_token.trim().is_empty() {
+        log::info!("Deskzap host already enrolled; skipping enrollment-token re-enrollment");
+        return;
+    }
+
     let hostname = crate::common::hostname();
     let display_name = {
         let configured = get_builtin_option(keys::OPTION_DISPLAY_NAME);

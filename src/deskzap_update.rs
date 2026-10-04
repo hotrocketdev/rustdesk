@@ -40,9 +40,11 @@ fn str_field<'a>(v: &'a Value, key: &str) -> Option<&'a str> {
 /// build version is meaningful, and versions are compared for equality, not
 /// order — the server decides what "latest" is.
 pub fn decide(response: &Value, installed_build: Option<&str>) -> Decision {
-    let metadata = response.pointer("/device/metadata");
-    let pending = metadata
-        .and_then(|m| m.get("pending_update"))
+    // Contract (control plane, devices handler updateFields): the instruction
+    // sits at the top level of the heartbeat response. The device's metadata
+    // is never sent to it (it holds the RustDesk password).
+    let pending = response
+        .get("pending_update")
         .and_then(Value::as_bool)
         .unwrap_or(false);
     if !pending {
@@ -52,9 +54,7 @@ pub fn decide(response: &Value, installed_build: Option<&str>) -> Decision {
     let Some(installed) = installed_build else {
         return Decision::Skip("this build has no build_version".into());
     };
-    let latest = metadata
-        .and_then(|m| str_field(m, "latest_version"))
-        .or_else(|| str_field(response, "latest_version"));
+    let latest = str_field(response, "latest_version");
     let Some(latest) = latest else {
         return Decision::Skip("no latest_version".into());
     };
@@ -281,7 +281,8 @@ mod tests {
 
     fn resp(pending: bool, latest: &str) -> Value {
         json!({
-            "device": { "agent_version": "1.4.6", "metadata": { "pending_update": pending, "latest_version": latest } },
+            "device": { "agent_version": "1.4.6" },
+            "pending_update": pending,
             "latest_version": latest,
             "update_url": "https://my.deskzap.co.uk/api/v1/installers/public-artifacts/windows/host/download",
             "update_sha256": SHA,
@@ -295,6 +296,18 @@ mod tests {
         assert_eq!(decide(&r, Some("0.1.0-preview.7.1")), Decision::None);
         // And without a server flag nothing happens, whatever the versions.
         assert_eq!(decide(&resp(false, "0.1.0-preview.9.1"), Some("0.1.0-preview.7.1")), Decision::None);
+    }
+
+    #[test]
+    fn a_flag_hidden_in_device_metadata_is_ignored() {
+        // The server never sends metadata; only the top-level flag counts.
+        let r = json!({
+            "device": { "metadata": { "pending_update": true } },
+            "pending_update": false,
+            "latest_version": "0.1.0-preview.9.1",
+            "update_url": "https://my.deskzap.co.uk/x", "update_sha256": SHA,
+        });
+        assert_eq!(decide(&r, Some("0.1.0-preview.7.1")), Decision::None);
     }
 
     #[test]

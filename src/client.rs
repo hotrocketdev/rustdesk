@@ -1857,11 +1857,17 @@ impl LoginConfigHandler {
         self.session_id = sid;
         self.supported_encoding = Default::default();
         self.restarting_remote_device = false;
+        // Deskzap Connect (outgoing-only) always goes straight to the Deskzap
+        // relay: every Deskzap session is relayed (hbbr enforces the Deskzap
+        // authorization), and in production no direct peer-to-peer attempt has
+        // ever succeeded — trying one first only added ~14 s before the relay
+        // fallback on every connect.
         self.force_relay =
             config::option2bool("force-always-relay", &self.get_option("force-always-relay"))
                 || force_relay
                 || use_ws()
-                || Config::is_proxy();
+                || Config::is_proxy()
+                || config::is_outgoing_only();
         if let Some((real_id, server, key)) = &self.other_server {
             let other_server_key = self.get_option("other-server-key");
             if !other_server_key.is_empty() && key.is_empty() {

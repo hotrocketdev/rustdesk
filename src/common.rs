@@ -2327,7 +2327,12 @@ fn send_deskzap_runtime_heartbeat(
             // This prevents the "Zombie State" where a device thinks it's enrolled but is being ignored.
             if err_str.contains("401") || err_str.contains("Unauthorized") {
                 log::error!("Deskzap heartbeat rejected (401). Clearing invalid token to force re-enrollment.");
+                // Clear BOTH copies: the heartbeat loop re-syncs Config from
+                // LocalConfig when Config is empty, so clearing only Config
+                // brought the dead token straight back and the device never
+                // re-enrolled (SOS stations, dead for months until 2026-10-04).
                 Config::set_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION.to_owned(), "".to_owned());
+                LocalConfig::set_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION.to_owned(), "".to_owned());
             }
             Err(format!("failed to send Deskzap runtime heartbeat: {err_str}"))
         }

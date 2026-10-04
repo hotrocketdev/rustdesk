@@ -90,6 +90,8 @@ pub struct Remote<T: InvokeUiSession> {
     // controlled side closed). None = connection lost: no "completed" report;
     // the lease expires on its own if the session does not recover.
     deskzap_end_reason: Option<&'static str>,
+    // Authorization token of this connection's Deskzap session ("" if none).
+    deskzap_session_token: String,
 }
 
 #[derive(Default)]
@@ -142,10 +144,18 @@ impl<T: InvokeUiSession> Remote<T> {
             deskzap_lease: None,
             deskzap_round_state: Arc::new(AtomicU8::new(crate::common::DESKZAP_ROUND_IDLE)),
             deskzap_end_reason: None,
+            deskzap_session_token: String::new(),
         }
     }
 
     pub async fn io_loop(&mut self, key: &str, token: &str, round: u32) {
+        // The lease is reported with THIS connection's session token (from
+        // connect-direct), not whatever session was last launched from the web.
+        self.deskzap_session_token = if crate::common::is_deskzap_session_token(token) {
+            token.trim().to_owned()
+        } else {
+            String::new()
+        };
         #[cfg(target_os = "windows")]
         let _file_clip_context_holder = {
             // `is_port_forward()` will not reach here, but we still check it for clarity.
@@ -200,19 +210,25 @@ impl<T: InvokeUiSession> Remote<T> {
                 // to fire, which RSTs the relay before any LoginRequest is sent.
                 let _session_id = format!("{}-{}", self.handler.get_id(), round);
                 let _network = if direct { "direct" } else { "relay" };
-                tokio::spawn(crate::common::report_deskzap_runtime_session_state(
-                    "active",
-                    Some(_session_id),
-                    Some(_network),
-                    None,
-                ));
+                let active_token = self.deskzap_session_token.clone();
+                tokio::spawn(async move {
+                    crate::common::report_deskzap_runtime_session_state(
+                        &active_token,
+                        "active",
+                        Some(_session_id),
+                        Some(_network),
+                        None,
+                    )
+                    .await
+                });
                 self.deskzap_round_state
                     .store(crate::common::DESKZAP_ROUND_LIVE, Ordering::SeqCst);
                 let round_state = self.deskzap_round_state.clone();
                 let lease_sender = self.sender.clone();
                 let lease_handler = self.handler.clone();
+                let lease_token = self.deskzap_session_token.clone();
                 self.deskzap_lease = Some(tokio::spawn(
-                    crate::common::deskzap_session_heartbeat_loop(move || {
+                    crate::common::deskzap_session_heartbeat_loop(lease_token, move || {
                         // Act only if the round is still live; if teardown got
                         // there first the round is over and there is nothing
                         // to close (or to show a dialog in).
@@ -426,6 +442,7 @@ impl<T: InvokeUiSession> Remote<T> {
         if _set_disconnected_ok {
             if let Some(reason) = self.deskzap_end_reason.take() {
                 let report = crate::common::report_deskzap_runtime_session_state(
+                    &self.deskzap_session_token,
                     "completed",
                     Some(format!("{}-{}", self.handler.get_id(), round)),
                     None,

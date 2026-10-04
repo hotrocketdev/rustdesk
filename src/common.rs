@@ -2867,14 +2867,17 @@ pub const DESKZAP_SESSION_HEARTBEAT_INTERVAL: std::time::Duration =
 /// the round ends). If the control plane reports the session has ended — the
 /// lease expired, or an administrator ended it — `on_ended` runs once so the
 /// client can close the session instead of streaming without a lease.
-pub async fn deskzap_session_heartbeat_loop<F: FnOnce() + Send + 'static>(on_ended: F) {
+pub async fn deskzap_session_heartbeat_loop<F: FnOnce() + Send + 'static>(
+    session_token: String,
+    on_ended: F,
+) {
     let mut interval = tokio::time::interval(DESKZAP_SESSION_HEARTBEAT_INTERVAL);
     // A slow report must not trigger a burst of catch-up heartbeats.
     interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
     interval.tick().await; // first tick is immediate; "active" was just sent
     loop {
         interval.tick().await;
-        match report_deskzap_runtime_session_state("heartbeat", None, None, None).await {
+        match report_deskzap_runtime_session_state(&session_token, "heartbeat", None, None, None).await {
             DeskzapStateReport::SessionEnded => {
                 on_ended();
                 return;
@@ -2885,25 +2888,43 @@ pub async fn deskzap_session_heartbeat_loop<F: FnOnce() + Send + 'static>(on_end
     }
 }
 
+/// Whether `token` looks like a Deskzap session authorization token (what
+/// connect-direct returns) rather than another credential such as a rendezvous
+/// access token.
+pub fn is_deskzap_session_token(token: &str) -> bool {
+    let token = token.trim();
+    !token.is_empty() && token == LocalConfig::get_option(DESKZAP_AUTHORIZATION_TOKEN_OPTION).trim()
+}
+
+/// `session_token` is the authorization token of the connection being
+/// reported, captured when it connected. It must not be read from the
+/// persisted launch payload at report time: that holds the last *web-launched*
+/// session, so a connection started from inside the app reported on a finished
+/// session, got 409 and closed itself after 30 s. The launch payload is only a
+/// fallback for a connection that has no token of its own.
 pub async fn report_deskzap_runtime_session_state(
+    session_token: &str,
     status: &str,
     rustdesk_session_id: Option<String>,
     network_type: Option<&str>,
     end_reason: Option<&str>,
 ) -> DeskzapStateReport {
-    let Some(payload) = get_deskzap_launch_payload() else {
-        return DeskzapStateReport::Skipped;
+    let token = if !session_token.trim().is_empty() {
+        session_token.trim().to_owned()
+    } else {
+        match get_deskzap_launch_payload() {
+            Some(payload) if !payload.authorization_token.trim().is_empty() => {
+                payload.authorization_token.trim().to_owned()
+            }
+            _ => return DeskzapStateReport::Skipped,
+        }
     };
-
-    if payload.authorization_token.trim().is_empty() || payload.session_id.trim().is_empty() {
-        return DeskzapStateReport::Skipped;
-    }
 
     // The session authorization token authenticates the report itself (the
     // /runtime/sessions/lease route); it is sent as a Bearer header, not in the
     // body. /runtime/sessions/state is the relay adapter's route and needs a
     // server-only secret this client does not have.
-    let authorization = format!("Authorization: Bearer {}", payload.authorization_token.trim());
+    let authorization = format!("Authorization: Bearer {}", token);
     let mut body = json!({
         "status": status,
     });

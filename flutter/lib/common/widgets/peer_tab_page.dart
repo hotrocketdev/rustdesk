@@ -83,6 +83,10 @@ class _PeerTabPageState extends State<PeerTabPage>
           : int.parse(uiType) == 1
               ? PeerUiType.tile
               : PeerUiType.list;
+    } else {
+      // Nothing chosen yet: start in the compact list (what the Windows app
+      // shows) rather than the stock grid of large coloured tiles.
+      peerCardUiType.value = PeerUiType.list;
     }
     hideAbTagsPanel.value =
         bind.mainGetLocalOption(key: kOptionHideAbTagsPanel) == 'Y';

@@ -3143,6 +3143,19 @@ fn apply_deskzap_network_defaults(app_name: &str) {
         let mut display = config::DEFAULT_DISPLAY_SETTINGS.write().unwrap();
         display.insert(config::keys::OPTION_IMAGE_QUALITY.to_owned(), "best".to_owned());
         display.insert(config::keys::OPTION_CUSTOM_FPS.to_owned(), "60".to_owned());
+        // macOS: hardware (VideoToolbox) H.265 decoding creates its decoder but,
+        // on some Macs, never yields a frame, so the remote window sits on
+        // "Connecting..." forever although the session is fully established.
+        // Default to VP9 (software) with the hardware codec off. Defaults only: a
+        // user's own choice in Settings still wins.
+        #[cfg(target_os = "macos")]
+        {
+            display.insert(config::keys::OPTION_CODEC_PREFERENCE.to_owned(), "vp9".to_owned());
+            config::DEFAULT_SETTINGS
+                .write()
+                .unwrap()
+                .insert(config::keys::OPTION_ENABLE_HWCODEC.to_owned(), "N".to_owned());
+        }
     }
 }
 

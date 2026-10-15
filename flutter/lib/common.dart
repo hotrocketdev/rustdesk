@@ -258,6 +258,10 @@ class MyTheme {
   static const Color accentInk = Color(0xFF7D97FF);
   // Deskzap: sharp corners, as on the website.
   static const double dzRadius = 2.0;
+  // Deskzap brand fonts (bundled in assets/fonts/deskzap).
+  static const String fontBody = 'IBMPlexSans';
+  static const String fontDisplay = 'Outfit';
+  static const String fontMono = 'IBMPlexMono';
   static const Color canvasColor = Color(0xFF212121);
   static const Color border = Color(0xFFCCCCCC);
   static const Color idColor = Color(0xFF00B6F0);
@@ -379,6 +383,7 @@ class MyTheme {
     // https://stackoverflow.com/questions/77537315/after-upgrading-to-flutter-3-16-the-app-bar-background-color-button-size-and
     useMaterial3: false,
     brightness: Brightness.light,
+    fontFamily: fontBody,
     hoverColor: Color.fromARGB(255, 224, 224, 224),
     scaffoldBackgroundColor: Colors.white,
     dialogBackgroundColor: Colors.white,
@@ -477,6 +482,7 @@ class MyTheme {
   static ThemeData darkTheme = ThemeData(
     useMaterial3: false,
     brightness: Brightness.dark,
+    fontFamily: fontBody,
     hoverColor: Color(0xFF1A1A1A),
     scaffoldBackgroundColor: Color(0xFF0A0A0A),
     dialogBackgroundColor: Color(0xFF0A0A0A),

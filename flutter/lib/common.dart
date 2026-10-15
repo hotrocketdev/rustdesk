@@ -3669,7 +3669,7 @@ class ComboBox extends StatelessWidget {
               : MyTheme.border,
         ),
         borderRadius:
-            BorderRadius.circular(dzRadius), //border raiuds of dropdown button
+            BorderRadius.circular(8), //border raiuds of dropdown button
       ),
       height: 42, // should be the height of a TextField
       child: Obx(() => DropdownButton<String>(

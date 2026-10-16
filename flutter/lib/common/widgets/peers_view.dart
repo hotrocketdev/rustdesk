@@ -250,8 +250,10 @@ class _PeersViewState extends State<_PeersView>
               // Because the currentTab change event will trigger the peers change event,
               // and the peers change event will trigger _buildPeersView().
               return !isPortrait
-                  ? Obx(() => peerCardUiType.value == PeerUiType.list
-                      ? Container(height: 45, child: visibilityChild)
+                  ? Obx(() => (peerCardUiType.value == PeerUiType.list || bind.isOutgoingOnly())
+                      ? Container(
+                          height: bind.isOutgoingOnly() ? 64 : 45,
+                          child: visibilityChild)
                       : peerCardUiType.value == PeerUiType.grid
                           ? SizedBox(
                               width: 220, height: 140, child: visibilityChild)
@@ -271,7 +273,8 @@ class _PeersViewState extends State<_PeersView>
                           top: index == 0 ? 0 : space / 2, bottom: space / 2);
                     },
                   )
-                : peerCardUiType.value == PeerUiType.list
+                : (peerCardUiType.value == PeerUiType.list ||
+                        bind.isOutgoingOnly())
                     ? ListView.builder(
                         controller: _scrollController,
                         itemCount: peers.length,

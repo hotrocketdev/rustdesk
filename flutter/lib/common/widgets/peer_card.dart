@@ -1,5 +1,6 @@
 import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_tokens.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hbb/common/widgets/dialog.dart';
 import 'package:flutter_hbb/consts.dart';
@@ -80,6 +81,137 @@ class _PeerCardState extends State<_PeerCard>
         child: child);
   }
 
+  final RxBool _dzHover = false.obs;
+
+  /// Deskzap Connect device row: OS tile, name over mono ID, status pill,
+  /// Connect button (filled on hover/selection) and the existing more menu.
+  Widget _buildDeskzapRow(Peer peer) {
+    final c = DzColors.of(context);
+    final PeerTabModel peerTabModel = Provider.of(context);
+    final selected = peerTabModel.isPeerSelected(peer.id);
+    final title = peer.alias.isNotEmpty
+        ? peer.alias
+        : (peer.hostname.isNotEmpty ? peer.hostname : formatID(peer.id));
+    final mono = TextStyle(
+      fontFamily: MyTheme.fontMono,
+      fontSize: 10.5,
+      letterSpacing: 0.9,
+      fontWeight: FontWeight.w500,
+    );
+    return MouseRegion(
+      onEnter: (_) => _dzHover.value = true,
+      onExit: (_) => _dzHover.value = false,
+      child: gestureDetector(
+        child: Obx(() {
+          final active = _dzHover.value || selected;
+          final btnColor = active ? Colors.white : c.fg;
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: active ? c.card : null,
+              border: Border(
+                left: BorderSide(
+                    color: selected ? MyTheme.accent : Colors.transparent,
+                    width: 2),
+                bottom: BorderSide(color: c.line),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: c.card,
+                    border: Border.all(color: c.line2),
+                  ),
+                  child: ColorFiltered(
+                    colorFilter: ColorFilter.mode(c.mute, BlendMode.srcIn),
+                    child: getPlatformImage(peer.platform, size: 20),
+                  ),
+                ),
+                const SizedBox(width: 13),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w500,
+                            color: c.fg),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        formatID(peer.id),
+                        maxLines: 1,
+                        style: TextStyle(
+                            fontFamily: MyTheme.fontMono,
+                            fontSize: 11.5,
+                            letterSpacing: 0.3,
+                            color: c.dim),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.fromLTRB(7, 4, 8, 4),
+                  decoration: BoxDecoration(border: Border.all(color: c.line2)),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                            color: peer.online ? c.ok : c.off,
+                            shape: BoxShape.circle),
+                      ),
+                      const SizedBox(width: 7),
+                      Text(
+                        peer.online ? 'ONLINE' : 'OFFLINE',
+                        style: mono.copyWith(
+                            color: peer.online ? c.ok : c.dim),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 14),
+                InkWell(
+                  onTap: () => widget.connect(context, peer.id),
+                  child: Container(
+                    height: 30,
+                    padding: const EdgeInsets.symmetric(horizontal: 11),
+                    decoration: BoxDecoration(
+                      color: active ? MyTheme.accent : null,
+                      border: Border.all(
+                          color: active ? MyTheme.accent : c.line2),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('CONNECT', style: mono.copyWith(color: btnColor)),
+                        const SizedBox(width: 6),
+                        Icon(Icons.arrow_forward, size: 13, color: btnColor),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                checkBoxOrActionMoreLandscape(peer, isTile: true),
+              ],
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
   Widget _buildPortrait() {
     final peer = super.widget.peer;
     return Card(
@@ -93,6 +225,7 @@ class _PeerCardState extends State<_PeerCard>
 
   Widget _buildLandscape() {
     final peer = super.widget.peer;
+    if (bind.isOutgoingOnly()) return _buildDeskzapRow(peer);
     var deco = Rx<BoxDecoration?>(
       BoxDecoration(
         border: Border.all(color: Colors.transparent, width: _borderWidth),

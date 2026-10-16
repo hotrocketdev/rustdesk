@@ -8,6 +8,7 @@ import 'package:flutter_hbb/models/state_model.dart';
 import 'package:get/get.dart';
 
 import '../../common.dart';
+import '../../models/platform_model.dart';
 
 class MyGroup extends StatefulWidget {
   final EdgeInsets? menuPadding;
@@ -60,6 +61,7 @@ class _MyGroupState extends State<MyGroup> {
   Widget _buildLandscape() {
     return Row(
       children: [
+        if (!bind.isOutgoingOnly())
         Container(
           decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),

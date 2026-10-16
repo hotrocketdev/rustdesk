@@ -3,6 +3,7 @@ import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/common/widgets/login.dart';
 import 'package:flutter_hbb/common/widgets/peer_tab_page.dart';
 import 'package:flutter_hbb/desktop/widgets/deskzap_tokens.dart';
+import 'package:flutter_hbb/desktop/widgets/dz_icon.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 
@@ -40,12 +41,12 @@ class DeskzapRail extends StatelessWidget {
     2: 'Nearby',
     3: 'Address book',
   };
-  static const Map<int, IconData> _icons = {
-    4: Icons.desktop_windows_outlined,
-    0: Icons.history,
-    1: Icons.star_outline,
-    2: Icons.explore_outlined,
-    3: Icons.contacts_outlined,
+  static const Map<int, String> _icons = {
+    4: 'devices',
+    0: 'recent',
+    1: 'favourite',
+    2: 'nearby',
+    3: 'address-book',
   };
 
   @override
@@ -135,7 +136,7 @@ class DeskzapRail extends StatelessWidget {
               onGroups &&
               gm.isSelectedDeviceGroup.value &&
               gm.selectedAccessibleItemName.value == name,
-          icon: Icons.folder_outlined,
+          icon: 'group',
           label: name,
           c: c,
           selectedBg: sel,
@@ -157,7 +158,7 @@ class DeskzapRail extends StatelessWidget {
               onGroups &&
               !gm.isSelectedDeviceGroup.value &&
               gm.selectedAccessibleItemName.value == name,
-          icon: Icons.person_outline,
+          icon: 'user',
           label: label,
           c: c,
           selectedBg: sel,
@@ -213,14 +214,14 @@ class DeskzapRail extends StatelessWidget {
   Widget _account(BuildContext context, bool dark, DzColors c) {
     final themeButton = _IconTap(
       tooltip: dark ? 'Light mode' : 'Dark mode',
-      icon: dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+      icon: dark ? 'sun' : 'moon',
       color: c.mute,
       onTap: () =>
           MyTheme.changeDarkMode(dark ? ThemeMode.light : ThemeMode.dark),
     );
     final settingsButton = _IconTap(
       tooltip: 'Settings',
-      icon: Icons.settings_outlined,
+      icon: 'settings',
       color: c.mute,
       onTap: onSettings,
     );
@@ -242,7 +243,7 @@ class DeskzapRail extends StatelessWidget {
                       color: Colors.white,
                       fontSize: 13,
                       fontWeight: FontWeight.w600))
-              : const Icon(Icons.login, size: 16, color: Colors.white),
+              : const DzIcon('login', size: 16, color: Colors.white),
         ),
       );
       if (compact) {
@@ -307,7 +308,7 @@ class _NavItem extends StatelessWidget {
 
   final bool compact;
   final bool selected;
-  final IconData icon;
+  final String icon;
   final String label;
   final DzColors c;
   final Color selectedBg;
@@ -334,7 +335,7 @@ class _NavItem extends StatelessWidget {
             mainAxisAlignment:
                 compact ? MainAxisAlignment.center : MainAxisAlignment.start,
             children: [
-              Icon(icon, size: 18, color: selected ? c.fg : c.mute),
+              DzIcon(icon, size: 18, color: selected ? c.fg : c.mute),
               if (!compact) ...[
                 const SizedBox(width: 11),
                 Expanded(
@@ -364,7 +365,7 @@ class _IconTap extends StatelessWidget {
   });
 
   final String tooltip;
-  final IconData icon;
+  final String icon;
   final Color color;
   final VoidCallback onTap;
 
@@ -377,7 +378,7 @@ class _IconTap extends StatelessWidget {
         child: SizedBox(
           width: 30,
           height: 30,
-          child: Icon(icon, size: 17, color: color),
+          child: Center(child: DzIcon(icon, size: 18, color: color)),
         ),
       ),
     );

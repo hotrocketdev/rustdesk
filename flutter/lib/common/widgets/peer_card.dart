@@ -1,6 +1,7 @@
 import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hbb/desktop/widgets/deskzap_tokens.dart';
+import 'package:flutter_hbb/desktop/widgets/dz_icon.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hbb/common/widgets/dialog.dart';
 import 'package:flutter_hbb/consts.dart';
@@ -224,7 +225,7 @@ class _PeerCardState extends State<_PeerCard>
                       children: [
                         Text('CONNECT', style: mono.copyWith(color: btnColor)),
                         const SizedBox(width: 6),
-                        Icon(Icons.arrow_forward, size: 13, color: btnColor),
+                        DzIcon('connect', size: 14, color: btnColor),
                       ],
                     ),
                   ),
@@ -640,7 +641,12 @@ class _PeerCardState extends State<_PeerCard>
         _menuPos = RelativeRect.fromLTRB(x, y, x, y);
       },
       onPointerUp: (_) => _showPeerMenu(peer.id),
-      child: build_more(context));
+      child: bind.isOutgoingOnly()
+          ? Padding(
+              padding: const EdgeInsets.all(6),
+              child: DzIcon('more', size: 18, color: DzColors.of(context).mute),
+            )
+          : build_more(context));
 
   bool _shouldBuildPasswordIcon(Peer peer) {
     if (gFFI.peerTabModel.currentTab != PeerTabIndex.ab.index) return false;

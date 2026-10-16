@@ -6,6 +6,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_hbb/desktop/widgets/deskzap_tokens.dart';
+import 'package:flutter_hbb/desktop/widgets/dz_icon.dart';
 import 'package:flutter_hbb/common/widgets/peers_view.dart';
 import 'package:flutter_hbb/common/widgets/connection_page_title.dart';
 import 'package:flutter_hbb/consts.dart';
@@ -389,7 +390,7 @@ class _ConnectionPageState extends State<ConnectionPage>
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.search, size: 16, color: c.dim),
+                    DzIcon('search', size: 16, color: c.dim),
                     const SizedBox(width: 9),
                     Expanded(
                       child: TextField(

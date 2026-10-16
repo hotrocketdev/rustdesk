@@ -4,6 +4,7 @@ import 'package:flutter_hbb/common/widgets/peer_card.dart';
 import 'package:flutter_hbb/common/widgets/peers_view.dart';
 import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/desktop/widgets/deskzap_tokens.dart';
+import 'package:flutter_hbb/desktop/widgets/dz_icon.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
 import 'package:get/get.dart';
 
@@ -14,7 +15,7 @@ class _DzItem {
   final String label;
   final bool selected;
   final VoidCallback onTap;
-  final IconData? icon;
+  final String? icon;
 }
 
 /// Opens a Deskzap-styled menu under [anchor]: a mono heading, then the items.
@@ -59,11 +60,11 @@ Future<void> _showDzMenu(
               SizedBox(
                 width: 18,
                 child: it.selected
-                    ? Icon(Icons.check, size: 15, color: MyTheme.accentInk)
+                    ? DzIcon('check', size: 15, color: MyTheme.accentInk)
                     : null,
               ),
               if (it.icon != null) ...[
-                Icon(it.icon, size: 16, color: c.mute),
+                DzIcon(it.icon!, size: 16, color: c.mute),
                 const SizedBox(width: 10),
               ],
               Text(it.label,
@@ -111,7 +112,7 @@ class _DzBarButton extends StatelessWidget {
               const SizedBox(width: 8),
               Text(value.toUpperCase(), style: mono.copyWith(color: c.fg)),
               const SizedBox(width: 6),
-              Icon(Icons.expand_more, size: 15, color: c.mute),
+              DzIcon('chevron-down', size: 14, color: c.mute),
             ],
           ),
         ),
@@ -139,9 +140,9 @@ class DzViewButton extends StatelessWidget {
         value: compact ? 'Compact' : 'Rows',
         onTap: (ctx) => _showDzMenu(ctx, 'Change view', [
           _DzItem('Rows', !compact, () => pick(PeerUiType.list),
-              icon: Icons.view_agenda_outlined),
+              icon: 'view-rows'),
           _DzItem('Compact', compact, () => pick(PeerUiType.tile),
-              icon: Icons.view_headline),
+              icon: 'view-compact'),
         ]),
       );
     });

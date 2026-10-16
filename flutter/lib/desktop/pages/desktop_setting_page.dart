@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter_hbb/desktop/widgets/deskzap_switch.dart';
+import 'package:flutter_hbb/desktop/widgets/dz_icon.dart';
 import 'package:flutter_hbb/desktop/widgets/deskzap_tokens.dart';
 import 'dart:convert';
 import 'dart:io';
@@ -50,6 +51,27 @@ class _TabInfo {
   late final IconData unselected;
   late final IconData selected;
   _TabInfo(this.key, this.label, this.unselected, this.selected);
+}
+
+String _dzTabIcon(SettingsTabKey k) {
+  switch (k) {
+    case SettingsTabKey.general:
+      return 'settings';
+    case SettingsTabKey.safety:
+      return 'shield';
+    case SettingsTabKey.network:
+      return 'network';
+    case SettingsTabKey.display:
+      return 'devices';
+    case SettingsTabKey.plugin:
+      return 'actions';
+    case SettingsTabKey.account:
+      return 'user';
+    case SettingsTabKey.printer:
+      return 'printer';
+    case SettingsTabKey.about:
+      return 'info';
+  }
 }
 
 enum SettingsTabKey {
@@ -385,8 +407,8 @@ class _DesktopSettingPageState extends State<DesktopSettingPage>
                   : null,
             ),
             child: Row(children: [
-              Icon(
-                selected ? tab.selected : tab.unselected,
+              DzIcon(
+                _dzTabIcon(tab.key),
                 color: selected ? c.fg : c.mute,
                 size: 18,
               ),

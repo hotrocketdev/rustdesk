@@ -477,7 +477,7 @@ class _PinMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     return Obx(
       () => _IconMenuButton(
-        assetName: state.pin ? "assets/pinned.svg" : "assets/unpinned.svg",
+        assetName: state.pin ? "assets/deskzap/icons/dz-pin-on.svg" : "assets/deskzap/icons/dz-pin.svg",
         tooltip: state.pin ? 'Unpin Toolbar' : 'Pin Toolbar',
         onPressed: state.switchPin,
         color:
@@ -498,7 +498,7 @@ class _MobileActionMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!ffi.ffiModel.isPeerAndroid) return Offstage();
     return Obx(() => _IconMenuButton(
-          assetName: 'assets/actions_mobile.svg',
+          assetName: 'assets/deskzap/icons/dz-actions.svg',
           tooltip: 'Mobile Actions',
           onPressed: () => ffi.dialogManager.setMobileActionsOverlayVisible(
               !ffi.dialogManager.mobileActionsOverlayVisible.value),
@@ -632,7 +632,7 @@ class _MonitorMenu extends StatelessWidget {
                       alignment: Alignment.center,
                       children: [
                         SvgPicture.asset(
-                          "assets/screen.svg",
+                          "assets/deskzap/icons/dz-monitors.svg",
                           colorFilter:
                               ColorFilter.mode(Colors.white, BlendMode.srcIn),
                         ),
@@ -755,7 +755,7 @@ class _ControlMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     return _IconSubmenuButton(
         tooltip: 'Control Actions',
-        svg: "assets/actions.svg",
+        svg: "assets/deskzap/icons/dz-actions.svg",
         color: _ToolbarTheme.blueColor,
         hoverColor: _ToolbarTheme.hoverBlueColor,
         ffi: ffi,
@@ -1032,7 +1032,7 @@ class _DisplayMenuState extends State<_DisplayMenu> {
 
     return _IconSubmenuButton(
       tooltip: 'Display Settings',
-      svg: "assets/display.svg",
+      svg: "assets/deskzap/icons/dz-display.svg",
       ffi: widget.ffi,
       color: _ToolbarTheme.blueColor,
       hoverColor: _ToolbarTheme.hoverBlueColor,
@@ -1781,7 +1781,7 @@ class _KeyboardMenu extends StatelessWidget {
 
     return _IconSubmenuButton(
         tooltip: 'Keyboard Settings',
-        svg: "assets/keyboard_mouse.svg",
+        svg: "assets/deskzap/icons/dz-keyboard.svg",
         ffi: ffi,
         color: _ToolbarTheme.blueColor,
         hoverColor: _ToolbarTheme.hoverBlueColor,
@@ -2056,7 +2056,7 @@ class _ChatMenuState extends State<_ChatMenu> {
       return _IconSubmenuButton(
           tooltip: 'Chat',
           key: chatButtonKey,
-          svg: 'assets/chat.svg',
+          svg: 'assets/deskzap/icons/dz-chat.svg',
           ffi: widget.ffi,
           color: _ToolbarTheme.blueColor,
           hoverColor: _ToolbarTheme.hoverBlueColor,
@@ -2066,7 +2066,7 @@ class _ChatMenuState extends State<_ChatMenu> {
 
   buildTextChatButton() {
     return _IconMenuButton(
-      assetName: 'assets/message_24dp_5F6368.svg',
+      assetName: 'assets/deskzap/icons/dz-chat.svg',
       tooltip: 'Text chat',
       key: chatButtonKey,
       onPressed: _textChatOnPressed,
@@ -2161,7 +2161,7 @@ class _VoiceCallMenu extends StatelessWidget {
           case VoiceCallStatus.connected:
             return _IconSubmenuButton(
               tooltip: 'Voice call',
-              svg: 'assets/voice_call.svg',
+              svg: 'assets/deskzap/icons/dz-voice.svg',
               color: _ToolbarTheme.blueColor,
               hoverColor: _ToolbarTheme.hoverBlueColor,
               menuChildrenGetter: menuChildrenGetter,
@@ -2176,7 +2176,7 @@ class _VoiceCallMenu extends StatelessWidget {
 
   Widget buildCallWaiting(BuildContext context) {
     return _IconMenuButton(
-      assetName: "assets/call_wait.svg",
+      assetName: "assets/deskzap/icons/dz-voice.svg",
       tooltip: "Waiting",
       onPressed: () => bind.sessionCloseVoiceCall(sessionId: ffi.sessionId),
       color: _ToolbarTheme.redColor,
@@ -2196,7 +2196,7 @@ class _RecordMenu extends StatelessWidget {
         (recordingModel.start || ffi.permissions['recording'] != false);
     if (!visible) return Offstage();
     return _IconMenuButton(
-      assetName: 'assets/rec.svg',
+      assetName: 'assets/deskzap/icons/dz-record.svg',
       tooltip: recordingModel.start
           ? 'Stop session recording'
           : 'Start session recording',
@@ -2220,7 +2220,7 @@ class _CloseMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _IconMenuButton(
-      assetName: 'assets/close.svg',
+      assetName: 'assets/deskzap/icons/dz-power.svg',
       tooltip: 'Close',
       onPressed: () async {
         if (await showConnEndAuditDialogCloseCanceled(ffi: ffi)) {

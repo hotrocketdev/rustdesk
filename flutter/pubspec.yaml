@@ -153,6 +153,7 @@ flutter:
   assets:
     - assets/
     - assets/deskzap/
+    - assets/deskzap/icons/
 
   fonts:
     - family: GestureIcons

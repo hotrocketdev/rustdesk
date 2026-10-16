@@ -1,0 +1,60 @@
+{
+  "name": "Deskzap icons",
+  "prefix": "dz-",
+  "grid": 24,
+  "stroke": 1.75,
+  "groups": {
+    "Navigation": [
+      "dz-devices",
+      "dz-recent",
+      "dz-favourite",
+      "dz-nearby",
+      "dz-address-book",
+      "dz-group",
+      "dz-user",
+      "dz-files"
+    ],
+    "Chrome": [
+      "dz-settings",
+      "dz-sun",
+      "dz-moon",
+      "dz-search",
+      "dz-login",
+      "dz-plus",
+      "dz-close",
+      "dz-check",
+      "dz-refresh",
+      "dz-copy"
+    ],
+    "Device list": [
+      "dz-connect",
+      "dz-more",
+      "dz-sort",
+      "dz-view-rows",
+      "dz-view-compact",
+      "dz-select"
+    ],
+    "Session toolbar": [
+      "dz-pin",
+      "dz-pin-on",
+      "dz-monitors",
+      "dz-actions",
+      "dz-display",
+      "dz-keyboard",
+      "dz-chat",
+      "dz-voice",
+      "dz-record",
+      "dz-power",
+      "dz-fullscreen",
+      "dz-collapse"
+    ],
+    "Settings and arrows": [
+      "dz-chevron-down",
+      "dz-chevron-right",
+      "dz-info",
+      "dz-network",
+      "dz-printer",
+      "dz-shield"
+    ]
+  }
+}

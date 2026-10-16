@@ -129,15 +129,17 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     final isOutgoingOnly = bind.isOutgoingOnly();
     if (isOutgoingOnly) {
       // Deskzap Connect: brand rail instead of the stock left pane.
-      return DeskzapRail(
+      return Obx(() => DeskzapRail(
         compact: compact,
+        settingsOpen: dzShowSettings.value,
+        onNavigate: () => dzShowSettings.value = false,
         onAccount: () => DesktopSettingPage.switch2page(SettingsTabKey.account),
         onSettings: () {
           if (DesktopSettingPage.tabKeys.isNotEmpty) {
             DesktopSettingPage.switch2page(DesktopSettingPage.tabKeys[0]);
           }
         },
-      );
+      ));
     }
     final children = <Widget>[
       if (!isOutgoingOnly) buildPresetPasswordWarning(),
@@ -338,6 +340,16 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   }
 
   buildRightPane(BuildContext context) {
+    if (bind.isOutgoingOnly()) {
+      return Container(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        child: Obx(() => dzShowSettings.value
+            ? DesktopSettingPage(
+                key: const ValueKey('dz-settings'),
+                initialTabkey: dzSettingsPage.value)
+            : ConnectionPage()),
+      );
+    }
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: ConnectionPage(),

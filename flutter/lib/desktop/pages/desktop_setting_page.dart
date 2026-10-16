@@ -2615,20 +2615,36 @@ Widget _Radio<T>(BuildContext context,
           }
         }
       : null;
+  final c = DzColors.of(context);
+  final selected = value == groupValue;
   return GestureDetector(
+    behavior: HitTestBehavior.opaque,
     child: Row(
       children: [
-        Radio<T>(value: value, groupValue: groupValue, onChanged: onChange2),
+        Opacity(
+          opacity: onChange2 != null ? 1 : 0.45,
+          child: Container(
+            width: 16,
+            height: 16,
+            decoration: BoxDecoration(
+              color: c.card,
+              border: Border.all(color: selected ? MyTheme.accent : c.line2),
+            ),
+            child: selected
+                ? Center(child: Container(width: 8, height: 8, color: MyTheme.accent))
+                : null,
+          ),
+        ),
         Expanded(
           child: Text(translate(label),
                   overflow: autoNewLine ? null : TextOverflow.ellipsis,
                   style: TextStyle(
                       fontSize: _kContentFontSize,
                       color: disabledTextColor(context, onChange2 != null)))
-              .marginOnly(left: 5),
+              .marginOnly(left: 10),
         ),
       ],
-    ).marginOnly(left: _kRadioLeftMargin),
+    ).marginOnly(left: _kRadioLeftMargin, top: 4, bottom: 4),
     onTap: () => onChange2?.call(value),
   );
 }

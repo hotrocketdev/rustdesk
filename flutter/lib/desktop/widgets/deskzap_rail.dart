@@ -18,9 +18,13 @@ class DeskzapRail extends StatelessWidget {
     required this.compact,
     required this.onAccount,
     required this.onSettings,
+    required this.onNavigate,
+    this.settingsOpen = false,
   }) : super(key: key);
 
   final bool compact;
+  final bool settingsOpen;
+  final VoidCallback onNavigate;
   final VoidCallback onAccount;
   final VoidCallback onSettings;
 
@@ -93,9 +97,8 @@ class DeskzapRail extends StatelessWidget {
         if (model.isVisibleEnabled[t])
           Obx(() {
             final noGroup = gFFI.groupModel.selectedAccessibleItemName.isEmpty;
-            final selected = t == 4
-                ? onGroups && noGroup
-                : model.currentTab == t;
+            final selected = !settingsOpen &&
+                (t == 4 ? onGroups && noGroup : model.currentTab == t);
             return _NavItem(
               compact: compact,
               selected: selected,
@@ -104,6 +107,7 @@ class DeskzapRail extends StatelessWidget {
               c: c,
               selectedBg: sel,
               onTap: () {
+                onNavigate();
                 if (t == 4) {
                   gFFI.groupModel.selectedAccessibleItemName.value = '';
                 }
@@ -127,7 +131,8 @@ class DeskzapRail extends StatelessWidget {
         final name = g.name;
         items.add(_NavItem(
           compact: false,
-          selected: onGroups &&
+          selected: !settingsOpen &&
+              onGroups &&
               gm.isSelectedDeviceGroup.value &&
               gm.selectedAccessibleItemName.value == name,
           icon: Icons.folder_outlined,
@@ -135,6 +140,7 @@ class DeskzapRail extends StatelessWidget {
           c: c,
           selectedBg: sel,
           onTap: () {
+            onNavigate();
             gm.isSelectedDeviceGroup.value = true;
             gm.selectedAccessibleItemName.value = name;
             PeerTabPage.selectTab?.call(4);
@@ -147,7 +153,8 @@ class DeskzapRail extends StatelessWidget {
         final label = u.displayNameOrName + (isMe ? '  (me)' : '');
         items.add(_NavItem(
           compact: false,
-          selected: onGroups &&
+          selected: !settingsOpen &&
+              onGroups &&
               !gm.isSelectedDeviceGroup.value &&
               gm.selectedAccessibleItemName.value == name,
           icon: Icons.person_outline,
@@ -155,6 +162,7 @@ class DeskzapRail extends StatelessWidget {
           c: c,
           selectedBg: sel,
           onTap: () {
+            onNavigate();
             gm.isSelectedDeviceGroup.value = false;
             gm.selectedAccessibleItemName.value = name;
             PeerTabPage.selectTab?.call(4);

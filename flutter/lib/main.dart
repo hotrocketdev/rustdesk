@@ -41,6 +41,13 @@ Future<void> main(List<String> args) async {
   earlyAssert();
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Release builds swallow framework errors; print them so a blank window can be diagnosed.
+  FlutterError.onError = (FlutterErrorDetails details) {
+    debugPrint('FLUTTER_ERROR: ${details.exceptionAsString()}');
+    debugPrint('${details.stack}');
+    FlutterError.presentError(details);
+  };
+
   debugPrint("launch args: $args");
   kBootArgs = List.from(args);
 

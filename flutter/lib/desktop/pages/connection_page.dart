@@ -319,6 +319,7 @@ class _ConnectionPageState extends State<ConnectionPage>
     if (isOutgoingOnly) {
       return LayoutBuilder(
         builder: (context, constraints) => Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
               child: Column(

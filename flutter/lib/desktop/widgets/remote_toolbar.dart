@@ -113,8 +113,8 @@ class ToolbarState {
 }
 
 class _ToolbarTheme {
-  static const Color blueColor = MyTheme.button;
-  static const Color hoverBlueColor = MyTheme.accent;
+  static const Color blueColor = Color(0x00000000);
+  static const Color hoverBlueColor = Color(0xFF2A2A2A);
   static Color inactiveColor = Colors.grey[800]!;
   static Color hoverInactiveColor = Colors.grey[850]!;
 

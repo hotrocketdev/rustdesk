@@ -2,6 +2,7 @@ import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hbb/desktop/widgets/deskzap_tokens.dart';
 import 'package:flutter_hbb/desktop/widgets/dz_icon.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_detail_panel.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hbb/common/widgets/dialog.dart';
 import 'package:flutter_hbb/consts.dart';
@@ -68,6 +69,7 @@ class _PeerCardState extends State<_PeerCard>
             ? null
             : () => widget.connect(context, peer.id),
         onTap: () {
+          if (bind.isOutgoingOnly()) dzFocusedPeer.value = peer;
           if (peerTabModel.multiSelectionMode) {
             peerTabModel.select(peer);
           } else {
@@ -104,7 +106,8 @@ class _PeerCardState extends State<_PeerCard>
       onExit: (_) => _dzHover.value = false,
       child: gestureDetector(
         child: Obx(() {
-          final active = _dzHover.value || selected;
+          final isSel = selected || dzFocusedPeer.value?.id == peer.id;
+          final active = _dzHover.value || isSel;
           final compact = peerCardUiType.value == PeerUiType.tile;
           final btnColor = active ? Colors.white : c.fg;
           return Container(
@@ -113,7 +116,7 @@ class _PeerCardState extends State<_PeerCard>
               color: active ? c.card : null,
               border: Border(
                 left: BorderSide(
-                    color: selected ? MyTheme.accent : Colors.transparent,
+                    color: isSel ? MyTheme.accent : Colors.transparent,
                     width: 2),
                 bottom: BorderSide(color: c.line),
               ),

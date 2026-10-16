@@ -7,6 +7,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_hbb/desktop/widgets/deskzap_tokens.dart';
 import 'package:flutter_hbb/desktop/widgets/dz_icon.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_detail_panel.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_palette.dart';
 import 'package:flutter_hbb/common/widgets/peers_view.dart';
 import 'package:flutter_hbb/common/widgets/connection_page_title.dart';
 import 'package:flutter_hbb/consts.dart';
@@ -315,11 +317,20 @@ class _ConnectionPageState extends State<ConnectionPage>
   Widget build(BuildContext context) {
     final isOutgoingOnly = bind.isOutgoingOnly();
     if (isOutgoingOnly) {
-      return Column(
-        children: [
-          _buildDeskzapHeader(context),
-          const Expanded(child: PeerTabPage()),
-        ],
+      return LayoutBuilder(
+        builder: (context, constraints) => Row(
+          children: [
+            Expanded(
+              child: Column(
+                children: [
+                  _buildDeskzapHeader(context),
+                  const Expanded(child: PeerTabPage()),
+                ],
+              ),
+            ),
+            if (constraints.maxWidth >= 1000) const DeskzapDetailPanel(),
+          ],
+        ),
       );
     }
     return Column(
@@ -360,6 +371,8 @@ class _ConnectionPageState extends State<ConnectionPage>
   /// Deskzap Connect header: title, device search, inline quick connect.
   Widget _buildDeskzapHeader(BuildContext context) {
     final c = DzColors.of(context);
+    return LayoutBuilder(builder: (context, box) {
+    final w = box.maxWidth;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: BoxDecoration(
@@ -367,6 +380,7 @@ class _ConnectionPageState extends State<ConnectionPage>
       ),
       child: Row(
         children: [
+          if (w >= 760) ...[
           Text(
             'Devices',
             style: TextStyle(
@@ -378,6 +392,7 @@ class _ConnectionPageState extends State<ConnectionPage>
             ),
           ),
           const SizedBox(width: 18),
+          ],
           Flexible(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 360),
@@ -407,16 +422,63 @@ class _ConnectionPageState extends State<ConnectionPage>
                         ),
                       ).workaroundFreezeLinuxMint(),
                     ),
+                    InkWell(
+                      onTap: () => showDzPalette(context),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(border: Border.all(color: c.line2)),
+                        child: Text(
+                          isMacOS ? 'CMD K' : 'CTRL K',
+                          style: TextStyle(
+                            fontFamily: MyTheme.fontMono,
+                            fontSize: 10,
+                            letterSpacing: 0.6,
+                            color: c.mute,
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
             ),
           ),
           const Spacer(),
-          _buildRemoteIDTextField(context),
+          if (w >= 620) ...[
+            _buildRemoteIDTextField(context),
+            const SizedBox(width: 10),
+          ],
+          InkWell(
+            onTap: () => launchUrlString('https://my.deskzap.co.uk/install/host'),
+            child: Container(
+              height: 36,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              color: c.fg,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DzIcon('plus', size: 14, color: Theme.of(context).scaffoldBackgroundColor),
+                  if (w >= 900) ...[
+                  const SizedBox(width: 8),
+                  Text(
+                    'ADD DEVICE',
+                    style: TextStyle(
+                      fontFamily: MyTheme.fontMono,
+                      fontSize: 10.5,
+                      letterSpacing: 0.9,
+                      fontWeight: FontWeight.w500,
+                      color: Theme.of(context).scaffoldBackgroundColor,
+                    ),
+                  ),
+                  ],
+                ],
+              ),
+            ),
+          ),
         ],
       ),
     );
+    });
   }
 
   /// UI for the remote ID TextField.

@@ -9,6 +9,9 @@ import 'package:flutter_hbb/common/hbbs/hbbs.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
 import 'package:flutter_hbb/models/user_model.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_tokens.dart';
+import 'package:flutter_hbb/desktop/widgets/dz_icon.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 // ---------------------------------------------------------------------------
 // DeskzapEnrollmentPage
@@ -49,15 +52,6 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
   // ── enrollment poll state ─────────────────────────────────────────────────
   Timer? _pollTimer;
   String _enrollmentStatus = ''; // '', 'pending_login', 'enrolled', 'error'
-
-  // ── brand colours (same palette as the existing enrollment page) ──────────
-  static const _blue = Color(0xFF2963F2);
-  static const _dark = Color(0xFF16213D);
-  static const _muted = Color(0xFF5C6C8F);
-  static const _bg = Color(0xFFF4F8FF);
-  static const _cardBg = Colors.white;
-  static const _inputBorder = Color(0xFFD7E3FF);
-  static const _inputFill = Color(0xFFF7FAFF);
 
   @override
   void initState() {
@@ -290,25 +284,15 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Force a light theme so our hardcoded light-mode colors (like the white
-    // input backgrounds) don't get overridden by a system dark mode theme,
-    // which causes the password box to turn black when focused.
-    return Theme(
-      data: ThemeData.light().copyWith(
-        colorScheme: const ColorScheme.light(
-          primary: _blue,
-          background: _bg,
-        ),
-      ),
-      child: Container(
-        color: _bg,
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
-              child: _buildContent(),
-            ),
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      color: dark ? const Color(0xFF0A0A0A) : Colors.white,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            child: _buildContent(),
           ),
         ),
       ),
@@ -321,76 +305,88 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
     return _buildSignInCard();
   }
 
+  DzColors get _c => DzColors.of(context);
+
+  TextStyle _mono(Color color) => TextStyle(
+        fontFamily: MyTheme.fontMono,
+        fontSize: 10.5,
+        letterSpacing: 0.9,
+        fontWeight: FontWeight.w500,
+        color: color,
+      );
+
+  Widget _card(Widget child) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 34),
+      decoration: BoxDecoration(
+        color: _c.card,
+        border: Border.all(color: _c.line),
+      ),
+      child: child,
+    );
+  }
+
+  // The Host app icon: white hexagon on the Host pink.
+  Widget _hostTile() {
+    return Container(
+      width: 44,
+      height: 44,
+      alignment: Alignment.center,
+      color: const Color(0xFFFF2E88),
+      child: SvgPicture.asset('assets/deskzap/deskzap-mark.svg',
+          width: 22,
+          height: 26,
+          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn)),
+    );
+  }
+
   // ── sign-in card ──────────────────────────────────────────────────────────
 
   Widget _buildSignInCard() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 40),
-      decoration: BoxDecoration(
-        color: _cardBg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _inputBorder),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x1A0F172A),
-            blurRadius: 28,
-            offset: Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Column(
+    final c = _c;
+    return _card(
+      Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Logo / brand mark
-          _buildLogo(),
-          const SizedBox(height: 28),
-
-          // Heading
-          const Text(
-            'Sign in to Deskzap (v3)',
-            textAlign: TextAlign.center,
+          Row(
+            children: [
+              _hostTile(),
+              const SizedBox(width: 12),
+              Text('DESKZAP HOST', style: _mono(c.dim)),
+            ],
+          ),
+          const SizedBox(height: 26),
+          Text(
+            'Sign in to add this computer',
             style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: Colors.black, // Forced black to guarantee contrast
+              fontFamily: MyTheme.fontDisplay,
+              fontSize: 24,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.3,
+              color: c.fg,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'This computer will be added to your workspace automatically after sign-in.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 14,
-              height: 1.5,
-              color: _muted,
-            ),
+          Text(
+            'This computer joins your workspace automatically after you sign in.',
+            style: TextStyle(fontSize: 14, height: 1.5, color: c.mute),
           ),
-          const SizedBox(height: 32),
-
-          // Error banner
+          const SizedBox(height: 28),
           if (_errorMessage != null) ...[
             _buildErrorBanner(_errorMessage!),
             const SizedBox(height: 16),
           ],
-
-          // Email field
-          _buildLabel('Email'),
+          Text('EMAIL', style: _mono(c.dim)),
           const SizedBox(height: 6),
           _buildEmailField(),
           const SizedBox(height: 16),
-
-          // Password field
-          _buildLabel('Password'),
+          Text('PASSWORD', style: _mono(c.dim)),
           const SizedBox(height: 6),
           _buildPasswordField(),
-          const SizedBox(height: 28),
-
-          // Sign-in button
+          const SizedBox(height: 26),
           _buildSignInButton(),
-
-          const SizedBox(height: 12),
-          // Forgot password
+          const SizedBox(height: 14),
           Center(
             child: TextButton(
               onPressed: () => launchUrl(
@@ -398,77 +394,39 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
                 mode: LaunchMode.externalApplication,
               ),
               style: TextButton.styleFrom(
-                foregroundColor: _blue,
+                foregroundColor: MyTheme.accentInk,
                 padding: EdgeInsets.zero,
                 minimumSize: const Size(0, 0),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: const Text(
-                'Forgot password?',
-                style: TextStyle(fontSize: 13),
-              ),
+              child: const Text('Forgot password?', style: TextStyle(fontSize: 13)),
             ),
           ),
-
-          const SizedBox(height: 20),
-          const Divider(color: Color(0xFFE8EEFF)),
+          const SizedBox(height: 18),
+          Divider(height: 1, color: c.line),
           const SizedBox(height: 16),
-
-          // Create account
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text(
-                "Don't have an account? ",
-                style: TextStyle(fontSize: 13, color: _muted),
-              ),
+              Text("Don't have an account? ",
+                  style: TextStyle(fontSize: 13, color: c.mute)),
               TextButton(
                 onPressed: () => launchUrl(
                   Uri.parse('https://my.deskzap.co.uk/register'),
                   mode: LaunchMode.externalApplication,
                 ),
                 style: TextButton.styleFrom(
-                  foregroundColor: _blue,
+                  foregroundColor: MyTheme.accentInk,
                   padding: EdgeInsets.zero,
                   minimumSize: const Size(0, 0),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                child: const Text(
-                  'Create a free account',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                child: const Text('Create a free account',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
               ),
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildLogo() {
-    return Center(
-      child: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          color: _blue,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const Icon(Icons.monitor_outlined, color: Colors.white, size: 28),
-      ),
-    );
-  }
-
-  Widget _buildLabel(String text) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w600,
-        color: Colors.black, // Forced black
       ),
     );
   }
@@ -484,11 +442,8 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
       onChanged: (_) {
         if (_errorMessage != null) setState(() => _errorMessage = null);
       },
-      style: const TextStyle(fontSize: 15, color: Colors.black), // Forced black
-      decoration: _inputDecoration(
-        hint: 'you@example.com',
-        icon: Icons.email_outlined,
-      ),
+      style: TextStyle(fontSize: 15, color: _c.fg),
+      decoration: _inputDecoration(hint: 'you@example.com', icon: 'user'),
     );
   }
 
@@ -502,15 +457,17 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
       onChanged: (_) {
         if (_errorMessage != null) setState(() => _errorMessage = null);
       },
-      style: const TextStyle(fontSize: 15, color: Colors.black), // Forced black
+      style: TextStyle(fontSize: 15, color: _c.fg),
       decoration: _inputDecoration(
         hint: 'Your password',
-        icon: Icons.lock_outline,
+        icon: 'shield',
         suffixIcon: IconButton(
           icon: Icon(
-            _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-            size: 20,
-            color: _muted,
+            _obscurePassword
+                ? Icons.visibility_off_outlined
+                : Icons.visibility_outlined,
+            size: 19,
+            color: _c.mute,
           ),
           onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
           splashRadius: 18,
@@ -521,61 +478,55 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
 
   InputDecoration _inputDecoration({
     required String hint,
-    required IconData icon,
+    required String icon,
     Widget? suffixIcon,
   }) {
+    final c = _c;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    OutlineInputBorder b(Color color, [double w = 1]) => OutlineInputBorder(
+          borderRadius: BorderRadius.circular(MyTheme.dzRadius),
+          borderSide: BorderSide(color: color, width: w),
+        );
     return InputDecoration(
       hintText: hint,
-      hintStyle: const TextStyle(color: Color(0xFF5C6C8F), fontSize: 14),
-      prefixIcon: Icon(icon, size: 18, color: _muted),
+      hintStyle: TextStyle(color: c.dim, fontSize: 14),
+      prefixIcon: Padding(
+        padding: const EdgeInsets.all(13),
+        child: DzIcon(icon, size: 18, color: c.mute),
+      ),
+      prefixIconConstraints: const BoxConstraints(minWidth: 44, minHeight: 44),
       suffixIcon: suffixIcon,
       filled: true,
-      fillColor: Colors.white, // Forced white background
-      hoverColor: Colors.white,
-      focusColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: _inputBorder),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: _inputBorder),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: _blue, width: 1.5),
-      ),
+      fillColor: dark ? const Color(0xFF141414) : Colors.white,
+      hoverColor: Colors.transparent,
+      contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+      border: b(c.line2),
+      enabledBorder: b(c.line2),
+      focusedBorder: b(MyTheme.accent, 1.5),
     );
   }
 
   Widget _buildSignInButton() {
     return SizedBox(
-      height: 48,
+      height: 46,
       child: ElevatedButton(
         onPressed: _isLoading ? null : _handleSignIn,
         style: ElevatedButton.styleFrom(
-          backgroundColor: _blue,
+          backgroundColor: MyTheme.accent,
           foregroundColor: Colors.white,
-          disabledBackgroundColor: _blue.withOpacity(0.55),
+          disabledBackgroundColor: MyTheme.accent.withOpacity(0.55),
+          disabledForegroundColor: Colors.white70,
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(MyTheme.dzRadius),
           ),
-          textStyle: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.2,
-          ),
+          textStyle: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w600),
         ),
         child: _isLoading
             ? const SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.2,
-                  color: Colors.white,
-                ),
+                child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
               )
             : const Text('Sign in and add this computer'),
       ),
@@ -583,26 +534,20 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
   }
 
   Widget _buildErrorBanner(String message) {
+    const red = Color(0xFFFF5D5D);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF1F1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFFFCDD2)),
+        color: red.withOpacity(0.08),
+        border: Border.all(color: red.withOpacity(0.5)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline, color: Color(0xFFEF4444), size: 18),
+          const DzIcon('info', size: 18, color: red),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                fontSize: 13,
-                color: Color(0xFF991B1B),
-                height: 1.4,
-              ),
-            ),
+            child: Text(message,
+                style: TextStyle(fontSize: 13, color: _c.fg, height: 1.4)),
           ),
         ],
       ),
@@ -612,46 +557,32 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
   // ── enrolling / pending state ─────────────────────────────────────────────
 
   Widget _buildEnrolling() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 48),
-      decoration: BoxDecoration(
-        color: _cardBg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _inputBorder),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x1A0F172A),
-            blurRadius: 28,
-            offset: Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Column(
+    final c = _c;
+    return _card(
+      Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           const SizedBox(
-            width: 44,
-            height: 44,
-            child: CircularProgressIndicator(
-              strokeWidth: 3,
-              color: _blue,
-            ),
+            width: 36,
+            height: 36,
+            child: CircularProgressIndicator(strokeWidth: 3, color: MyTheme.accent),
           ),
           const SizedBox(height: 24),
-          const Text(
+          Text(
             'Adding this computer…',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: _dark,
+              fontFamily: MyTheme.fontDisplay,
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: c.fg,
             ),
           ),
           const SizedBox(height: 10),
-          const Text(
-            'Finishing setup. This will only take a moment.',
+          Text(
+            'Finishing setup. This only takes a moment.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: _muted, height: 1.5),
+            style: TextStyle(fontSize: 14, color: c.mute, height: 1.5),
           ),
         ],
       ),
@@ -661,47 +592,34 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
   // ── success state ─────────────────────────────────────────────────────────
 
   Widget _buildSuccess() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 48),
-      decoration: BoxDecoration(
-        color: _cardBg,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _inputBorder),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x1A0F172A),
-            blurRadius: 28,
-            offset: Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Column(
+    final c = _c;
+    return _card(
+      Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: const Color(0xFF22C55E),
-              borderRadius: BorderRadius.circular(28),
-            ),
-            child: const Icon(Icons.check, color: Colors.white, size: 32),
+            width: 48,
+            height: 48,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(border: Border.all(color: c.ok, width: 1.5)),
+            child: DzIcon('check', size: 26, color: c.ok),
           ),
           const SizedBox(height: 20),
-          const Text(
-            "You're connected.",
+          Text(
+            'This computer is connected',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w700,
-              color: _dark,
+              fontFamily: MyTheme.fontDisplay,
+              fontSize: 22,
+              fontWeight: FontWeight.w600,
+              color: c.fg,
             ),
           ),
           const SizedBox(height: 10),
-          const Text(
-            'This computer is now linked to your workspace.\nIt will appear in your dashboard in a few moments.',
+          Text(
+            'It is linked to your workspace and will appear in your dashboard in a few moments.',
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: _muted, height: 1.55),
+            style: TextStyle(fontSize: 14, color: c.mute, height: 1.55),
           ),
         ],
       ),

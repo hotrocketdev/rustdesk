@@ -16,6 +16,7 @@ import 'package:flutter_hbb/desktop/pages/deskzap_quick_support_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_tab_page.dart';
 import 'package:flutter_hbb/desktop/widgets/deskzap_chat.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_palette.dart';
 import 'package:flutter_hbb/desktop/widgets/deskzap_rail.dart';
 import 'package:flutter_hbb/desktop/widgets/update_progress.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
@@ -111,12 +112,23 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       ),
     );
     final chat = _chat;
+    final Widget homeWithKeys = bind.isOutgoingOnly()
+        ? CallbackShortcuts(
+            bindings: {
+              const SingleActivator(LogicalKeyboardKey.keyK, control: true): () =>
+                  showDzPalette(context),
+              const SingleActivator(LogicalKeyboardKey.keyK, meta: true): () =>
+                  showDzPalette(context),
+            },
+            child: Focus(autofocus: true, child: home),
+          )
+        : home;
     return _buildBlock(
         child: chat == null
-            ? home
+            ? homeWithKeys
             : Stack(
                 fit: StackFit.passthrough,
-                children: [home, DeskzapChatOverlay(controller: chat)]));
+                children: [homeWithKeys, DeskzapChatOverlay(controller: chat)]));
   }
 
   Widget _buildBlock({required Widget child}) {
@@ -382,9 +394,12 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          translate("ID"),
+                          translate("ID").toUpperCase(),
                           style: TextStyle(
-                              fontSize: 14,
+                              fontFamily: MyTheme.fontMono,
+                              fontSize: 10.5,
+                              letterSpacing: 0.9,
+                              fontWeight: FontWeight.w500,
                               color: Theme.of(context)
                                   .textTheme
                                   .titleLarge
@@ -410,7 +425,9 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                           contentPadding: EdgeInsets.only(top: 10, bottom: 10),
                         ),
                         style: TextStyle(
+                          fontFamily: MyTheme.fontMono,
                           fontSize: 22,
+                          letterSpacing: 0.5,
                         ),
                       ).workaroundFreezeLinuxMint(),
                     ),

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_hbb/desktop/widgets/dz_icon.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hbb/common/widgets/audio_input.dart';
 import 'package:flutter_hbb/common/widgets/dialog.dart';
@@ -138,11 +139,9 @@ class _ToolbarTheme {
       : EdgeInsets.fromLTRB(6, 14, 6, 14);
   static const double menuButtonBorderRadius = 2.0;
 
-  static Color borderColor(BuildContext context) =>
-      MyTheme.color(context).border3 ?? MyTheme.border;
+  static Color borderColor(BuildContext context) => const Color(0xFF333333);
 
-  static Color? dividerColor(BuildContext context) =>
-      MyTheme.color(context).divider;
+  static Color? dividerColor(BuildContext context) => const Color(0xFF333333);
 
   static MenuStyle defaultMenuStyle(BuildContext context) => MenuStyle(
         side: MaterialStateProperty.all(BorderSide(
@@ -342,7 +341,7 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
         triggerAutoHide();
       }
       final borderRadius = BorderRadius.vertical(
-        bottom: Radius.circular(5),
+        bottom: Radius.circular(2),
       );
       return Align(
         alignment: FractionalOffset(_fractionX.value, 0),
@@ -405,7 +404,7 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
     }
     if (!isWeb) toolbarItems.add(_RecordMenu());
     toolbarItems.add(_CloseMenu(id: widget.id, ffi: widget.ffi));
-    final toolbarBorderRadius = BorderRadius.all(Radius.circular(4.0));
+    final toolbarBorderRadius = BorderRadius.vertical(bottom: Radius.circular(2));
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -413,11 +412,7 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
           elevation: _ToolbarTheme.elevation,
           shadowColor: MyTheme.color(context).shadow,
           borderRadius: toolbarBorderRadius,
-          color: Theme.of(context)
-              .menuBarTheme
-              .style
-              ?.backgroundColor
-              ?.resolve(MaterialState.values.toSet()),
+          color: const Color(0xFF0E0E0E),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Theme(
@@ -2270,11 +2265,13 @@ class _IconMenuButtonState extends State<_IconMenuButton> {
   Widget build(BuildContext context) {
     assert(widget.assetName != null || widget.icon != null);
     final icon = widget.icon ??
-        SvgPicture.asset(
-          widget.assetName!,
-          colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
-          width: _ToolbarTheme.buttonSize,
-          height: _ToolbarTheme.buttonSize,
+        Center(
+          child: SvgPicture.asset(
+            widget.assetName!,
+            colorFilter: ColorFilter.mode(Color(0xFFD4D4D4), BlendMode.srcIn),
+            width: 20,
+            height: 20,
+          ),
         );
     var button = SizedBox(
       width: widget.width ?? _ToolbarTheme.buttonSize,
@@ -2355,11 +2352,13 @@ class _IconSubmenuButtonState extends State<_IconSubmenuButton> {
   Widget build(BuildContext context) {
     assert(widget.svg != null || widget.icon != null);
     final icon = widget.icon ??
-        SvgPicture.asset(
-          widget.svg!,
-          colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
-          width: _ToolbarTheme.buttonSize,
-          height: _ToolbarTheme.buttonSize,
+        Center(
+          child: SvgPicture.asset(
+            widget.svg!,
+            colorFilter: ColorFilter.mode(Color(0xFFD4D4D4), BlendMode.srcIn),
+            width: 20,
+            height: 20,
+          ),
         );
     final button = SizedBox(
         width: widget.width ?? _ToolbarTheme.buttonSize,
@@ -2578,7 +2577,7 @@ class _DraggableShowHideState extends State<_DraggableShowHide> {
       child: Icon(
         Icons.drag_indicator,
         size: 20,
-        color: MyTheme.color(context).drag_indicator,
+        color: Color(0xFF6B6B6B),
       ),
       feedback: widget,
       onDragStarted: (() {
@@ -2647,11 +2646,10 @@ class _DraggableShowHideState extends State<_DraggableShowHide> {
               Tooltip(
                 message: translate(
                     isFullscreen.isTrue ? 'Exit Fullscreen' : 'Fullscreen'),
-                child: Icon(
-                  isFullscreen.isTrue
-                      ? Icons.fullscreen_exit
-                      : Icons.fullscreen,
-                  size: iconSize,
+                child: DzIcon(
+                  'fullscreen',
+                  size: 18,
+                  color: const Color(0xFFC9C9C9),
                 ),
               ),
             )),
@@ -2662,9 +2660,10 @@ class _DraggableShowHideState extends State<_DraggableShowHide> {
                   widget.setMinimize,
                   Tooltip(
                     message: translate('Minimize'),
-                    child: Icon(
-                      Icons.remove,
-                      size: iconSize,
+                    child: DzIcon(
+                      'minimize',
+                      size: 18,
+                      color: const Color(0xFFC9C9C9),
                     ),
                   ),
                 ),
@@ -2676,9 +2675,10 @@ class _DraggableShowHideState extends State<_DraggableShowHide> {
           Obx((() => Tooltip(
                 message: translate(
                     collapse.isFalse ? 'Hide Toolbar' : 'Show Toolbar'),
-                child: Icon(
-                  collapse.isFalse ? Icons.expand_less : Icons.expand_more,
-                  size: iconSize,
+                child: DzIcon(
+                  collapse.isFalse ? 'collapse' : 'chevron-down',
+                  size: 18,
+                  color: const Color(0xFFC9C9C9),
                 ),
               ))),
         ),
@@ -2707,11 +2707,7 @@ class _DraggableShowHideState extends State<_DraggableShowHide> {
       data: TextButtonThemeData(style: buttonStyle),
       child: Container(
         decoration: BoxDecoration(
-          color: Theme.of(context)
-              .menuBarTheme
-              .style
-              ?.backgroundColor
-              ?.resolve(MaterialState.values.toSet()),
+          color: const Color(0xFF0E0E0E),
           border: Border.all(
             color: _ToolbarTheme.borderColor(context),
             width: 1,

@@ -54,7 +54,9 @@
       "dz-info",
       "dz-network",
       "dz-printer",
-      "dz-shield"
+      "dz-shield",
+      "dz-grip",
+      "dz-minimize"
     ]
   }
 }

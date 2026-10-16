@@ -252,7 +252,9 @@ class _PeersViewState extends State<_PeersView>
               return !isPortrait
                   ? Obx(() => (peerCardUiType.value == PeerUiType.list || bind.isOutgoingOnly())
                       ? Container(
-                          height: bind.isOutgoingOnly() ? 64 : 45,
+                          height: bind.isOutgoingOnly()
+                              ? (peerCardUiType.value == PeerUiType.tile ? 46 : 64)
+                              : 45,
                           child: visibilityChild)
                       : peerCardUiType.value == PeerUiType.grid
                           ? SizedBox(

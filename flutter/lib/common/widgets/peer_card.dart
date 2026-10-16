@@ -104,6 +104,7 @@ class _PeerCardState extends State<_PeerCard>
       child: gestureDetector(
         child: Obx(() {
           final active = _dzHover.value || selected;
+          final compact = peerCardUiType.value == PeerUiType.tile;
           final btnColor = active ? Colors.white : c.fg;
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -119,8 +120,8 @@ class _PeerCardState extends State<_PeerCard>
             child: Row(
               children: [
                 Container(
-                  width: 38,
-                  height: 38,
+                  width: compact ? 28 : 38,
+                  height: compact ? 28 : 38,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: c.card,
@@ -128,12 +129,38 @@ class _PeerCardState extends State<_PeerCard>
                   ),
                   child: ColorFiltered(
                     colorFilter: ColorFilter.mode(c.mute, BlendMode.srcIn),
-                    child: getPlatformImage(peer.platform, size: 20),
+                    child: getPlatformImage(peer.platform, size: compact ? 15 : 20),
                   ),
                 ),
                 const SizedBox(width: 13),
                 Expanded(
-                  child: Column(
+                  child: compact
+                      ? Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w500,
+                                    color: c.fg),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              formatID(peer.id),
+                              maxLines: 1,
+                              style: TextStyle(
+                                  fontFamily: MyTheme.fontMono,
+                                  fontSize: 11,
+                                  letterSpacing: 0.3,
+                                  color: c.dim),
+                            ),
+                          ],
+                        )
+                      : Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [

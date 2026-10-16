@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:flutter_hbb/desktop/widgets/deskzap_switch.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_tokens.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -27,9 +29,9 @@ import 'package:url_launcher/url_launcher_string.dart';
 import '../../common/widgets/dialog.dart';
 import '../../common/widgets/login.dart';
 
-const double _kTabWidth = 200;
+const double _kTabWidth = 224;
 const double _kTabHeight = 42;
-const double _kCardFixedWidth = 540;
+const double _kCardFixedWidth = 720;
 const double _kCardLeftMargin = 15;
 const double _kContentHMargin = 15;
 const double _kContentHSubMargin = _kContentHMargin + 33;
@@ -309,10 +311,12 @@ class _DesktopSettingPageState extends State<DesktopSettingPage>
     final settingsText = Text(
       translate('Settings'),
       textAlign: TextAlign.left,
-      style: const TextStyle(
-        color: _accentColor,
-        fontSize: _kTitleFontSize,
-        fontWeight: FontWeight.w400,
+      style: TextStyle(
+        fontFamily: MyTheme.fontDisplay,
+        color: DzColors.of(context).fg,
+        fontSize: 22,
+        fontWeight: FontWeight.w600,
+        letterSpacing: -0.2,
       ),
     );
     return Row(
@@ -355,6 +359,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage>
   Widget _listItem({required _TabInfo tab}) {
     return Obx(() {
       bool selected = tab.key == selectedTab.value;
+      final c = DzColors.of(context);
       return SizedBox(
         width: _kTabWidth,
         height: _kTabHeight,
@@ -369,25 +374,30 @@ class _DesktopSettingPageState extends State<DesktopSettingPage>
             }
             selectedTab.value = tab.key;
           },
-          child: Row(children: [
-            Container(
-              width: 4,
-              height: _kTabHeight * 0.7,
-              color: selected ? _accentColor : null,
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 1),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: selected ? c.raise : null,
+              border: selected
+                  ? const Border(
+                      left: BorderSide(color: MyTheme.accent, width: 2))
+                  : null,
             ),
-            Icon(
-              selected ? tab.selected : tab.unselected,
-              color: selected ? _accentColor : null,
-              size: 20,
-            ).marginOnly(left: 13, right: 10),
-            Text(
-              translate(tab.label),
-              style: TextStyle(
-                  color: selected ? _accentColor : null,
-                  fontWeight: FontWeight.w400,
-                  fontSize: _kContentFontSize),
-            ),
-          ]),
+            child: Row(children: [
+              Icon(
+                selected ? tab.selected : tab.unselected,
+                color: selected ? c.fg : c.mute,
+                size: 18,
+              ),
+              const SizedBox(width: 11),
+              Text(
+                translate(tab.label),
+                style: TextStyle(
+                    color: selected ? c.fg : c.mute, fontSize: 13.5),
+              ),
+            ]),
+          ),
         ),
       );
     });
@@ -2162,17 +2172,16 @@ class _CheckboxState extends State<_Checkbox> {
     }
 
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       child: Row(
         children: [
-          Checkbox(
-            value: value,
-            onChanged: (_) => onChanged(!value),
-          ).marginOnly(right: 5),
           Expanded(
             child: Text(translate(widget.label)),
-          )
+          ),
+          const SizedBox(width: 16),
+          DzSwitch(value: value, onChanged: (b) => onChanged(b)),
         ],
-      ).marginOnly(left: _kCheckBoxLeftMargin),
+      ).marginOnly(left: _kCheckBoxLeftMargin, top: 4, bottom: 4),
       onTap: () => onChanged(!value),
     );
   }
@@ -2482,8 +2491,10 @@ Widget _Card(
       Flexible(
         child: SizedBox(
           width: _kCardFixedWidth,
-          child: Card(
-            child: Column(
+          child: Builder(builder: (context) {
+            final c = DzColors.of(context);
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
@@ -2491,18 +2502,26 @@ Widget _Card(
                         child: Text(
                       translate(title),
                       textAlign: TextAlign.start,
-                      style: const TextStyle(
+                      style: TextStyle(
+                        fontFamily: MyTheme.fontDisplay,
                         fontSize: _kTitleFontSize,
+                        fontWeight: FontWeight.w600,
+                        color: c.fg,
                       ),
                     )),
                     ...?title_suffix
                   ],
                 ).marginOnly(left: _kContentHMargin, top: 10, bottom: 10),
-                ...children
-                    .map((e) => e.marginOnly(top: 4, right: _kContentHMargin)),
+                ...children.map((e) => Container(
+                      decoration: BoxDecoration(
+                        border: Border(top: BorderSide(color: c.line)),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: e.marginOnly(right: _kContentHMargin),
+                    )),
               ],
-            ).marginOnly(bottom: 10),
-          ).marginOnly(left: _kCardLeftMargin, top: 15),
+            ).marginOnly(bottom: 10);
+          }).marginOnly(left: _kCardLeftMargin, top: 15),
         ),
       ),
     ],
@@ -2557,10 +2576,6 @@ Widget _OptionCheckBox(
     child: Obx(
       () => Row(
         children: [
-          Checkbox(
-                  value: ref.value,
-                  onChanged: enabled && !isOptFixed ? onChanged : null)
-              .marginOnly(right: 5),
           Offstage(
             offstage: !ref.value || checkedIcon == null,
             child: checkedIcon?.marginOnly(right: 5),
@@ -2569,10 +2584,15 @@ Widget _OptionCheckBox(
               child: Text(
             translate(label),
             style: TextStyle(color: disabledTextColor(context, enabled)),
-          ))
+          )),
+          const SizedBox(width: 16),
+          DzSwitch(
+              value: ref.value,
+              onChanged:
+                  enabled && !isOptFixed ? (b) => onChanged(b) : null),
         ],
       ),
-    ).marginOnly(left: _kCheckBoxLeftMargin),
+    ).marginOnly(left: _kCheckBoxLeftMargin, top: 4, bottom: 4),
     onTap: enabled && !isOptFixed
         ? () {
             onChanged(!ref.value);

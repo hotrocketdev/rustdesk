@@ -2,6 +2,8 @@ import 'dart:ui' as ui;
 
 import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_list_controls.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_tokens.dart';
 import 'package:flutter_hbb/common/widgets/address_book.dart';
 import 'package:flutter_hbb/common/widgets/dialog.dart';
 import 'package:flutter_hbb/common/widgets/my_group.dart';
@@ -159,7 +161,22 @@ class _PeerTabPageState extends State<PeerTabPage>
   Widget _createSwitchBar(BuildContext context) {
     // Deskzap Connect: the left rail is the navigation, so no icon strip here.
     if (bind.isOutgoingOnly() && (isDesktop || isWebDesktop)) {
-      return const SizedBox.shrink();
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Padding(
+          padding: const EdgeInsets.only(left: 14),
+          child: Text(
+            'DEVICE',
+            style: TextStyle(
+              fontFamily: MyTheme.fontMono,
+              fontSize: 10.5,
+              letterSpacing: 0.9,
+              fontWeight: FontWeight.w500,
+              color: DzColors.of(context).dim,
+            ),
+          ),
+        ),
+      );
     }
     final model = Provider.of<PeerTabModel>(context);
     var counter = -1;
@@ -577,6 +594,24 @@ class _PeerTabPageState extends State<PeerTabPage>
 
   List<Widget> _landscapeRightActions(BuildContext context) {
     final model = Provider.of<PeerTabModel>(context);
+    if (bind.isOutgoingOnly()) {
+      // Deskzap Connect: search lives in the header; view and sort are Deskzap menus.
+      return [
+        _createRefresh(
+            index: PeerTabIndex.ab, loading: gFFI.abModel.currentAbLoading),
+        _createRefresh(
+            index: PeerTabIndex.group, loading: gFFI.groupModel.groupLoading),
+        Offstage(
+          offstage: model.currentTabCachedPeers.isEmpty,
+          child: _createMultiSelection(),
+        ),
+        const DzViewButton(),
+        Offstage(
+          offstage: model.currentTab == PeerTabIndex.recent.index,
+          child: const DzSortButton(),
+        ),
+      ];
+    }
     return [
       const PeerSearchBar().marginOnly(right: 13),
       _createRefresh(

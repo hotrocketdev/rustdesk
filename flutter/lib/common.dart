@@ -295,7 +295,7 @@ class MyTheme {
     splashRadius: 0,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.all(
-        Radius.circular(5),
+        Radius.circular(dzRadius),
       ),
     ),
   );

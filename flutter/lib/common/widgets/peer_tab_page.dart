@@ -27,6 +27,8 @@ import '../../models/platform_model.dart';
 
 class PeerTabPage extends StatefulWidget {
   const PeerTabPage({Key? key}) : super(key: key);
+  // Set while a PeerTabPage is mounted; the Deskzap rail uses it to switch tabs.
+  static Future<void> Function(int)? selectTab;
   @override
   State<PeerTabPage> createState() => _PeerTabPageState();
 }
@@ -73,6 +75,22 @@ class _PeerTabPageState extends State<PeerTabPage>
 
   _PeerTabPageState() {
     _loadLocalOptions();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    PeerTabPage.selectTab = (int t) async {
+      await handleTabSelection(t);
+      await bind.setLocalFlutterOption(
+          k: kOptionPeerTabIndex, v: t.toString());
+    };
+  }
+
+  @override
+  void dispose() {
+    PeerTabPage.selectTab = null;
+    super.dispose();
   }
 
   void _loadLocalOptions() {
@@ -139,6 +157,10 @@ class _PeerTabPageState extends State<PeerTabPage>
   }
 
   Widget _createSwitchBar(BuildContext context) {
+    // Deskzap Connect: the left rail is the navigation, so no icon strip here.
+    if (bind.isOutgoingOnly() && (isDesktop || isWebDesktop)) {
+      return const SizedBox.shrink();
+    }
     final model = Provider.of<PeerTabModel>(context);
     var counter = -1;
     return ReorderableListView(

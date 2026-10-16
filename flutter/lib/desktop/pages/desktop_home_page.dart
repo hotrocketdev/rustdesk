@@ -16,6 +16,7 @@ import 'package:flutter_hbb/desktop/pages/deskzap_quick_support_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_tab_page.dart';
 import 'package:flutter_hbb/desktop/widgets/deskzap_chat.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_rail.dart';
 import 'package:flutter_hbb/desktop/widgets/update_progress.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
 import 'package:flutter_hbb/models/server_model.dart';
@@ -98,13 +99,16 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         }
       } catch (_) {}
     }
-    final home = Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        buildLeftPane(context),
-        if (!isIncomingOnly) const VerticalDivider(width: 1),
-        if (!isIncomingOnly) Expanded(child: buildRightPane(context)),
-      ],
+    final home = LayoutBuilder(
+      builder: (context, constraints) => Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          buildLeftPane(context, compact: constraints.maxWidth < 860),
+          if (!isIncomingOnly && !bind.isOutgoingOnly())
+            const VerticalDivider(width: 1),
+          if (!isIncomingOnly) Expanded(child: buildRightPane(context)),
+        ],
+      ),
     );
     final chat = _chat;
     return _buildBlock(
@@ -120,9 +124,21 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         block: _block, mask: true, use: canBeBlocked, child: child);
   }
 
-  Widget buildLeftPane(BuildContext context) {
+  Widget buildLeftPane(BuildContext context, {bool compact = false}) {
     final isIncomingOnly = bind.isIncomingOnly();
     final isOutgoingOnly = bind.isOutgoingOnly();
+    if (isOutgoingOnly) {
+      // Deskzap Connect: brand rail instead of the stock left pane.
+      return DeskzapRail(
+        compact: compact,
+        onAccount: () => DesktopSettingPage.switch2page(SettingsTabKey.account),
+        onSettings: () {
+          if (DesktopSettingPage.tabKeys.isNotEmpty) {
+            DesktopSettingPage.switch2page(DesktopSettingPage.tabKeys[0]);
+          }
+        },
+      );
+    }
     final children = <Widget>[
       if (!isOutgoingOnly) buildPresetPasswordWarning(),
       if (bind.isCustomClient())

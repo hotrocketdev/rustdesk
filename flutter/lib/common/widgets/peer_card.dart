@@ -107,9 +107,12 @@ class _PeerCardState extends State<_PeerCard>
       child: gestureDetector(
         child: Obx(() {
           final isSel = selected || dzFocusedPeer.value?.id == peer.id;
+          final sessionState = dzSessions[peer.id];
+          final connected = sessionState == 'connected';
+          final connecting = sessionState == 'connecting';
           final active = _dzHover.value || isSel;
           final compact = peerCardUiType.value == PeerUiType.tile;
-          final btnColor = active ? Colors.white : c.fg;
+          final btnColor = connected ? c.ok : (active ? Colors.white : c.fg);
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
@@ -219,16 +222,25 @@ class _PeerCardState extends State<_PeerCard>
                     height: 30,
                     padding: const EdgeInsets.symmetric(horizontal: 11),
                     decoration: BoxDecoration(
-                      color: active ? MyTheme.accent : null,
+                      color: connected
+                          ? c.ok.withOpacity(0.14)
+                          : (active ? MyTheme.accent : null),
                       border: Border.all(
-                          color: active ? MyTheme.accent : c.line2),
+                          color: connected
+                              ? c.ok
+                              : (active ? MyTheme.accent : c.line2)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('CONNECT', style: mono.copyWith(color: btnColor)),
+                        Text(
+                            connected
+                                ? 'CONNECTED'
+                                : (connecting ? 'CONNECTING' : 'CONNECT'),
+                            style: mono.copyWith(color: btnColor)),
                         const SizedBox(width: 6),
-                        DzIcon('connect', size: 14, color: btnColor),
+                        DzIcon(connected ? 'check' : 'connect',
+                            size: 14, color: btnColor),
                       ],
                     ),
                   ),

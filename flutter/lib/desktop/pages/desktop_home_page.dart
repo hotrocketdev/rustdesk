@@ -16,6 +16,7 @@ import 'package:flutter_hbb/desktop/pages/deskzap_quick_support_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_tab_page.dart';
 import 'package:flutter_hbb/desktop/widgets/deskzap_chat.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_detail_panel.dart';
 import 'package:flutter_hbb/desktop/widgets/deskzap_palette.dart';
 import 'package:flutter_hbb/desktop/widgets/deskzap_rail.dart';
 import 'package:flutter_hbb/desktop/widgets/update_progress.dart';
@@ -987,6 +988,17 @@ class _DesktopHomePageState extends State<DesktopHomePage>
             (await window_size.getScreenList()).map(screenToMap).toList());
       } else if (call.method == kWindowActionRebuild) {
         reloadCurrentWindow();
+      } else if (call.method == kWindowEventDzSession) {
+        try {
+          final m = jsonDecode(call.arguments as String);
+          final id = m['id'] as String;
+          final st = m['state'] as String;
+          if (st == 'closed') {
+            dzSessions.remove(id);
+          } else {
+            dzSessions[id] = st;
+          }
+        } catch (_) {}
       } else if (call.method == kWindowEventShow) {
         await rustDeskWinManager.registerActiveWindow(call.arguments["id"]);
       } else if (call.method == kWindowEventHide) {

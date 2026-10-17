@@ -9,6 +9,9 @@ import 'package:get/get.dart';
 /// The device last clicked in the Connect device list. The detail panel shows it.
 final Rx<Peer?> dzFocusedPeer = Rx<Peer?>(null);
 
+/// Open sessions by device ID: 'connecting' or 'connected' (absent = none).
+final RxMap<String, String> dzSessions = <String, String>{}.obs;
+
 /// Right-hand panel in Connect: details and quick actions for the focused device.
 class DeskzapDetailPanel extends StatelessWidget {
   const DeskzapDetailPanel({Key? key}) : super(key: key);
@@ -115,22 +118,33 @@ class _Details extends StatelessWidget {
                 color: c.dim),
           ),
           const SizedBox(height: 20),
-          InkWell(
-            onTap: () => connect(context, peer.id),
-            child: Container(
-              height: 40,
-              alignment: Alignment.center,
-              color: MyTheme.accent,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('CONNECT', style: mono.copyWith(color: Colors.white)),
-                  const SizedBox(width: 8),
-                  const DzIcon('connect', size: 14, color: Colors.white),
-                ],
+          Obx(() {
+            final st = dzSessions[peer.id];
+            final connected = st == 'connected';
+            final connecting = st == 'connecting';
+            final fill = connected ? c.ok.withOpacity(0.14) : MyTheme.accent;
+            final fg = connected ? c.ok : Colors.white;
+            return InkWell(
+              onTap: () => connect(context, peer.id),
+              child: Container(
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: fill,
+                  border: Border.all(color: connected ? c.ok : MyTheme.accent),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(connected ? 'CONNECTED' : (connecting ? 'CONNECTING' : 'CONNECT'),
+                        style: mono.copyWith(color: fg)),
+                    const SizedBox(width: 8),
+                    DzIcon(connected ? 'check' : 'connect', size: 14, color: fg),
+                  ],
+                ),
               ),
-            ),
-          ),
+            );
+          }),
           const SizedBox(height: 8),
           Row(
             children: [

@@ -32,6 +32,16 @@ class _MenuTheme {
   static const double dividerHeight = 12.0;
 }
 
+// Devices whose session reached the connected state (Deskzap device-list button).
+final Set<String> _dzNotified = {};
+
+void _dzNotify(String id, String state) {
+  try {
+    rustDeskWinManager.call(
+        WindowType.Main, kWindowEventDzSession, jsonEncode({'id': id, 'state': state}));
+  } catch (_) {}
+}
+
 class ConnectionTabPage extends StatefulWidget {
   final Map<String, dynamic> params;
 
@@ -67,6 +77,7 @@ class _ConnectionTabPageState extends State<ConnectionTabPage> {
     tryMoveToScreenAndSetFullscreen(screenRect);
     if (peerId != null) {
       ConnectionTypeState.init(peerId!);
+      _dzNotify(peerId!, 'connecting');
       tabController.onSelected = (id) {
         final remotePage = tabController.widget(id);
         if (remotePage is RemotePage) {
@@ -160,6 +171,9 @@ class _ConnectionTabPageState extends State<ConnectionTabPage> {
           } else {
             bool secure =
                 connectionType.secure.value == ConnectionType.strSecure;
+            if (_dzNotified.add(key)) {
+              Future.microtask(() => _dzNotify(key, 'connected'));
+            }
             bool direct =
                 connectionType.direct.value == ConnectionType.strDirect;
             String msgConn = getConnectionText(
@@ -382,6 +396,8 @@ class _ConnectionTabPageState extends State<ConnectionTabPage> {
       loopCloseWindow();
     }
     ConnectionTypeState.delete(id);
+    _dzNotified.remove(id);
+    _dzNotify(id, 'closed');
     // Clean up relative mouse mode state for this peer.
     stateGlobal.relativeMouseModeState.remove(id);
     _update_remote_count();
@@ -450,6 +466,7 @@ class _ConnectionTabPageState extends State<ConnectionTabPage> {
         });
       });
       ConnectionTypeState.init(id);
+      _dzNotify(id, 'connecting');
       tabController.add(TabInfo(
         key: id,
         label: id,

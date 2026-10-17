@@ -119,15 +119,15 @@ class _ToolbarTheme {
   static Color inactiveColor = Colors.grey[800]!;
   static Color hoverInactiveColor = Colors.grey[850]!;
 
-  static const Color redColor = Colors.redAccent;
+  static const Color redColor = Color(0x00000000);
   static const Color hoverRedColor = Colors.red;
   // kMinInteractiveDimension
   static const double height = 20.0;
   static const double dividerHeight = 12.0;
 
-  static const double buttonSize = 32;
+  static const double buttonSize = 38;
   static const double buttonHMargin = 2;
-  static const double buttonVMargin = 6;
+  static const double buttonVMargin = 4;
   static const double iconRadius = 2;
   static const double elevation = 3;
 
@@ -421,9 +421,9 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
                   context,
                   Row(
                     children: [
-                      SizedBox(width: _ToolbarTheme.buttonHMargin * 2),
+                      SizedBox(width: _ToolbarTheme.buttonHMargin * 3),
                       ...toolbarItems,
-                      SizedBox(width: _ToolbarTheme.buttonHMargin * 2)
+                      SizedBox(width: _ToolbarTheme.buttonHMargin * 3)
                     ],
                   ),
                   toolbarBorderRadius),
@@ -2225,6 +2225,7 @@ class _CloseMenu extends StatelessWidget {
       },
       color: _ToolbarTheme.redColor,
       hoverColor: _ToolbarTheme.hoverRedColor,
+      iconColor: const Color(0xFFFF6B6B),
     );
   }
 }
@@ -2240,8 +2241,10 @@ class _IconMenuButton extends StatefulWidget {
   final double? vMargin;
   final bool topLevel;
   final double? width;
+  final Color iconColor;
   const _IconMenuButton({
     Key? key,
+    this.iconColor = const Color(0xFFD4D4D4),
     this.assetName,
     this.icon,
     required this.tooltip,
@@ -2268,7 +2271,7 @@ class _IconMenuButtonState extends State<_IconMenuButton> {
         Center(
           child: SvgPicture.asset(
             widget.assetName!,
-            colorFilter: ColorFilter.mode(Color(0xFFD4D4D4), BlendMode.srcIn),
+            colorFilter: ColorFilter.mode(widget.iconColor, BlendMode.srcIn),
             width: 20,
             height: 20,
           ),
@@ -2342,6 +2345,7 @@ class _IconSubmenuButton extends StatefulWidget {
 
 class _IconSubmenuButtonState extends State<_IconSubmenuButton> {
   bool hover = false;
+  bool open = false;
 
   @override // discard @protected
   void setState(VoidCallback fn) {
@@ -2370,6 +2374,8 @@ class _IconSubmenuButtonState extends State<_IconSubmenuButton> {
             onHover: (value) => setState(() {
                   hover = value;
                 }),
+            onOpen: () => setState(() => open = true),
+            onClose: () => setState(() => open = false),
             child: Tooltip(
                 message: translate(widget.tooltip),
                 child: Material(
@@ -2378,7 +2384,9 @@ class _IconSubmenuButtonState extends State<_IconSubmenuButton> {
                         decoration: BoxDecoration(
                           borderRadius:
                               BorderRadius.circular(_ToolbarTheme.iconRadius),
-                          color: hover ? widget.hoverColor : widget.color,
+                          color: open
+                              ? MyTheme.accent
+                              : (hover ? widget.hoverColor : widget.color),
                         ),
                         child: icon))),
             menuChildren: widget

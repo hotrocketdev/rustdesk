@@ -8,6 +8,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart' hide TabBarTheme;
 import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/consts.dart';
+import 'package:flutter_hbb/desktop/widgets/dz_icon.dart';
 import 'package:flutter_hbb/desktop/pages/remote_page.dart';
 import 'package:flutter_hbb/desktop/pages/view_camera_page.dart';
 import 'package:flutter_hbb/main.dart';
@@ -1021,6 +1022,14 @@ class _ListView extends StatelessWidget {
   }
 }
 
+/// Deskzap icon name for the Material icons the tab bar is given, if there is one.
+String? _dzTabName(IconData? i) {
+  if (i == Icons.desktop_windows_sharp || i == Icons.desktop_windows_outlined) return 'devices';
+  if (i == Icons.home_sharp || i == Icons.home_outlined) return 'devices';
+  if (i == Icons.build_sharp || i == Icons.build_outlined) return 'settings';
+  return null;
+}
+
 class _Tab extends StatefulWidget {
   final int index;
   final String tabInfoKey;
@@ -1071,15 +1080,20 @@ class _TabState extends State<_Tab> with RestorationMixin {
         widget.selectedIcon != null && widget.unselectedIcon != null;
     bool isSelected = widget.index == widget.selected;
 
+    final tabIconColor = isSelected
+        ? MyTheme.tabbar(context).selectedTabIconColor
+        : MyTheme.tabbar(context).unSelectedTabIconColor;
+    final dzName = _dzTabName(isSelected ? widget.selectedIcon : widget.unselectedIcon);
     final icon = Offstage(
         offstage: !showIcon,
-        child: Icon(
-          isSelected ? widget.selectedIcon : widget.unselectedIcon,
-          size: _kIconSize,
-          color: isSelected
-              ? MyTheme.tabbar(context).selectedTabIconColor
-              : MyTheme.tabbar(context).unSelectedTabIconColor,
-        ).paddingOnly(right: 5));
+        child: (dzName != null
+                ? DzIcon(dzName, size: _kIconSize, color: tabIconColor)
+                : Icon(
+                    isSelected ? widget.selectedIcon : widget.unselectedIcon,
+                    size: _kIconSize,
+                    color: tabIconColor,
+                  ))
+            .paddingOnly(right: 6));
     final labelWidget = Obx(() {
       return ConstrainedBox(
           constraints: BoxConstraints(maxWidth: widget.maxLabelWidth ?? 200),
@@ -1092,6 +1106,8 @@ class _TabState extends State<_Tab> with RestorationMixin {
                   : widget.label.value,
               textAlign: TextAlign.center,
               style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
                   color: isSelected
                       ? MyTheme.tabbar(context).selectedTextColor
                       : MyTheme.tabbar(context).unSelectedTextColor),

@@ -51,7 +51,9 @@ class _MyGroupState extends State<MyGroup> {
               retry: null,
               close: () => gFFI.groupModel.groupLoadError.value = ''),
           Expanded(
-              child: Obx(() => stateGlobal.isPortrait.isTrue
+              // Narrow Connect window: the rail has no group list, so stack the selector above the devices.
+              child: Obx(() => (stateGlobal.isPortrait.isTrue ||
+                      (bind.isOutgoingOnly() && dzRailCompact.value))
                   ? _buildPortrait()
                   : _buildLandscape())),
         ],
@@ -62,7 +64,7 @@ class _MyGroupState extends State<MyGroup> {
   Widget _buildLandscape() {
     return Row(
       children: [
-        if (!bind.isOutgoingOnly() || dzRailCompact.value)
+        if (!bind.isOutgoingOnly())
         Container(
           decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),

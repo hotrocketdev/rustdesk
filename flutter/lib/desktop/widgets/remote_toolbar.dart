@@ -125,8 +125,8 @@ class _ToolbarTheme {
   static const double height = 20.0;
   static const double dividerHeight = 12.0;
 
-  static const double buttonSize = 38;
-  static const double buttonHMargin = 2;
+  static const double buttonSize = 40;
+  static const double buttonHMargin = 3;
   static const double buttonVMargin = 4;
   static const double iconRadius = 2;
   static const double elevation = 3;
@@ -2268,12 +2268,16 @@ class _IconMenuButtonState extends State<_IconMenuButton> {
   Widget build(BuildContext context) {
     assert(widget.assetName != null || widget.icon != null);
     final icon = widget.icon ??
-        Center(
-          child: SvgPicture.asset(
-            widget.assetName!,
-            colorFilter: ColorFilter.mode(widget.iconColor, BlendMode.srcIn),
-            width: 20,
-            height: 20,
+        SizedBox(
+          width: widget.width ?? _ToolbarTheme.buttonSize,
+          height: _ToolbarTheme.buttonSize,
+          child: Center(
+            child: SvgPicture.asset(
+              widget.assetName!,
+              colorFilter: ColorFilter.mode(widget.iconColor, BlendMode.srcIn),
+              width: 20,
+              height: 20,
+            ),
           ),
         );
     var button = SizedBox(
@@ -2356,12 +2360,16 @@ class _IconSubmenuButtonState extends State<_IconSubmenuButton> {
   Widget build(BuildContext context) {
     assert(widget.svg != null || widget.icon != null);
     final icon = widget.icon ??
-        Center(
-          child: SvgPicture.asset(
-            widget.svg!,
-            colorFilter: ColorFilter.mode(Color(0xFFD4D4D4), BlendMode.srcIn),
-            width: 20,
-            height: 20,
+        SizedBox(
+          width: widget.width ?? _ToolbarTheme.buttonSize,
+          height: _ToolbarTheme.buttonSize,
+          child: Center(
+            child: SvgPicture.asset(
+              widget.svg!,
+              colorFilter: ColorFilter.mode(Color(0xFFD4D4D4), BlendMode.srcIn),
+              width: 20,
+              height: 20,
+            ),
           ),
         );
     final button = SizedBox(

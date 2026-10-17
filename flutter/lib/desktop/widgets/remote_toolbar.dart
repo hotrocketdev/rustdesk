@@ -144,6 +144,8 @@ class _ToolbarTheme {
   static Color? dividerColor(BuildContext context) => const Color(0xFF333333);
 
   static MenuStyle defaultMenuStyle(BuildContext context) => MenuStyle(
+        backgroundColor: const MaterialStatePropertyAll(Color(0xFF0E0E0E)),
+        elevation: const MaterialStatePropertyAll(8),
         side: MaterialStateProperty.all(BorderSide(
           width: 1,
           color: borderColor(context),
@@ -423,6 +425,23 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
                     children: [
                       SizedBox(width: _ToolbarTheme.buttonHMargin * 3),
                       ...toolbarItems,
+                      Container(
+                        width: 1,
+                        height: 22,
+                        margin: const EdgeInsets.symmetric(horizontal: 6),
+                        color: const Color(0xFF333333),
+                      ),
+                      _DraggableShowHide(
+                        id: widget.id,
+                        sessionId: widget.ffi.sessionId,
+                        dragging: _dragging,
+                        fractionX: _fractionX,
+                        toolbarState: widget.state,
+                        setFullscreen: _setFullscreen,
+                        setMinimize: _minimize,
+                        borderRadius: BorderRadius.zero,
+                        inline: true,
+                      ),
                       SizedBox(width: _ToolbarTheme.buttonHMargin * 3)
                     ],
                   ),
@@ -430,7 +449,6 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
             ),
           ),
         ),
-        _buildDraggableCollapse(context),
       ],
     );
   }
@@ -2537,12 +2555,15 @@ class _DraggableShowHide extends StatefulWidget {
   final RxBool dragging;
   final ToolbarState toolbarState;
   final BorderRadius borderRadius;
+  // Deskzap: drawn inside the toolbar bar (no frame of its own) with square cells.
+  final bool inline;
 
   final Function(bool) setFullscreen;
   final Function() setMinimize;
 
   const _DraggableShowHide({
     Key? key,
+    this.inline = false,
     required this.id,
     required this.sessionId,
     required this.fractionX,
@@ -2590,11 +2611,19 @@ class _DraggableShowHideState extends State<_DraggableShowHide> {
   Widget _buildDraggable(BuildContext context) {
     return Draggable(
       axis: Axis.horizontal,
-      child: Icon(
-        Icons.drag_indicator,
-        size: 20,
-        color: Color(0xFF6B6B6B),
-      ),
+      child: widget.inline
+          ? SizedBox(
+              width: 30,
+              height: _ToolbarTheme.buttonSize,
+              child: Center(
+                child: DzIcon('grip', size: 18, color: const Color(0xFF6B6B6B)),
+              ),
+            )
+          : Icon(
+              Icons.drag_indicator,
+              size: 20,
+              color: Color(0xFF6B6B6B),
+            ),
       feedback: widget,
       onDragStarted: (() {
         final RenderObject? renderObj = context.findRenderObject();
@@ -2639,7 +2668,13 @@ class _DraggableShowHideState extends State<_DraggableShowHide> {
       final bgColor = buttonStyle.backgroundColor?.resolve({});
       return TextButton(
         onPressed: onPressed,
-        child: child,
+        child: widget.inline
+            ? SizedBox(
+                width: _ToolbarTheme.buttonSize,
+                height: _ToolbarTheme.buttonSize,
+                child: Center(child: child),
+              )
+            : child,
         style: buttonStyle.copyWith(
           backgroundColor: MaterialStateProperty.resolveWith((states) {
             if (states.contains(MaterialState.hovered)) {
@@ -2719,6 +2754,12 @@ class _DraggableShowHideState extends State<_DraggableShowHide> {
           })
       ],
     );
+    if (widget.inline) {
+      return TextButtonTheme(
+        data: TextButtonThemeData(style: buttonStyle),
+        child: SizedBox(height: _ToolbarTheme.buttonSize, child: child),
+      );
+    }
     return TextButtonTheme(
       data: TextButtonThemeData(style: buttonStyle),
       child: Container(

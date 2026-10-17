@@ -2,6 +2,7 @@ import 'dart:ui' as ui;
 
 import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_hbb/desktop/widgets/dz_icon.dart';
 import 'package:flutter_hbb/desktop/widgets/deskzap_list_controls.dart';
 import 'package:flutter_hbb/desktop/widgets/deskzap_tokens.dart';
 import 'package:flutter_hbb/common/widgets/address_book.dart';
@@ -268,11 +269,13 @@ class _PeerTabPageState extends State<PeerTabPage>
             spinning: loading,
             child: RotatedBox(
                 quarterTurns: 2,
-                child: Icon(
-                  Icons.refresh,
-                  size: 18,
-                  color: textColor,
-                ))),
+                child: bind.isOutgoingOnly()
+                    ? DzIcon('refresh', size: 18, color: textColor)
+                    : Icon(
+                        Icons.refresh,
+                        size: 18,
+                        color: textColor,
+                      ))),
       ),
     );
   }
@@ -293,12 +296,14 @@ class _PeerTabPageState extends State<PeerTabPage>
           Navigator.pop(context);
         }
       },
-      child: SvgPicture.asset(
-        "assets/checkbox-outline.svg",
-        width: 18,
-        height: 18,
-        colorFilter: svgColor(textColor),
-      ),
+      child: bind.isOutgoingOnly()
+          ? DzIcon('select', size: 18, color: textColor)
+          : SvgPicture.asset(
+              "assets/checkbox-outline.svg",
+              width: 18,
+              height: 18,
+              colorFilter: svgColor(textColor),
+            ),
     );
   }
 

@@ -748,7 +748,8 @@ class MenuEntryButton<T> extends MenuEntryBase<T> {
 }
 
 class CustomPopupMenuTheme {
-  static const Color commonColor = MyTheme.accent;
+  // Deskzap: the legible blue for ticks and radios on the dark menu ground.
+  static const Color commonColor = MyTheme.accentInk;
   // kMinInteractiveDimension
   static const double height = 20.0;
   static const double dividerHeight = 3.0;

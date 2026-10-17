@@ -1034,6 +1034,19 @@ String _dzGroupId(String s) {
 
 /// Session tab label: DEVICE NAME in mono caps, then the ID dimmed (raw is `id@name`).
 Widget _dzSessionLabel(String raw, bool selected, BuildContext context) {
+  // Only the `<digits>@<name>` shape is reformatted; anything else (aliases, client names,
+  // file-transfer tabs) is shown as given.
+  final shaped = RegExp(r'^\d[\d ]*@.+$').hasMatch(raw);
+  if (!shaped) {
+    final cc = DzColors.of(context);
+    return Text(raw,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: selected ? cc.fg : cc.mute));
+  }
   final at = raw.indexOf('@');
   final id = at > 0 ? raw.substring(0, at) : raw;
   final host = at > 0 ? raw.substring(at + 1) : '';
@@ -1206,11 +1219,11 @@ class _TabState extends State<_Tab> with RestorationMixin {
         },
         onTap: () => widget.onTap(),
         child: Container(
-            decoration: isSelected
-                ? const BoxDecoration(
+            decoration: isSelected && widget.selectedBorderColor != null
+                ? BoxDecoration(
                     border: Border(
                       bottom: BorderSide(
-                        color: MyTheme.accent,
+                        color: widget.selectedBorderColor!,
                         width: 2,
                       ),
                     ),
@@ -1520,7 +1533,7 @@ class TabbarTheme extends ThemeExtension<TabbarTheme> {
       selectedTabBackgroundColor: Colors.white54);
 
   static const dark = TabbarTheme(
-      selectedTabIconColor: MyTheme.accent,
+      selectedTabIconColor: MyTheme.accentInk,
       unSelectedTabIconColor: Color.fromARGB(255, 30, 65, 98),
       selectedTextColor: Colors.white,
       unSelectedTextColor: Color.fromARGB(255, 192, 192, 192),

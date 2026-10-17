@@ -369,123 +369,415 @@ class _ConnectionPageState extends State<ConnectionPage>
   }
 
 
-  /// Deskzap Connect header: title, device search, inline quick connect.
+  /// Deskzap Connect header: title, device search, quick connect and Add device.
+  /// Below 620px the quick-connect box moves to its own line instead of disappearing.
   Widget _buildDeskzapHeader(BuildContext context) {
     final c = DzColors.of(context);
     return LayoutBuilder(builder: (context, box) {
-    final w = box.maxWidth;
+      final w = box.maxWidth;
+      final narrow = w < 620;
+      final search = _dzSearchBox(context, c);
+      final add = _dzAddButton(context, c, w >= 900);
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: c.line)),
+        ),
+        child: narrow
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(children: [
+                    Expanded(child: search),
+                    const SizedBox(width: 10),
+                    add,
+                  ]),
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: _buildRemoteIDTextField(context),
+                  ),
+                ],
+              )
+            : Row(
+                children: [
+                  if (w >= 760) ...[
+                    Text(
+                      translate('Devices'),
+                      style: TextStyle(
+                        fontFamily: MyTheme.fontDisplay,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.2,
+                        color: c.fg,
+                      ),
+                    ),
+                    const SizedBox(width: 18),
+                  ],
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 360),
+                        child: search,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  _buildRemoteIDTextField(context),
+                  const SizedBox(width: 10),
+                  add,
+                ],
+              ),
+      );
+    });
+  }
+
+  Widget _dzSearchBox(BuildContext context, DzColors c) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: c.line)),
+        color: c.card,
+        border: Border.all(color: c.line2),
       ),
       child: Row(
         children: [
-          if (w >= 760) ...[
-          Text(
-            'Devices',
-            style: TextStyle(
-              fontFamily: MyTheme.fontDisplay,
-              fontSize: 22,
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.2,
-              color: c.fg,
-            ),
-          ),
-          const SizedBox(width: 18),
-          ],
-          Flexible(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 360),
-              child: Container(
-                height: 36,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                decoration: BoxDecoration(
-                  color: c.card,
-                  border: Border.all(color: c.line2),
-                ),
-                child: Row(
-                  children: [
-                    DzIcon('search', size: 16, color: c.dim),
-                    const SizedBox(width: 9),
-                    Expanded(
-                      child: TextField(
-                        controller: peerSearchTextController,
-                        onChanged: (v) => peerSearchText.value = v,
-                        style: TextStyle(fontSize: 13, color: c.fg),
-                        decoration: InputDecoration(
-                          hintText: 'Search devices',
-                          hintStyle: TextStyle(fontSize: 13, color: c.dim),
-                          border: InputBorder.none,
-                          filled: false,
-                          isDense: true,
-                          contentPadding: EdgeInsets.zero,
-                        ),
-                      ).workaroundFreezeLinuxMint(),
-                    ),
-                    InkWell(
-                      onTap: () => showDzPalette(context),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(border: Border.all(color: c.line2)),
-                        child: Text(
-                          isMacOS ? 'CMD K' : 'CTRL K',
-                          style: TextStyle(
-                            fontFamily: MyTheme.fontMono,
-                            fontSize: 10,
-                            letterSpacing: 0.6,
-                            color: c.mute,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+          DzIcon('search', size: 16, color: c.dim),
+          const SizedBox(width: 9),
+          Expanded(
+            child: TextField(
+              controller: peerSearchTextController,
+              onChanged: (v) => peerSearchText.value = v,
+              style: TextStyle(fontSize: 13, color: c.fg),
+              decoration: InputDecoration(
+                hintText: translate('Search devices'),
+                hintStyle: TextStyle(fontSize: 13, color: c.dim),
+                border: InputBorder.none,
+                filled: false,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
               ),
-            ),
+            ).workaroundFreezeLinuxMint(),
           ),
-          const Spacer(),
-          if (w >= 620) ...[
-            _buildRemoteIDTextField(context),
-            const SizedBox(width: 10),
-          ],
           InkWell(
-            onTap: () => launchUrlString('https://my.deskzap.co.uk/install/host'),
+            onTap: () => showDzPalette(context),
             child: Container(
-              height: 36,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              color: c.fg,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DzIcon('plus', size: 14, color: Theme.of(context).scaffoldBackgroundColor),
-                  if (w >= 900) ...[
-                  const SizedBox(width: 8),
-                  Text(
-                    'ADD DEVICE',
-                    style: TextStyle(
-                      fontFamily: MyTheme.fontMono,
-                      fontSize: 10.5,
-                      letterSpacing: 0.9,
-                      fontWeight: FontWeight.w500,
-                      color: Theme.of(context).scaffoldBackgroundColor,
-                    ),
-                  ),
-                  ],
-                ],
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(border: Border.all(color: c.line2)),
+              child: Text(
+                isMacOS ? 'CMD K' : 'CTRL K',
+                style: TextStyle(
+                  fontFamily: MyTheme.fontMono,
+                  fontSize: 10,
+                  letterSpacing: 0.6,
+                  color: c.mute,
+                ),
               ),
             ),
           ),
         ],
       ),
     );
-    });
+  }
+
+  Widget _dzAddButton(BuildContext context, DzColors c, bool withLabel) {
+    final ink = Theme.of(context).scaffoldBackgroundColor;
+    return Tooltip(
+      message: translate('Add device'),
+      child: InkWell(
+        onTap: () => launchUrlString('https://my.deskzap.co.uk/install/host'),
+        child: Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          color: c.fg,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DzIcon('plus', size: 14, color: ink),
+              if (withLabel) ...[
+                const SizedBox(width: 8),
+                Text(
+                  translate('Add device').toUpperCase(),
+                  style: TextStyle(
+                    fontFamily: MyTheme.fontMono,
+                    fontSize: 10.5,
+                    letterSpacing: 0.9,
+                    fontWeight: FontWeight.w500,
+                    color: ink,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   /// UI for the remote ID TextField.
   /// Search for a peer.
   Widget _buildRemoteIDTextField(BuildContext context) {
     final compact = bind.isOutgoingOnly();
+    final Widget fieldRow = Row(
+              children: [
+                Expanded(
+                    child: RawAutocomplete<Peer>(
+                  optionsBuilder: (TextEditingValue textEditingValue) {
+                    if (textEditingValue.text == '') {
+                      _autocompleteOpts = const Iterable<Peer>.empty();
+                    } else if (_allPeersLoader.peers.isEmpty &&
+                        !_allPeersLoader.isPeersLoaded) {
+                      Peer emptyPeer = Peer(
+                        id: '',
+                        username: '',
+                        hostname: '',
+                        alias: '',
+                        platform: '',
+                        tags: [],
+                        hash: '',
+                        password: '',
+                        forceAlwaysRelay: false,
+                        rdpPort: '',
+                        rdpUsername: '',
+                        loginName: '',
+                        device_group_name: '',
+                        note: '',
+                      );
+                      _autocompleteOpts = [emptyPeer];
+                    } else {
+                      String textWithoutSpaces =
+                          textEditingValue.text.replaceAll(" ", "");
+                      if (int.tryParse(textWithoutSpaces) != null) {
+                        textEditingValue = TextEditingValue(
+                          text: textWithoutSpaces,
+                          selection: textEditingValue.selection,
+                        );
+                      }
+                      String textToFind = textEditingValue.text.toLowerCase();
+                      _autocompleteOpts = _allPeersLoader.peers
+                          .where((peer) =>
+                              peer.id.toLowerCase().contains(textToFind) ||
+                              peer.username
+                                  .toLowerCase()
+                                  .contains(textToFind) ||
+                              peer.hostname
+                                  .toLowerCase()
+                                  .contains(textToFind) ||
+                              peer.alias.toLowerCase().contains(textToFind))
+                          .toList();
+                    }
+                    return _autocompleteOpts;
+                  },
+                  focusNode: _idFocusNode,
+                  textEditingController: _idEditingController,
+                  fieldViewBuilder: (
+                    BuildContext context,
+                    TextEditingController fieldTextEditingController,
+                    FocusNode fieldFocusNode,
+                    VoidCallback onFieldSubmitted,
+                  ) {
+                    updateTextAndPreserveSelection(
+                        fieldTextEditingController, _idController.text);
+                    return Obx(() => TextField(
+                          autocorrect: false,
+                          enableSuggestions: false,
+                          keyboardType: TextInputType.visiblePassword,
+                          focusNode: fieldFocusNode,
+                          style: TextStyle(
+                            fontFamily: 'WorkSans',
+                            fontSize: compact ? 15 : 22,
+                            height: 1.4,
+                          ),
+                          maxLines: 1,
+                          cursorColor:
+                              Theme.of(context).textTheme.titleLarge?.color,
+                          decoration: InputDecoration(
+                              filled: false,
+                              counterText: '',
+                              hintText: _idInputFocused.value
+                                  ? null
+                                  : translate('Enter Remote ID'),
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: compact ? 10 : 15,
+                                  vertical: compact ? 9 : 13)),
+                          controller: fieldTextEditingController,
+                          inputFormatters: [IDTextInputFormatter()],
+                          onChanged: (v) {
+                            _idController.id = v;
+                          },
+                          onSubmitted: (_) {
+                            onConnect();
+                          },
+                        ).workaroundFreezeLinuxMint());
+                  },
+                  onSelected: (option) {
+                    setState(() {
+                      _idController.id = option.id;
+                      FocusScope.of(context).unfocus();
+                    });
+                  },
+                  optionsViewBuilder: (BuildContext context,
+                      AutocompleteOnSelected<Peer> onSelected,
+                      Iterable<Peer> options) {
+                    options = _autocompleteOpts;
+                    double maxHeight = options.length * 50;
+                    if (options.length == 1) {
+                      maxHeight = 52;
+                    } else if (options.length == 3) {
+                      maxHeight = 146;
+                    } else if (options.length == 4) {
+                      maxHeight = 193;
+                    }
+                    maxHeight = maxHeight.clamp(0, 200);
+
+                    return Align(
+                      alignment: Alignment.topLeft,
+                      child: Container(
+                          decoration: BoxDecoration(
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.3),
+                                blurRadius: 5,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                              borderRadius: BorderRadius.circular(5),
+                              child: Material(
+                                elevation: 4,
+                                child: ConstrainedBox(
+                                  constraints: BoxConstraints(
+                                    maxHeight: maxHeight,
+                                    maxWidth: 319,
+                                  ),
+                                  child: _allPeersLoader.peers.isEmpty &&
+                                          !_allPeersLoader.isPeersLoaded
+                                      ? Container(
+                                          height: 80,
+                                          child: Center(
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          ))
+                                      : Padding(
+                                          padding:
+                                              const EdgeInsets.only(top: 5),
+                                          child: ListView(
+                                            children: options
+                                                .map((peer) =>
+                                                    AutocompletePeerTile(
+                                                        onSelect: () =>
+                                                            onSelected(peer),
+                                                        peer: peer))
+                                                .toList(),
+                                          ),
+                                        ),
+                                ),
+                              ))),
+                    );
+                  },
+                )),
+              ],
+            );
+    final Widget buttonsRow = Padding(
+              padding: EdgeInsets.only(top: compact ? 0 : 13.0),
+              child: Row(
+                  mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                SizedBox(
+                  height: 28.0,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      onConnect();
+                    },
+                    child: Text(translate("Connect")),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  height: 28.0,
+                  width: 28.0,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Theme.of(context).dividerColor),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Center(
+                    child: StatefulBuilder(
+                      builder: (context, setState) {
+                        var offset = Offset(0, 0);
+                        return Obx(() => InkWell(
+                              child: _menuOpen.value
+                                  ? Transform.rotate(
+                                      angle: pi,
+                                      child: Icon(IconFont.more, size: 14),
+                                    )
+                                  : Icon(IconFont.more, size: 14),
+                              onTapDown: (e) {
+                                offset = e.globalPosition;
+                              },
+                              onTap: () async {
+                                _menuOpen.value = true;
+                                final x = offset.dx;
+                                final y = offset.dy;
+                                await mod_menu
+                                    .showMenu(
+                                  context: context,
+                                  position: RelativeRect.fromLTRB(x, y, x, y),
+                                  items: [
+                                    (
+                                      'Transfer file',
+                                      () => onConnect(isFileTransfer: true)
+                                    ),
+                                    (
+                                      'View camera',
+                                      () => onConnect(isViewCamera: true)
+                                    ),
+                                    (
+                                      '${translate('Terminal')} (beta)',
+                                      () => onConnect(isTerminal: true)
+                                    ),
+                                  ]
+                                      .map((e) => MenuEntryButton<String>(
+                                            childBuilder: (TextStyle? style) =>
+                                                Text(
+                                              translate(e.$1),
+                                              style: style,
+                                            ),
+                                            proc: () => e.$2(),
+                                            padding: EdgeInsets.symmetric(
+                                                horizontal:
+                                                    kDesktopMenuPadding.left),
+                                            dismissOnClicked: true,
+                                          ))
+                                      .map((e) => e.build(
+                                          context,
+                                          MenuConfig(
+                                              commonColor: CustomPopupMenuTheme
+                                                  .commonColor,
+                                              height:
+                                                  CustomPopupMenuTheme.height,
+                                              dividerHeight:
+                                                  CustomPopupMenuTheme
+                                                      .dividerHeight)))
+                                      .expand((i) => i)
+                                      .toList(),
+                                  elevation: 8,
+                                )
+                                    .then((_) {
+                                  _menuOpen.value = false;
+                                });
+                              },
+                            ));
+                      },
+                    ),
+                  ),
+                ),
+              ]),
+            );
     var w = Container(
       width: compact ? null : 320 + 20 * 2,
       padding: compact
@@ -500,531 +792,19 @@ class _ConnectionPageState extends State<ConnectionPage>
       child: Ink(
         child: Column(
           children: [
-            if (compact) ...[
+            if (compact)
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  SizedBox(width: 190, child: Row(
-              children: [
-                Expanded(
-                    child: RawAutocomplete<Peer>(
-                  optionsBuilder: (TextEditingValue textEditingValue) {
-                    if (textEditingValue.text == '') {
-                      _autocompleteOpts = const Iterable<Peer>.empty();
-                    } else if (_allPeersLoader.peers.isEmpty &&
-                        !_allPeersLoader.isPeersLoaded) {
-                      Peer emptyPeer = Peer(
-                        id: '',
-                        username: '',
-                        hostname: '',
-                        alias: '',
-                        platform: '',
-                        tags: [],
-                        hash: '',
-                        password: '',
-                        forceAlwaysRelay: false,
-                        rdpPort: '',
-                        rdpUsername: '',
-                        loginName: '',
-                        device_group_name: '',
-                        note: '',
-                      );
-                      _autocompleteOpts = [emptyPeer];
-                    } else {
-                      String textWithoutSpaces =
-                          textEditingValue.text.replaceAll(" ", "");
-                      if (int.tryParse(textWithoutSpaces) != null) {
-                        textEditingValue = TextEditingValue(
-                          text: textWithoutSpaces,
-                          selection: textEditingValue.selection,
-                        );
-                      }
-                      String textToFind = textEditingValue.text.toLowerCase();
-                      _autocompleteOpts = _allPeersLoader.peers
-                          .where((peer) =>
-                              peer.id.toLowerCase().contains(textToFind) ||
-                              peer.username
-                                  .toLowerCase()
-                                  .contains(textToFind) ||
-                              peer.hostname
-                                  .toLowerCase()
-                                  .contains(textToFind) ||
-                              peer.alias.toLowerCase().contains(textToFind))
-                          .toList();
-                    }
-                    return _autocompleteOpts;
-                  },
-                  focusNode: _idFocusNode,
-                  textEditingController: _idEditingController,
-                  fieldViewBuilder: (
-                    BuildContext context,
-                    TextEditingController fieldTextEditingController,
-                    FocusNode fieldFocusNode,
-                    VoidCallback onFieldSubmitted,
-                  ) {
-                    updateTextAndPreserveSelection(
-                        fieldTextEditingController, _idController.text);
-                    return Obx(() => TextField(
-                          autocorrect: false,
-                          enableSuggestions: false,
-                          keyboardType: TextInputType.visiblePassword,
-                          focusNode: fieldFocusNode,
-                          style: TextStyle(
-                            fontFamily: 'WorkSans',
-                            fontSize: compact ? 15 : 22,
-                            height: 1.4,
-                          ),
-                          maxLines: 1,
-                          cursorColor:
-                              Theme.of(context).textTheme.titleLarge?.color,
-                          decoration: InputDecoration(
-                              filled: false,
-                              counterText: '',
-                              hintText: _idInputFocused.value
-                                  ? null
-                                  : translate('Enter Remote ID'),
-                              contentPadding: EdgeInsets.symmetric(
-                                  horizontal: compact ? 10 : 15,
-                                  vertical: compact ? 9 : 13)),
-                          controller: fieldTextEditingController,
-                          inputFormatters: [IDTextInputFormatter()],
-                          onChanged: (v) {
-                            _idController.id = v;
-                          },
-                          onSubmitted: (_) {
-                            onConnect();
-                          },
-                        ).workaroundFreezeLinuxMint());
-                  },
-                  onSelected: (option) {
-                    setState(() {
-                      _idController.id = option.id;
-                      FocusScope.of(context).unfocus();
-                    });
-                  },
-                  optionsViewBuilder: (BuildContext context,
-                      AutocompleteOnSelected<Peer> onSelected,
-                      Iterable<Peer> options) {
-                    options = _autocompleteOpts;
-                    double maxHeight = options.length * 50;
-                    if (options.length == 1) {
-                      maxHeight = 52;
-                    } else if (options.length == 3) {
-                      maxHeight = 146;
-                    } else if (options.length == 4) {
-                      maxHeight = 193;
-                    }
-                    maxHeight = maxHeight.clamp(0, 200);
-
-                    return Align(
-                      alignment: Alignment.topLeft,
-                      child: Container(
-                          decoration: BoxDecoration(
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.3),
-                                blurRadius: 5,
-                                spreadRadius: 1,
-                              ),
-                            ],
-                          ),
-                          child: ClipRRect(
-                              borderRadius: BorderRadius.circular(5),
-                              child: Material(
-                                elevation: 4,
-                                child: ConstrainedBox(
-                                  constraints: BoxConstraints(
-                                    maxHeight: maxHeight,
-                                    maxWidth: 319,
-                                  ),
-                                  child: _allPeersLoader.peers.isEmpty &&
-                                          !_allPeersLoader.isPeersLoaded
-                                      ? Container(
-                                          height: 80,
-                                          child: Center(
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                            ),
-                                          ))
-                                      : Padding(
-                                          padding:
-                                              const EdgeInsets.only(top: 5),
-                                          child: ListView(
-                                            children: options
-                                                .map((peer) =>
-                                                    AutocompletePeerTile(
-                                                        onSelect: () =>
-                                                            onSelected(peer),
-                                                        peer: peer))
-                                                .toList(),
-                                          ),
-                                        ),
-                                ),
-                              ))),
-                    );
-                  },
-                )),
-              ],
-            )),
+                  SizedBox(width: 190, child: fieldRow),
                   const SizedBox(width: 8),
-                  Padding(
-              padding: EdgeInsets.only(top: compact ? 0 : 13.0),
-              child: Row(
-                  mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max,
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                SizedBox(
-                  height: 28.0,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      onConnect();
-                    },
-                    child: Text(translate("Connect")),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  height: 28.0,
-                  width: 28.0,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Theme.of(context).dividerColor),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Center(
-                    child: StatefulBuilder(
-                      builder: (context, setState) {
-                        var offset = Offset(0, 0);
-                        return Obx(() => InkWell(
-                              child: _menuOpen.value
-                                  ? Transform.rotate(
-                                      angle: pi,
-                                      child: Icon(IconFont.more, size: 14),
-                                    )
-                                  : Icon(IconFont.more, size: 14),
-                              onTapDown: (e) {
-                                offset = e.globalPosition;
-                              },
-                              onTap: () async {
-                                _menuOpen.value = true;
-                                final x = offset.dx;
-                                final y = offset.dy;
-                                await mod_menu
-                                    .showMenu(
-                                  context: context,
-                                  position: RelativeRect.fromLTRB(x, y, x, y),
-                                  items: [
-                                    (
-                                      'Transfer file',
-                                      () => onConnect(isFileTransfer: true)
-                                    ),
-                                    (
-                                      'View camera',
-                                      () => onConnect(isViewCamera: true)
-                                    ),
-                                    (
-                                      '${translate('Terminal')} (beta)',
-                                      () => onConnect(isTerminal: true)
-                                    ),
-                                  ]
-                                      .map((e) => MenuEntryButton<String>(
-                                            childBuilder: (TextStyle? style) =>
-                                                Text(
-                                              translate(e.$1),
-                                              style: style,
-                                            ),
-                                            proc: () => e.$2(),
-                                            padding: EdgeInsets.symmetric(
-                                                horizontal:
-                                                    kDesktopMenuPadding.left),
-                                            dismissOnClicked: true,
-                                          ))
-                                      .map((e) => e.build(
-                                          context,
-                                          const MenuConfig(
-                                              commonColor: CustomPopupMenuTheme
-                                                  .commonColor,
-                                              height:
-                                                  CustomPopupMenuTheme.height,
-                                              dividerHeight:
-                                                  CustomPopupMenuTheme
-                                                      .dividerHeight)))
-                                      .expand((i) => i)
-                                      .toList(),
-                                  elevation: 8,
-                                )
-                                    .then((_) {
-                                  _menuOpen.value = false;
-                                });
-                              },
-                            ));
-                      },
-                    ),
-                  ),
-                ),
-              ]),
-            ),
+                  buttonsRow,
                 ],
-              ),
-            ] else ...[
+              )
+            else ...[
               getConnectionPageTitle(context, false).marginOnly(bottom: 15),
-              Row(
-              children: [
-                Expanded(
-                    child: RawAutocomplete<Peer>(
-                  optionsBuilder: (TextEditingValue textEditingValue) {
-                    if (textEditingValue.text == '') {
-                      _autocompleteOpts = const Iterable<Peer>.empty();
-                    } else if (_allPeersLoader.peers.isEmpty &&
-                        !_allPeersLoader.isPeersLoaded) {
-                      Peer emptyPeer = Peer(
-                        id: '',
-                        username: '',
-                        hostname: '',
-                        alias: '',
-                        platform: '',
-                        tags: [],
-                        hash: '',
-                        password: '',
-                        forceAlwaysRelay: false,
-                        rdpPort: '',
-                        rdpUsername: '',
-                        loginName: '',
-                        device_group_name: '',
-                        note: '',
-                      );
-                      _autocompleteOpts = [emptyPeer];
-                    } else {
-                      String textWithoutSpaces =
-                          textEditingValue.text.replaceAll(" ", "");
-                      if (int.tryParse(textWithoutSpaces) != null) {
-                        textEditingValue = TextEditingValue(
-                          text: textWithoutSpaces,
-                          selection: textEditingValue.selection,
-                        );
-                      }
-                      String textToFind = textEditingValue.text.toLowerCase();
-                      _autocompleteOpts = _allPeersLoader.peers
-                          .where((peer) =>
-                              peer.id.toLowerCase().contains(textToFind) ||
-                              peer.username
-                                  .toLowerCase()
-                                  .contains(textToFind) ||
-                              peer.hostname
-                                  .toLowerCase()
-                                  .contains(textToFind) ||
-                              peer.alias.toLowerCase().contains(textToFind))
-                          .toList();
-                    }
-                    return _autocompleteOpts;
-                  },
-                  focusNode: _idFocusNode,
-                  textEditingController: _idEditingController,
-                  fieldViewBuilder: (
-                    BuildContext context,
-                    TextEditingController fieldTextEditingController,
-                    FocusNode fieldFocusNode,
-                    VoidCallback onFieldSubmitted,
-                  ) {
-                    updateTextAndPreserveSelection(
-                        fieldTextEditingController, _idController.text);
-                    return Obx(() => TextField(
-                          autocorrect: false,
-                          enableSuggestions: false,
-                          keyboardType: TextInputType.visiblePassword,
-                          focusNode: fieldFocusNode,
-                          style: TextStyle(
-                            fontFamily: 'WorkSans',
-                            fontSize: compact ? 15 : 22,
-                            height: 1.4,
-                          ),
-                          maxLines: 1,
-                          cursorColor:
-                              Theme.of(context).textTheme.titleLarge?.color,
-                          decoration: InputDecoration(
-                              filled: false,
-                              counterText: '',
-                              hintText: _idInputFocused.value
-                                  ? null
-                                  : translate('Enter Remote ID'),
-                              contentPadding: EdgeInsets.symmetric(
-                                  horizontal: compact ? 10 : 15,
-                                  vertical: compact ? 9 : 13)),
-                          controller: fieldTextEditingController,
-                          inputFormatters: [IDTextInputFormatter()],
-                          onChanged: (v) {
-                            _idController.id = v;
-                          },
-                          onSubmitted: (_) {
-                            onConnect();
-                          },
-                        ).workaroundFreezeLinuxMint());
-                  },
-                  onSelected: (option) {
-                    setState(() {
-                      _idController.id = option.id;
-                      FocusScope.of(context).unfocus();
-                    });
-                  },
-                  optionsViewBuilder: (BuildContext context,
-                      AutocompleteOnSelected<Peer> onSelected,
-                      Iterable<Peer> options) {
-                    options = _autocompleteOpts;
-                    double maxHeight = options.length * 50;
-                    if (options.length == 1) {
-                      maxHeight = 52;
-                    } else if (options.length == 3) {
-                      maxHeight = 146;
-                    } else if (options.length == 4) {
-                      maxHeight = 193;
-                    }
-                    maxHeight = maxHeight.clamp(0, 200);
-
-                    return Align(
-                      alignment: Alignment.topLeft,
-                      child: Container(
-                          decoration: BoxDecoration(
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.3),
-                                blurRadius: 5,
-                                spreadRadius: 1,
-                              ),
-                            ],
-                          ),
-                          child: ClipRRect(
-                              borderRadius: BorderRadius.circular(5),
-                              child: Material(
-                                elevation: 4,
-                                child: ConstrainedBox(
-                                  constraints: BoxConstraints(
-                                    maxHeight: maxHeight,
-                                    maxWidth: 319,
-                                  ),
-                                  child: _allPeersLoader.peers.isEmpty &&
-                                          !_allPeersLoader.isPeersLoaded
-                                      ? Container(
-                                          height: 80,
-                                          child: Center(
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                            ),
-                                          ))
-                                      : Padding(
-                                          padding:
-                                              const EdgeInsets.only(top: 5),
-                                          child: ListView(
-                                            children: options
-                                                .map((peer) =>
-                                                    AutocompletePeerTile(
-                                                        onSelect: () =>
-                                                            onSelected(peer),
-                                                        peer: peer))
-                                                .toList(),
-                                          ),
-                                        ),
-                                ),
-                              ))),
-                    );
-                  },
-                )),
-              ],
-            ),
-              Padding(
-              padding: EdgeInsets.only(top: compact ? 0 : 13.0),
-              child: Row(
-                  mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max,
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                SizedBox(
-                  height: 28.0,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      onConnect();
-                    },
-                    child: Text(translate("Connect")),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  height: 28.0,
-                  width: 28.0,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Theme.of(context).dividerColor),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Center(
-                    child: StatefulBuilder(
-                      builder: (context, setState) {
-                        var offset = Offset(0, 0);
-                        return Obx(() => InkWell(
-                              child: _menuOpen.value
-                                  ? Transform.rotate(
-                                      angle: pi,
-                                      child: Icon(IconFont.more, size: 14),
-                                    )
-                                  : Icon(IconFont.more, size: 14),
-                              onTapDown: (e) {
-                                offset = e.globalPosition;
-                              },
-                              onTap: () async {
-                                _menuOpen.value = true;
-                                final x = offset.dx;
-                                final y = offset.dy;
-                                await mod_menu
-                                    .showMenu(
-                                  context: context,
-                                  position: RelativeRect.fromLTRB(x, y, x, y),
-                                  items: [
-                                    (
-                                      'Transfer file',
-                                      () => onConnect(isFileTransfer: true)
-                                    ),
-                                    (
-                                      'View camera',
-                                      () => onConnect(isViewCamera: true)
-                                    ),
-                                    (
-                                      '${translate('Terminal')} (beta)',
-                                      () => onConnect(isTerminal: true)
-                                    ),
-                                  ]
-                                      .map((e) => MenuEntryButton<String>(
-                                            childBuilder: (TextStyle? style) =>
-                                                Text(
-                                              translate(e.$1),
-                                              style: style,
-                                            ),
-                                            proc: () => e.$2(),
-                                            padding: EdgeInsets.symmetric(
-                                                horizontal:
-                                                    kDesktopMenuPadding.left),
-                                            dismissOnClicked: true,
-                                          ))
-                                      .map((e) => e.build(
-                                          context,
-                                          const MenuConfig(
-                                              commonColor: CustomPopupMenuTheme
-                                                  .commonColor,
-                                              height:
-                                                  CustomPopupMenuTheme.height,
-                                              dividerHeight:
-                                                  CustomPopupMenuTheme
-                                                      .dividerHeight)))
-                                      .expand((i) => i)
-                                      .toList(),
-                                  elevation: 8,
-                                )
-                                    .then((_) {
-                                  _menuOpen.value = false;
-                                });
-                              },
-                            ));
-                      },
-                    ),
-                  ),
-                ),
-              ]),
-            ),
+              fieldRow,
+              buttonsRow,
             ],
           ],
         ),

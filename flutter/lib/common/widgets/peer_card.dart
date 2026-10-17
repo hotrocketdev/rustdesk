@@ -208,7 +208,7 @@ class _PeerCardState extends State<_PeerCard>
                       ),
                       const SizedBox(width: 7),
                       Text(
-                        peer.online ? 'ONLINE' : 'OFFLINE',
+                        translate(peer.online ? 'Online' : 'Offline').toUpperCase(),
                         style: mono.copyWith(
                             color: peer.online ? c.ok : c.dim),
                       ),
@@ -217,7 +217,9 @@ class _PeerCardState extends State<_PeerCard>
                 ),
                 const SizedBox(width: 14),
                 InkWell(
-                  onTap: () => widget.connect(context, peer.id),
+                  onTap: peerTabModel.multiSelectionMode
+                      ? null
+                      : () => widget.connect(context, peer.id),
                   child: Container(
                     height: 30,
                     padding: const EdgeInsets.symmetric(horizontal: 11),
@@ -234,9 +236,10 @@ class _PeerCardState extends State<_PeerCard>
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                            connected
-                                ? 'CONNECTED'
-                                : (connecting ? 'CONNECTING' : 'CONNECT'),
+                            translate(connected
+                                    ? 'Connected'
+                                    : (connecting ? 'Connecting' : 'Connect'))
+                                .toUpperCase(),
                             style: mono.copyWith(color: btnColor)),
                         const SizedBox(width: 6),
                         DzIcon(connected ? 'check' : 'connect',
@@ -709,7 +712,7 @@ abstract class BasePeerCard extends StatelessWidget {
       (await _buildMenuItems(context))
           .map((e) => e.build(
               context,
-              const MenuConfig(
+              MenuConfig(
                   commonColor: CustomPopupMenuTheme.commonColor,
                   height: CustomPopupMenuTheme.height,
                   dividerHeight: CustomPopupMenuTheme.dividerHeight)))

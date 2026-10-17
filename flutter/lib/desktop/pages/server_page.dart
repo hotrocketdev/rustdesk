@@ -562,9 +562,11 @@ class _CmHeaderState extends State<_CmHeader>
                       .toggleCMChatPage(MessageKey(client.peerId, client.id));
                 }
               }),
-              icon: SvgPicture.asset(client.type_() == ClientType.file
-                  ? 'assets/file_transfer.svg'
-                  : 'assets/chat2.svg'),
+              icon: SvgPicture.asset(
+                  client.type_() == ClientType.file
+                      ? 'assets/file_transfer.svg'
+                      : 'assets/chat2.svg',
+                  colorFilter: ColorFilter.mode(dz.fg, BlendMode.srcIn)),
               splashRadius: kDesktopIconButtonSplashRadius,
             ),
           )
@@ -1103,15 +1105,19 @@ class _CmControlPanel extends StatelessWidget {
     assert(!(onClick == null && onTapDown == null));
     Widget textWidget;
     if (icon != null) {
-      textWidget = Text(
-        translate(text).toUpperCase(),
-        style: TextStyle(
-            color: textColor,
-            fontFamily: MyTheme.fontMono,
-            fontSize: 11,
-            letterSpacing: 0.9,
-            fontWeight: FontWeight.w500),
-        textAlign: TextAlign.center,
+      textWidget = Flexible(
+        child: Text(
+          translate(text).toUpperCase(),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+              color: textColor,
+              fontFamily: MyTheme.fontMono,
+              fontSize: 11,
+              letterSpacing: 0.9,
+              fontWeight: FontWeight.w500),
+          textAlign: TextAlign.center,
+        ),
       );
     } else {
       textWidget = Expanded(

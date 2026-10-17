@@ -114,12 +114,12 @@ class ToolbarState {
 }
 
 class _ToolbarTheme {
-  static const Color blueColor = Color(0x00000000);
+  static const Color blueColor = MyTheme.button;
   static const Color hoverBlueColor = Color(0xFF2A2A2A);
   static Color inactiveColor = Colors.grey[800]!;
   static Color hoverInactiveColor = Colors.grey[850]!;
 
-  static const Color redColor = Color(0x00000000);
+  static const Color redColor = Colors.redAccent;
   static const Color hoverRedColor = Colors.red;
   // kMinInteractiveDimension
   static const double height = 20.0;
@@ -2241,7 +2241,7 @@ class _CloseMenu extends StatelessWidget {
         }
         closeConnection(id: id);
       },
-      color: _ToolbarTheme.redColor,
+      color: Colors.transparent,
       hoverColor: _ToolbarTheme.hoverRedColor,
       iconColor: const Color(0xFFFF6B6B),
     );
@@ -2318,7 +2318,11 @@ class _IconMenuButtonState extends State<_IconMenuButton> {
                     decoration: BoxDecoration(
                       borderRadius:
                           BorderRadius.circular(_ToolbarTheme.iconRadius),
-                      color: hover ? widget.hoverColor : widget.color,
+                      color: hover
+                          ? widget.hoverColor
+                          : (widget.color == _ToolbarTheme.blueColor
+                              ? Colors.transparent
+                              : widget.color),
                     ),
                     child: icon)),
           )),
@@ -2412,7 +2416,11 @@ class _IconSubmenuButtonState extends State<_IconSubmenuButton> {
                               BorderRadius.circular(_ToolbarTheme.iconRadius),
                           color: open
                               ? MyTheme.accent
-                              : (hover ? widget.hoverColor : widget.color),
+                              : (hover
+                                  ? widget.hoverColor
+                                  : (widget.color == _ToolbarTheme.blueColor
+                                      ? Colors.transparent
+                                      : widget.color)),
                         ),
                         child: icon))),
             menuChildren: widget

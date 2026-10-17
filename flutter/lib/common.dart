@@ -258,12 +258,15 @@ class MyTheme {
   static const Color accentInk = Color(0xFF7D97FF);
   // Deskzap: sharp corners, as on the website.
   static const double dzRadius = 2.0;
+  // Accent for text and icons: #0033FF is for fills; on dark grounds use the lighter ink.
+  static Color get accentFg =>
+      currentThemeMode() == ThemeMode.dark ? accentInk : accent;
   // Deskzap brand fonts (bundled in assets/fonts/deskzap).
   static const String fontBody = 'IBMPlexSans';
   static const String fontDisplay = 'Outfit';
   static const String fontMono = 'IBMPlexMono';
   static const Color canvasColor = Color(0xFF212121);
-  static const Color border = Color(0xFFCCCCCC);
+  static const Color border = Color(0xFFD4D4D4);
   static const Color idColor = Color(0xFF00B6F0);
   static const Color darkGray = Color.fromARGB(255, 148, 148, 148);
   static const Color cmIdColor = Color(0xFF21790B);
@@ -929,8 +932,8 @@ class OverlayDialogManager {
                                   style: flatButtonStyle,
                                   onPressed: cancel,
                                   child: Text(translate('Cancel'),
-                                      style: const TextStyle(
-                                          color: MyTheme.accent)))))
+                                      style: TextStyle(
+                                          color: MyTheme.accentFg)))))
                 ])),
         onCancel: showCancel ? cancel : null,
       );
@@ -3271,7 +3274,7 @@ Widget buildErrorBanner(BuildContext context,
                     },
                     child: Text(
                       translate("Retry"),
-                      style: TextStyle(color: MyTheme.accent),
+                      style: TextStyle(color: MyTheme.accentFg),
                     )).marginSymmetric(horizontal: 5),
               FittedBox(
                 child: InkWell(

@@ -394,7 +394,7 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
                 mode: LaunchMode.externalApplication,
               ),
               style: TextButton.styleFrom(
-                foregroundColor: MyTheme.accentInk,
+                foregroundColor: Theme.of(context).brightness == Brightness.dark ? MyTheme.accentInk : MyTheme.accent,
                 padding: EdgeInsets.zero,
                 minimumSize: const Size(0, 0),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -416,7 +416,7 @@ class _DeskzapEnrollmentPageState extends State<DeskzapEnrollmentPage> {
                   mode: LaunchMode.externalApplication,
                 ),
                 style: TextButton.styleFrom(
-                  foregroundColor: MyTheme.accentInk,
+                  foregroundColor: Theme.of(context).brightness == Brightness.dark ? MyTheme.accentInk : MyTheme.accent,
                   padding: EdgeInsets.zero,
                   minimumSize: const Size(0, 0),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,

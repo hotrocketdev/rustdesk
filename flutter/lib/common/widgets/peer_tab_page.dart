@@ -32,6 +32,16 @@ class PeerTabPage extends StatefulWidget {
   const PeerTabPage({Key? key}) : super(key: key);
   // Set while a PeerTabPage is mounted; the Deskzap rail uses it to switch tabs.
   static Future<void> Function(int)? selectTab;
+  // A tab chosen while no PeerTabPage is mounted (e.g. from Settings); applied on mount.
+  static final RxInt pendingTab = (-1).obs;
+  static void requestTab(int t) {
+    final f = selectTab;
+    if (f != null) {
+      f(t);
+    } else {
+      pendingTab.value = t;
+    }
+  }
   @override
   State<PeerTabPage> createState() => _PeerTabPageState();
 }
@@ -83,16 +93,22 @@ class _PeerTabPageState extends State<PeerTabPage>
   @override
   void initState() {
     super.initState();
-    PeerTabPage.selectTab = (int t) async {
-      await handleTabSelection(t);
-      await bind.setLocalFlutterOption(
-          k: kOptionPeerTabIndex, v: t.toString());
-    };
+    PeerTabPage.selectTab = _dzSelectTab;
+    final pending = PeerTabPage.pendingTab.value;
+    if (pending >= 0) {
+      PeerTabPage.pendingTab.value = -1;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _dzSelectTab(pending));
+    }
+  }
+
+  Future<void> _dzSelectTab(int t) async {
+    await handleTabSelection(t);
+    await bind.setLocalFlutterOption(k: kOptionPeerTabIndex, v: t.toString());
   }
 
   @override
   void dispose() {
-    PeerTabPage.selectTab = null;
+    if (PeerTabPage.selectTab == _dzSelectTab) PeerTabPage.selectTab = null;
     super.dispose();
   }
 
@@ -599,7 +615,7 @@ class _PeerTabPageState extends State<PeerTabPage>
 
   List<Widget> _landscapeRightActions(BuildContext context) {
     final model = Provider.of<PeerTabModel>(context);
-    if (bind.isOutgoingOnly()) {
+    if (bind.isOutgoingOnly() && (isDesktop || isWebDesktop)) {
       // Deskzap Connect: search lives in the header; view and sort are Deskzap menus.
       return [
         _createRefresh(

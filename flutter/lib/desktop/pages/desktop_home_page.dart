@@ -102,15 +102,22 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       } catch (_) {}
     }
     final home = LayoutBuilder(
-      builder: (context, constraints) => Row(
+      builder: (context, constraints) {
+        final compactRail = constraints.maxWidth < 860;
+        if (dzRailCompact.value != compactRail) {
+          WidgetsBinding.instance
+              .addPostFrameCallback((_) => dzRailCompact.value = compactRail);
+        }
+        return Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          buildLeftPane(context, compact: constraints.maxWidth < 860),
+          buildLeftPane(context, compact: compactRail),
           if (!isIncomingOnly && !bind.isOutgoingOnly())
             const VerticalDivider(width: 1),
           if (!isIncomingOnly) Expanded(child: buildRightPane(context)),
         ],
-      ),
+      );
+      },
     );
     final chat = _chat;
     final Widget homeWithKeys = bind.isOutgoingOnly()
@@ -358,7 +365,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         color: Theme.of(context).scaffoldBackgroundColor,
         child: Obx(() => dzShowSettings.value
             ? DesktopSettingPage(
-                key: const ValueKey('dz-settings'),
+                key: ValueKey('dz-settings-${dzSettingsPage.value.name}'),
                 initialTabkey: dzSettingsPage.value)
             : ConnectionPage()),
       );

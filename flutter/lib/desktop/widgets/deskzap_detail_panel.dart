@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/common/formatter/id_formatter.dart';
@@ -22,7 +23,7 @@ class DeskzapDetailPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final c = DzColors.of(context);
-    final bg = dark ? const Color(0xFF0E0E0E) : const Color(0xFFF5F5F5);
+    final bg = c.rail;
     return Container(
       width: width,
       decoration: BoxDecoration(
@@ -30,19 +31,27 @@ class DeskzapDetailPanel extends StatelessWidget {
         border: Border(left: BorderSide(color: c.line)),
       ),
       padding: const EdgeInsets.all(22),
-      child: Obx(() {
-        final peer = dzFocusedPeer.value;
+      child: AnimatedBuilder(
+        animation: gFFI.peerTabModel,
+        builder: (context, _) => Obx(() {
+        final focused = dzFocusedPeer.value;
+        // The lists are rebuilt on every load, so resolve the current instance by ID.
+        final peer = focused == null
+            ? null
+            : (gFFI.peerTabModel.currentTabCachedPeers
+                    .firstWhereOrNull((p) => p.id == focused.id) ??
+                focused);
         if (peer == null) {
           return Align(
             alignment: Alignment.topLeft,
             child: Text(
-              'Select a device to see its details and quick actions.',
+              translate('Select a device to see its details and quick actions.'),
               style: TextStyle(fontSize: 13, color: c.dim, height: 1.5),
             ),
           );
         }
         return _Details(peer: peer, c: c);
-      }),
+      })),
     );
   }
 }
@@ -90,7 +99,7 @@ class _Details extends StatelessWidget {
                       color: peer.online ? c.ok : c.off, shape: BoxShape.circle),
                 ),
                 const SizedBox(width: 7),
-                Text(peer.online ? 'ONLINE' : 'OFFLINE',
+                Text(translate(peer.online ? 'Online' : 'Offline').toUpperCase(),
                     style: mono.copyWith(color: statusColor)),
               ],
             ),
@@ -136,7 +145,7 @@ class _Details extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(connected ? 'CONNECTED' : (connecting ? 'CONNECTING' : 'CONNECT'),
+                    Text(translate(connected ? 'Connected' : (connecting ? 'Connecting' : 'Connect')).toUpperCase(),
                         style: mono.copyWith(color: fg)),
                     const SizedBox(width: 8),
                     DzIcon(connected ? 'check' : 'connect', size: 14, color: fg),
@@ -150,7 +159,7 @@ class _Details extends StatelessWidget {
             children: [
               Expanded(
                 child: _Secondary(
-                  label: 'FILES',
+                  label: translate('Files').toUpperCase(),
                   icon: 'files',
                   c: c,
                   onTap: () => connect(context, peer.id, isFileTransfer: true),
@@ -159,7 +168,7 @@ class _Details extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: _Secondary(
-                  label: 'TERMINAL',
+                  label: translate('Terminal').toUpperCase(),
                   icon: 'actions',
                   c: c,
                   onTap: () => connect(context, peer.id, isTerminal: true),

@@ -34,10 +34,10 @@ class _MenuTheme {
 // Devices whose session reached the connected state (Deskzap device-list button).
 final Set<String> _dzNotified = {};
 
-void _dzNotify(String id, String state) {
+Future<void> _dzNotify(String id, String state) async {
   try {
-    rustDeskWinManager.call(
-        WindowType.Main, kWindowEventDzSession, jsonEncode({'id': id, 'state': state}));
+    await rustDeskWinManager.call(WindowType.Main, kWindowEventDzSession,
+        jsonEncode({'id': id, 'state': state}));
   } catch (_) {}
 }
 
@@ -406,6 +406,14 @@ class _ConnectionTabPageState extends State<ConnectionTabPage> {
     return widget.params["windowId"];
   }
 
+  // Tell the main window every session in this window is over (clear() skips onRemoved).
+  void _dzCloseAll() {
+    for (final tab in tabController.state.value.tabs) {
+      _dzNotified.remove(tab.key);
+      _dzNotify(tab.key, 'closed');
+    }
+  }
+
   Future<bool> handleWindowCloseButton() async {
     final connLength = tabController.length;
     if (connLength == 1) {
@@ -417,6 +425,7 @@ class _ConnectionTabPageState extends State<ConnectionTabPage> {
       }
     }
     if (connLength <= 1) {
+      _dzCloseAll();
       tabController.clear();
       return true;
     } else {
@@ -428,7 +437,8 @@ class _ConnectionTabPageState extends State<ConnectionTabPage> {
         res = await closeConfirmDialog();
       }
       if (res) {
-        tabController.clear();
+        _dzCloseAll();
+      tabController.clear();
       }
       return res;
     }
@@ -498,6 +508,7 @@ class _ConnectionTabPageState extends State<ConnectionTabPage> {
     } else if (call.method == kWindowDisableGrabKeyboard) {
       // ???
     } else if (call.method == "onDestroy") {
+      _dzCloseAll();
       tabController.clear();
     } else if (call.method == kWindowActionRebuild) {
       reloadCurrentWindow();

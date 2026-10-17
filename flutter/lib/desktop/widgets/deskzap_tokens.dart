@@ -11,6 +11,7 @@ class DzColors {
     required this.line2,
     required this.card,
     required this.raise,
+    required this.rail,
     required this.ok,
     required this.off,
   });
@@ -22,6 +23,8 @@ class DzColors {
   final Color line2;
   final Color card;
   final Color raise;
+  // Left rail / side panel surface.
+  final Color rail;
   final Color ok;
   final Color off;
 
@@ -33,6 +36,7 @@ class DzColors {
     line2: Color(0xFF333333),
     card: Color(0xFF121212),
     raise: Color(0xFF1A1A1A),
+    rail: Color(0xFF0E0E0E),
     ok: Color(0xFF3DDC84),
     off: Color(0xFF737373),
   );
@@ -45,6 +49,7 @@ class DzColors {
     line2: Color(0xFFD4D4D4),
     card: Color(0xFFFFFFFF),
     raise: Color(0xFFF0F0F0),
+    rail: Color(0xFFF5F5F5),
     ok: Color(0xFF16863F),
     off: Color(0xFF8A8A8A),
   );
@@ -52,3 +57,7 @@ class DzColors {
   static DzColors of(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark ? _dark : _light;
 }
+
+/// Device row heights in the Connect list (shared by the row and the list).
+const double kDzRowHeight = 64;
+const double kDzRowHeightCompact = 46;

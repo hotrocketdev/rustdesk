@@ -1,9 +1,10 @@
 import 'dart:async';
-import 'package:flutter_hbb/desktop/widgets/deskzap_switch.dart';
-import 'package:flutter_hbb/desktop/widgets/dz_icon.dart';
-import 'package:flutter_hbb/desktop/widgets/deskzap_tokens.dart';
 import 'dart:convert';
 import 'dart:io';
+
+import 'package:flutter_hbb/desktop/widgets/deskzap_switch.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_tokens.dart';
+import 'package:flutter_hbb/desktop/widgets/dz_icon.dart';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -2159,55 +2160,6 @@ class _AccountState extends State<_Account> {
   }
 }
 
-class _Checkbox extends StatefulWidget {
-  final String label;
-  final bool Function() getValue;
-  final Future<void> Function(bool) setValue;
-
-  const _Checkbox(
-      {Key? key,
-      required this.label,
-      required this.getValue,
-      required this.setValue})
-      : super(key: key);
-
-  @override
-  State<_Checkbox> createState() => _CheckboxState();
-}
-
-class _CheckboxState extends State<_Checkbox> {
-  var value = false;
-
-  @override
-  initState() {
-    super.initState();
-    value = widget.getValue();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    onChanged(bool b) async {
-      await widget.setValue(b);
-      setState(() {
-        value = widget.getValue();
-      });
-    }
-
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(translate(widget.label)),
-          ),
-          const SizedBox(width: 16),
-          DzSwitch(value: value, onChanged: (b) => onChanged(b)),
-        ],
-      ).marginOnly(left: _kCheckBoxLeftMargin, top: 4, bottom: 4),
-      onTap: () => onChanged(!value),
-    );
-  }
-}
 
 class _Plugin extends StatefulWidget {
   const _Plugin({Key? key}) : super(key: key);
@@ -2639,7 +2591,21 @@ Widget _Radio<T>(BuildContext context,
       : null;
   final c = DzColors.of(context);
   final selected = value == groupValue;
-  return GestureDetector(
+  return Semantics(
+    inMutuallyExclusiveGroup: true,
+    checked: selected,
+    enabled: onChange2 != null,
+    child: FocusableActionDetector(
+      enabled: onChange2 != null,
+      actions: {
+        ActivateIntent: CallbackAction<ActivateIntent>(
+          onInvoke: (_) {
+            onChange2?.call(value);
+            return null;
+          },
+        ),
+      },
+      child: GestureDetector(
     behavior: HitTestBehavior.opaque,
     child: Row(
       children: [
@@ -2668,6 +2634,8 @@ Widget _Radio<T>(BuildContext context,
       ],
     ).marginOnly(left: _kRadioLeftMargin, top: 4, bottom: 4),
     onTap: () => onChange2?.call(value),
+  ),
+    ),
   );
 }
 

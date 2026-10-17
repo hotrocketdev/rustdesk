@@ -26,7 +26,11 @@ Future<void> _showDzMenu(
 ) {
   final c = DzColors.of(anchor);
   final box = anchor.findRenderObject() as RenderBox;
-  final pos = box.localToGlobal(Offset.zero);
+  final overlay = Overlay.of(anchor).context.findRenderObject() as RenderBox;
+  final rect = Rect.fromPoints(
+    box.localToGlobal(Offset(0, box.size.height + 4), ancestor: overlay),
+    box.localToGlobal(box.size.bottomRight(Offset.zero), ancestor: overlay),
+  );
   final mono = TextStyle(
     fontFamily: MyTheme.fontMono,
     fontSize: 10.5,
@@ -36,8 +40,7 @@ Future<void> _showDzMenu(
   );
   return showMenu<void>(
     context: anchor,
-    position: RelativeRect.fromLTRB(
-        pos.dx, pos.dy + box.size.height + 4, 0, 0),
+    position: RelativeRect.fromRect(rect, Offset.zero & overlay.size),
     color: c.card,
     elevation: 8,
     constraints: const BoxConstraints(minWidth: 210),

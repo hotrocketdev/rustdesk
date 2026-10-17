@@ -9,6 +9,7 @@ import 'package:get/get.dart';
 
 import '../../common.dart';
 import '../../models/platform_model.dart';
+import '../../desktop/widgets/deskzap_rail.dart';
 
 class MyGroup extends StatefulWidget {
   final EdgeInsets? menuPadding;
@@ -61,7 +62,7 @@ class _MyGroupState extends State<MyGroup> {
   Widget _buildLandscape() {
     return Row(
       children: [
-        if (!bind.isOutgoingOnly())
+        if (!bind.isOutgoingOnly() || dzRailCompact.value)
         Container(
           decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),

@@ -18,26 +18,38 @@ class DzSwitch extends StatelessWidget {
     return Semantics(
       toggled: value,
       enabled: enabled,
-      child: GestureDetector(
-        onTap: enabled ? () => onChanged!(!value) : null,
-        child: Opacity(
-          opacity: enabled ? 1 : 0.45,
-          child: Container(
-            width: 38,
-            height: 22,
-            decoration: BoxDecoration(
-              color: value ? MyTheme.accent : c.card,
-              border: Border.all(color: value ? MyTheme.accent : c.line2),
-            ),
-            child: AnimatedAlign(
-              duration: const Duration(milliseconds: 140),
-              curve: Curves.easeOut,
-              alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-              child: Container(
-                width: 16,
-                height: 16,
-                margin: const EdgeInsets.all(2),
-                color: value ? Colors.white : c.dim,
+      child: FocusableActionDetector(
+        enabled: enabled,
+        mouseCursor: enabled ? SystemMouseCursors.click : MouseCursor.defer,
+        actions: {
+          ActivateIntent: CallbackAction<ActivateIntent>(
+            onInvoke: (_) {
+              onChanged?.call(!value);
+              return null;
+            },
+          ),
+        },
+        child: GestureDetector(
+          onTap: enabled ? () => onChanged!(!value) : null,
+          child: Opacity(
+            opacity: enabled ? 1 : 0.45,
+            child: Container(
+              width: 38,
+              height: 22,
+              decoration: BoxDecoration(
+                color: value ? MyTheme.accent : c.card,
+                border: Border.all(color: value ? MyTheme.accent : c.line2),
+              ),
+              child: AnimatedAlign(
+                duration: const Duration(milliseconds: 140),
+                curve: Curves.easeOut,
+                alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+                child: Container(
+                  width: 16,
+                  height: 16,
+                  margin: const EdgeInsets.all(2),
+                  color: value ? Colors.white : c.dim,
+                ),
               ),
             ),
           ),

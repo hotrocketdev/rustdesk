@@ -14,6 +14,9 @@ import 'package:get/get.dart';
 /// Replaces the stock RustDesk left pane in the Connect (outgoing-only) app.
 /// Navigation drives the same peer tabs the old icon strip did; groups drive
 /// the Accessible-devices tab. [compact] shows icons only (narrow windows).
+/// True while the rail is icon-only (narrow window): the group list moves into the device tab.
+final RxBool dzRailCompact = false.obs;
+
 class DeskzapRail extends StatelessWidget {
   const DeskzapRail({
     Key? key,
@@ -54,7 +57,7 @@ class DeskzapRail extends StatelessWidget {
   Widget build(BuildContext context) {
     final dark = Theme.of(context).brightness == Brightness.dark;
     final c = DzColors.of(context);
-    final bg = dark ? const Color(0xFF0E0E0E) : const Color(0xFFF5F5F5);
+    final bg = c.rail;
     final pad = compact ? 8.0 : 12.0;
     return Container(
       width: compact ? compactWidth : fullWidth,
@@ -113,7 +116,7 @@ class DeskzapRail extends StatelessWidget {
                 if (t == 4) {
                   gFFI.groupModel.selectedAccessibleItemName.value = '';
                 }
-                PeerTabPage.selectTab?.call(t);
+                PeerTabPage.requestTab(t);
               },
             );
           }),
@@ -145,7 +148,7 @@ class DeskzapRail extends StatelessWidget {
             onNavigate();
             gm.isSelectedDeviceGroup.value = true;
             gm.selectedAccessibleItemName.value = name;
-            PeerTabPage.selectTab?.call(4);
+            PeerTabPage.requestTab(4);
           },
         ));
       }
@@ -167,7 +170,7 @@ class DeskzapRail extends StatelessWidget {
             onNavigate();
             gm.isSelectedDeviceGroup.value = false;
             gm.selectedAccessibleItemName.value = name;
-            PeerTabPage.selectTab?.call(4);
+            PeerTabPage.requestTab(4);
           },
         ));
       }
@@ -238,7 +241,7 @@ class DeskzapRail extends StatelessWidget {
     return Obx(() {
       final loggedIn = gFFI.userModel.isLogin;
       final name = gFFI.userModel.displayNameOrUserName;
-      final initial = name.isEmpty ? 'D' : name.substring(0, 1).toUpperCase();
+      final initial = name.isEmpty ? 'D' : name.characters.first.toUpperCase();
       void open() => loggedIn ? onAccount() : loginDialog();
       final avatar = InkWell(
         onTap: open,

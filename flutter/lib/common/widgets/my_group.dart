@@ -113,7 +113,10 @@ class _MyGroupState extends State<MyGroup> {
                 _buildLeftHeader(),
                 Container(
                   width: double.infinity,
-                  child: _buildLeftList(),
+                  // Desktop Connect (narrow window): the list needs a bounded height here.
+                  child: (bind.isOutgoingOnly() && stateGlobal.isPortrait.isFalse)
+                      ? SizedBox(height: 120, child: _buildLeftList())
+                      : _buildLeftList(),
                 )
               ],
             ),

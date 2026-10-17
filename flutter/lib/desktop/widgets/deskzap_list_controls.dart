@@ -37,7 +37,7 @@ Future<void> _showDzMenu(
   return showMenu<void>(
     context: anchor,
     position: RelativeRect.fromLTRB(
-        pos.dx, pos.dy + box.size.height + 4, pos.dx + box.size.width, 0),
+        pos.dx, pos.dy + box.size.height + 4, 0, 0),
     color: c.card,
     elevation: 8,
     constraints: const BoxConstraints(minWidth: 210),
@@ -129,7 +129,10 @@ class DzViewButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Obx(() {
       final compact = peerCardUiType.value == PeerUiType.tile;
+      // Respect an administrator-fixed view option, as the stock selector does.
+      final locked = isOptionFixed(kOptionPeerCardUiType);
       Future<void> pick(PeerUiType t) async {
+        if (locked) return;
         peerCardUiType.value = t;
         await bind.setLocalFlutterOption(
             k: kOptionPeerCardUiType, v: t.index.toString());
@@ -156,7 +159,9 @@ class DzSortButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      final current = peerSort.value;
+      final current = PeerSortType.values.contains(peerSort.value)
+          ? peerSort.value
+          : PeerSortType.remoteId;
       return _DzBarButton(
         label: 'SORT',
         value: translate(current),

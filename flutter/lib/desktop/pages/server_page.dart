@@ -580,7 +580,7 @@ class _CmHeaderState extends State<_CmHeader>
     return buildAvatarWidget(
           avatar: client.avatar,
           size: 70,
-          borderRadius: 15,
+          borderRadius: MyTheme.dzRadius,
           fallback: _buildInitialAvatar(),
         ) ??
         _buildInitialAvatar();

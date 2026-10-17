@@ -4,6 +4,7 @@ import 'package:flutter_hbb/common/widgets/login.dart';
 import 'package:flutter_hbb/common/widgets/peer_tab_page.dart';
 import 'package:flutter_hbb/desktop/widgets/deskzap_tokens.dart';
 import 'package:flutter_hbb/desktop/widgets/dz_icon.dart';
+import 'package:flutter_hbb/models/platform_model.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 
@@ -225,6 +226,15 @@ class DeskzapRail extends StatelessWidget {
       color: c.mute,
       onTap: onSettings,
     );
+    // Accounts disabled by configuration: no sign-in entry, only theme and settings.
+    if (bind.isDisableAccount()) {
+      return compact
+          ? Column(children: [themeButton, settingsButton])
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [themeButton, settingsButton],
+            );
+    }
     return Obx(() {
       final loggedIn = gFFI.userModel.isLogin;
       final name = gFFI.userModel.displayNameOrUserName;

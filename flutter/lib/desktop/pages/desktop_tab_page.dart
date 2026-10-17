@@ -12,6 +12,11 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../common/shared_state.dart';
 
+/// Deskzap Connect shows Settings inside the main window (beside the rail)
+/// instead of as a second tab. These drive that.
+final RxBool dzShowSettings = false.obs;
+final Rx<SettingsTabKey> dzSettingsPage = SettingsTabKey.general.obs;
+
 class DesktopTabPage extends StatefulWidget {
   const DesktopTabPage({Key? key}) : super(key: key);
 
@@ -20,6 +25,11 @@ class DesktopTabPage extends StatefulWidget {
 
   static void onAddSetting(
       {SettingsTabKey initialPage = SettingsTabKey.general}) {
+    if (bind.isOutgoingOnly()) {
+      dzSettingsPage.value = initialPage;
+      dzShowSettings.value = true;
+      return;
+    }
     try {
       DesktopTabController tabController = Get.find<DesktopTabController>();
       tabController.add(TabInfo(

@@ -8,6 +8,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart' hide TabBarTheme;
 import 'package:flutter_hbb/common.dart';
 import 'package:flutter_hbb/consts.dart';
+import 'package:flutter_hbb/desktop/widgets/dz_icon.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_tokens.dart';
 import 'package:flutter_hbb/desktop/pages/remote_page.dart';
 import 'package:flutter_hbb/desktop/pages/view_camera_page.dart';
 import 'package:flutter_hbb/main.dart';
@@ -1021,6 +1023,63 @@ class _ListView extends StatelessWidget {
   }
 }
 
+String _dzGroupId(String s) {
+  final b = StringBuffer();
+  for (var i = 0; i < s.length; i++) {
+    if (i > 0 && (s.length - i) % 3 == 0) b.write(' ');
+    b.write(s[i]);
+  }
+  return b.toString();
+}
+
+/// Session tab label: DEVICE NAME in mono caps, then the ID dimmed (raw is `id@name`).
+Widget _dzSessionLabel(String raw, bool selected, BuildContext context) {
+  // Only the `<digits>@<name>` shape is reformatted; anything else (aliases, client names,
+  // file-transfer tabs) is shown as given.
+  final shaped = RegExp(r'^\d[\d ]*@.+$').hasMatch(raw);
+  if (!shaped) {
+    final cc = DzColors.of(context);
+    return Text(raw,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: selected ? cc.fg : cc.mute));
+  }
+  final at = raw.indexOf('@');
+  final id = at > 0 ? raw.substring(0, at) : raw;
+  final host = at > 0 ? raw.substring(at + 1) : '';
+  final c = DzColors.of(context);
+  final grouped = _dzGroupId(id);
+  final base = TextStyle(
+    fontFamily: MyTheme.fontMono,
+    fontSize: 11.5,
+    letterSpacing: 0.6,
+    fontWeight: FontWeight.w500,
+  );
+  return Text.rich(
+    TextSpan(children: [
+      TextSpan(
+        text: (host.isEmpty ? grouped : host).toUpperCase(),
+        style: base.copyWith(color: selected ? c.fg : c.mute),
+      ),
+      if (host.isNotEmpty)
+        TextSpan(text: '   $grouped', style: base.copyWith(color: c.dim)),
+    ]),
+    maxLines: 1,
+    overflow: TextOverflow.ellipsis,
+  );
+}
+
+/// Deskzap icon name for the Material icons the tab bar is given, if there is one.
+String? _dzTabName(IconData? i) {
+  if (i == Icons.desktop_windows_sharp || i == Icons.desktop_windows_outlined) return 'devices';
+  if (i == Icons.home_sharp || i == Icons.home_outlined) return 'devices';
+  if (i == Icons.build_sharp || i == Icons.build_outlined) return 'settings';
+  return null;
+}
+
 class _Tab extends StatefulWidget {
   final int index;
   final String tabInfoKey;
@@ -1071,27 +1130,34 @@ class _TabState extends State<_Tab> with RestorationMixin {
         widget.selectedIcon != null && widget.unselectedIcon != null;
     bool isSelected = widget.index == widget.selected;
 
+    final tabIconColor = isSelected
+        ? MyTheme.tabbar(context).selectedTabIconColor
+        : MyTheme.tabbar(context).unSelectedTabIconColor;
+    final dzName = _dzTabName(isSelected ? widget.selectedIcon : widget.unselectedIcon);
     final icon = Offstage(
         offstage: !showIcon,
-        child: Icon(
-          isSelected ? widget.selectedIcon : widget.unselectedIcon,
-          size: _kIconSize,
-          color: isSelected
-              ? MyTheme.tabbar(context).selectedTabIconColor
-              : MyTheme.tabbar(context).unSelectedTabIconColor,
-        ).paddingOnly(right: 5));
+        child: (dzName != null
+                ? DzIcon(dzName, size: _kIconSize, color: tabIconColor)
+                : Icon(
+                    isSelected ? widget.selectedIcon : widget.unselectedIcon,
+                    size: _kIconSize,
+                    color: tabIconColor,
+                  ))
+            .paddingOnly(right: 6));
     final labelWidget = Obx(() {
       return ConstrainedBox(
           constraints: BoxConstraints(maxWidth: widget.maxLabelWidth ?? 200),
           child: Tooltip(
             message:
                 widget.tabType == DesktopTabType.main ? '' : widget.label.value,
-            child: Text(
-              widget.tabType == DesktopTabType.main
-                  ? translate(widget.label.value)
-                  : widget.label.value,
+            child: widget.tabType != DesktopTabType.main
+                ? _dzSessionLabel(widget.label.value, isSelected, context)
+                : Text(
+              translate(widget.label.value),
               textAlign: TextAlign.center,
               style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
                   color: isSelected
                       ? MyTheme.tabbar(context).selectedTextColor
                       : MyTheme.tabbar(context).unSelectedTextColor),
@@ -1158,7 +1224,7 @@ class _TabState extends State<_Tab> with RestorationMixin {
                     border: Border(
                       bottom: BorderSide(
                         color: widget.selectedBorderColor!,
-                        width: 1,
+                        width: 2,
                       ),
                     ),
                   )
@@ -1183,7 +1249,7 @@ class _TabState extends State<_Tab> with RestorationMixin {
                                   tabSelected: isSelected,
                                   onClose: () => widget.onClose(),
                                 )))
-                          ])).paddingOnly(left: 10, right: 5),
+                          ])).paddingOnly(left: 14, right: 8),
                   Offstage(
                     offstage: !showDivider,
                     child: VerticalDivider(
@@ -1467,7 +1533,7 @@ class TabbarTheme extends ThemeExtension<TabbarTheme> {
       selectedTabBackgroundColor: Colors.white54);
 
   static const dark = TabbarTheme(
-      selectedTabIconColor: MyTheme.accent,
+      selectedTabIconColor: MyTheme.accentInk,
       unSelectedTabIconColor: Color.fromARGB(255, 30, 65, 98),
       selectedTextColor: Colors.white,
       unSelectedTextColor: Color.fromARGB(255, 192, 192, 192),

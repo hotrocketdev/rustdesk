@@ -4,6 +4,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_tokens.dart';
 import 'package:flutter_hbb/common/widgets/audio_input.dart';
 import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/desktop/widgets/tabbar_widget.dart';
@@ -449,16 +450,15 @@ class _CmHeaderState extends State<_CmHeader>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final dz = DzColors.of(context);
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10.0),
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [
-            Color(0xff00bfe1),
-            Color(0xff0071ff),
-          ],
+        color: dz.card,
+        border: Border(
+          top: const BorderSide(color: Color(0xFFFF2E88), width: 2),
+          left: BorderSide(color: dz.line2),
+          right: BorderSide(color: dz.line2),
+          bottom: BorderSide(color: dz.line2),
         ),
       ),
       margin: EdgeInsets.symmetric(horizontal: 5.0, vertical: 10.0),
@@ -481,7 +481,7 @@ class _CmHeaderState extends State<_CmHeader>
                     child: Text(
                   client.name,
                   style: TextStyle(
-                    color: Colors.white,
+                    color: dz.fg,
                     fontWeight: FontWeight.bold,
                     fontSize: 20,
                     overflow: TextOverflow.ellipsis,
@@ -491,35 +491,35 @@ class _CmHeaderState extends State<_CmHeader>
                 FittedBox(
                   child: Text(
                     "(${client.peerId})",
-                    style: TextStyle(color: Colors.white, fontSize: 14),
+                    style: TextStyle(color: dz.fg, fontSize: 14),
                   ),
                 ),
                 if (client.type_() == ClientType.terminal)
                   FittedBox(
                     child: Text(
                       translate("Terminal"),
-                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                      style: TextStyle(color: dz.mute, fontSize: 12),
                     ),
                   ),
                 if (client.type_() == ClientType.file)
                   FittedBox(
                     child: Text(
                       translate("File Transfer"),
-                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                      style: TextStyle(color: dz.mute, fontSize: 12),
                     ),
                   ),
                 if (client.type_() == ClientType.camera)
                   FittedBox(
                     child: Text(
                       translate("View Camera"),
-                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                      style: TextStyle(color: dz.mute, fontSize: 12),
                     ),
                   ),
                 if (client.portForward.isNotEmpty)
                   FittedBox(
                     child: Text(
                       "Port Forward: ${client.portForward}",
-                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                      style: TextStyle(color: dz.mute, fontSize: 12),
                     ),
                   ),
                 SizedBox(height: 10.0),
@@ -532,7 +532,7 @@ class _CmHeaderState extends State<_CmHeader>
                               ? translate("Disconnected")
                               : translate("Connected")
                           : "${translate("Request access to your device")}...",
-                      style: TextStyle(color: Colors.white),
+                      style: TextStyle(color: dz.fg),
                     ).marginOnly(right: 8.0),
                     if (client.authorized)
                       Obx(
@@ -540,7 +540,7 @@ class _CmHeaderState extends State<_CmHeader>
                           formatDurationToTime(
                             Duration(seconds: _time.value),
                           ),
-                          style: TextStyle(color: Colors.white),
+                          style: TextStyle(color: dz.fg),
                         ),
                       )
                   ],
@@ -562,9 +562,11 @@ class _CmHeaderState extends State<_CmHeader>
                       .toggleCMChatPage(MessageKey(client.peerId, client.id));
                 }
               }),
-              icon: SvgPicture.asset(client.type_() == ClientType.file
-                  ? 'assets/file_transfer.svg'
-                  : 'assets/chat2.svg'),
+              icon: SvgPicture.asset(
+                  client.type_() == ClientType.file
+                      ? 'assets/file_transfer.svg'
+                      : 'assets/chat2.svg',
+                  colorFilter: ColorFilter.mode(dz.fg, BlendMode.srcIn)),
               splashRadius: kDesktopIconButtonSplashRadius,
             ),
           )
@@ -580,7 +582,7 @@ class _CmHeaderState extends State<_CmHeader>
     return buildAvatarWidget(
           avatar: client.avatar,
           size: 70,
-          borderRadius: 15,
+          borderRadius: MyTheme.dzRadius,
           fallback: _buildInitialAvatar(),
         ) ??
         _buildInitialAvatar();
@@ -593,7 +595,7 @@ class _CmHeaderState extends State<_CmHeader>
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: str2color(client.name),
-        borderRadius: BorderRadius.circular(15.0),
+        borderRadius: BorderRadius.circular(MyTheme.dzRadius),
       ),
       child: Text(
         client.name.isNotEmpty ? client.name[0] : '?',
@@ -1103,23 +1105,37 @@ class _CmControlPanel extends StatelessWidget {
     assert(!(onClick == null && onTapDown == null));
     Widget textWidget;
     if (icon != null) {
-      textWidget = Text(
-        translate(text),
-        style: TextStyle(color: textColor),
-        textAlign: TextAlign.center,
+      textWidget = Flexible(
+        child: Text(
+          translate(text).toUpperCase(),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+              color: textColor,
+              fontFamily: MyTheme.fontMono,
+              fontSize: 11,
+              letterSpacing: 0.9,
+              fontWeight: FontWeight.w500),
+          textAlign: TextAlign.center,
+        ),
       );
     } else {
       textWidget = Expanded(
         child: Text(
-          translate(text),
-          style: TextStyle(color: textColor),
+          translate(text).toUpperCase(),
+          style: TextStyle(
+              color: textColor,
+              fontFamily: MyTheme.fontMono,
+              fontSize: 11,
+              letterSpacing: 0.9,
+              fontWeight: FontWeight.w500),
           textAlign: TextAlign.center,
         ),
       );
     }
-    final borderRadius = BorderRadius.circular(10.0);
+    final borderRadius = BorderRadius.circular(MyTheme.dzRadius);
     final btn = Container(
-      height: 28,
+      height: 34,
       decoration: BoxDecoration(
           color: color, borderRadius: borderRadius, border: border),
       child: InkWell(

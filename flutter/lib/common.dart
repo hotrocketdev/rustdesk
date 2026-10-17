@@ -169,10 +169,10 @@ class ColorThemeExtension extends ThemeExtension<ColorThemeExtension> {
   final Color? divider;
 
   static final light = ColorThemeExtension(
-    border: Color(0xFFCCCCCC),
+    border: Color(0xFFD4D4D4),
     border2: Color(0xFFBBBBBB),
     border3: Colors.black26,
-    highlight: Color(0xFFE5E5E5),
+    highlight: Color(0xFFEBEBEB),
     drag_indicator: Colors.grey[800],
     shadow: Colors.black,
     errorBannerBg: Color(0xFFFDEEEB),
@@ -183,10 +183,10 @@ class ColorThemeExtension extends ThemeExtension<ColorThemeExtension> {
   );
 
   static final dark = ColorThemeExtension(
-    border: Color(0xFF555555),
+    border: Color(0xFF333333),
     border2: Color(0xFFE5E5E5),
     border3: Colors.white24,
-    highlight: Color(0xFF3F3F3F),
+    highlight: Color(0xFF1F1F1F),
     drag_indicator: Colors.grey,
     shadow: Colors.grey,
     errorBannerBg: Color(0xFF470F2D),
@@ -250,17 +250,28 @@ class ColorThemeExtension extends ThemeExtension<ColorThemeExtension> {
 class MyTheme {
   MyTheme._();
 
-  static const Color grayBg = Color(0xFFEFEFF2);
-  static const Color accent = Color(0xFF0071FF);
-  static const Color accent50 = Color(0x770071FF);
-  static const Color accent80 = Color(0xAA0071FF);
+  static const Color grayBg = Color(0xFFF5F5F5);
+  static const Color accent = Color(0xFF0033FF);
+  static const Color accent50 = Color(0x770033FF);
+  static const Color accent80 = Color(0xAA0033FF);
+  // Deskzap: legible blue for text on dark grounds (#0033FF is for fills).
+  static const Color accentInk = Color(0xFF7D97FF);
+  // Deskzap: sharp corners, as on the website.
+  static const double dzRadius = 2.0;
+  // Accent for text and icons: #0033FF is for fills; on dark grounds use the lighter ink.
+  static Color get accentFg =>
+      currentThemeMode() == ThemeMode.dark ? accentInk : accent;
+  // Deskzap brand fonts (bundled in assets/fonts/deskzap).
+  static const String fontBody = 'IBMPlexSans';
+  static const String fontDisplay = 'Outfit';
+  static const String fontMono = 'IBMPlexMono';
   static const Color canvasColor = Color(0xFF212121);
-  static const Color border = Color(0xFFCCCCCC);
+  static const Color border = Color(0xFFD4D4D4);
   static const Color idColor = Color(0xFF00B6F0);
   static const Color darkGray = Color.fromARGB(255, 148, 148, 148);
   static const Color cmIdColor = Color(0xFF21790B);
   static const Color dark = Colors.black87;
-  static const Color button = Color(0xFF2C8CFF);
+  static const Color button = Color(0xFF1F4DFF);
   static const Color hoverBorder = Color(0xFF999999);
 
   // ListTile
@@ -287,7 +298,7 @@ class MyTheme {
     splashRadius: 0,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.all(
-        Radius.circular(5),
+        Radius.circular(dzRadius),
       ),
     ),
   );
@@ -375,6 +386,7 @@ class MyTheme {
     // https://stackoverflow.com/questions/77537315/after-upgrading-to-flutter-3-16-the-app-bar-background-color-button-size-and
     useMaterial3: false,
     brightness: Brightness.light,
+    fontFamily: fontBody,
     hoverColor: Color.fromARGB(255, 224, 224, 224),
     scaffoldBackgroundColor: Colors.white,
     dialogBackgroundColor: Colors.white,
@@ -384,7 +396,7 @@ class MyTheme {
     dialogTheme: DialogTheme(
       elevation: 15,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18.0),
+        borderRadius: BorderRadius.circular(dzRadius),
         side: BorderSide(
           width: 1,
           color: grayBg,
@@ -398,7 +410,7 @@ class MyTheme {
             filled: true,
             isDense: true,
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(dzRadius),
             ),
           )
         : null,
@@ -424,7 +436,7 @@ class MyTheme {
             style: TextButton.styleFrom(
               splashFactory: NoSplash.splashFactory,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18.0),
+                borderRadius: BorderRadius.circular(dzRadius),
               ),
             ),
           )
@@ -433,7 +445,7 @@ class MyTheme {
       style: ElevatedButton.styleFrom(
         backgroundColor: MyTheme.accent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8.0),
+          borderRadius: BorderRadius.circular(dzRadius),
         ),
       ),
     ),
@@ -442,7 +454,7 @@ class MyTheme {
         backgroundColor: grayBg,
         foregroundColor: Colors.black87,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8.0),
+          borderRadius: BorderRadius.circular(dzRadius),
         ),
       ),
     ),
@@ -462,7 +474,7 @@ class MyTheme {
               color: (isDesktop || isWebDesktop)
                   ? Color(0xFFECECEC)
                   : Colors.transparent),
-          borderRadius: BorderRadius.all(Radius.circular(8.0)),
+          borderRadius: BorderRadius.all(Radius.circular(dzRadius)),
         )),
   ).copyWith(
     extensions: <ThemeExtension<dynamic>>[
@@ -473,30 +485,31 @@ class MyTheme {
   static ThemeData darkTheme = ThemeData(
     useMaterial3: false,
     brightness: Brightness.dark,
-    hoverColor: Color.fromARGB(255, 45, 46, 53),
-    scaffoldBackgroundColor: Color(0xFF18191E),
-    dialogBackgroundColor: Color(0xFF18191E),
+    fontFamily: fontBody,
+    hoverColor: Color(0xFF1A1A1A),
+    scaffoldBackgroundColor: Color(0xFF0A0A0A),
+    dialogBackgroundColor: Color(0xFF0A0A0A),
     appBarTheme: AppBarTheme(
       shadowColor: Colors.transparent,
     ),
     dialogTheme: DialogTheme(
       elevation: 15,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18.0),
+        borderRadius: BorderRadius.circular(dzRadius),
         side: BorderSide(
           width: 1,
-          color: Color(0xFF24252B),
+          color: Color(0xFF262626),
         ),
       ),
     ),
     scrollbarTheme: scrollbarThemeDark,
     inputDecorationTheme: (isDesktop || isWebDesktop)
         ? InputDecorationTheme(
-            fillColor: Color(0xFF24252B),
+            fillColor: Color(0xFF141414),
             filled: true,
             isDense: true,
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(dzRadius),
             ),
           )
         : null,
@@ -508,10 +521,10 @@ class MyTheme {
       labelLarge: TextStyle(
         fontSize: 16.0,
         fontWeight: FontWeight.bold,
-        color: accent80,
+        color: accentInk,
       ),
     ),
-    cardColor: Color(0xFF24252B),
+    cardColor: Color(0xFF121212),
     visualDensity: VisualDensity.adaptivePlatformDensity,
     tabBarTheme: const TabBarTheme(
       labelColor: Colors.white70,
@@ -527,7 +540,7 @@ class MyTheme {
               disabledForegroundColor: Colors.white70,
               foregroundColor: Colors.white70,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18.0),
+                borderRadius: BorderRadius.circular(dzRadius),
               ),
             ),
           )
@@ -539,18 +552,18 @@ class MyTheme {
         disabledForegroundColor: Colors.white70,
         disabledBackgroundColor: Colors.white10,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8.0),
+          borderRadius: BorderRadius.circular(dzRadius),
         ),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        backgroundColor: Color(0xFF24252B),
+        backgroundColor: Color(0xFF121212),
         side: BorderSide(color: Colors.white12, width: 0.5),
         disabledForegroundColor: Colors.white70,
         foregroundColor: Colors.white70,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8.0),
+          borderRadius: BorderRadius.circular(dzRadius),
         ),
       ),
     ),
@@ -564,12 +577,12 @@ class MyTheme {
     colorScheme: ColorScheme.dark(
       primary: Colors.blue,
       secondary: accent,
-      background: Color(0xFF24252B),
+      background: Color(0xFF121212),
     ),
     popupMenuTheme: PopupMenuThemeData(
         shape: RoundedRectangleBorder(
       side: BorderSide(color: Colors.white24),
-      borderRadius: BorderRadius.all(Radius.circular(8.0)),
+      borderRadius: BorderRadius.all(Radius.circular(dzRadius)),
     )),
   ).copyWith(
     extensions: <ThemeExtension<dynamic>>[
@@ -919,8 +932,8 @@ class OverlayDialogManager {
                                   style: flatButtonStyle,
                                   onPressed: cancel,
                                   child: Text(translate('Cancel'),
-                                      style: const TextStyle(
-                                          color: MyTheme.accent)))))
+                                      style: TextStyle(
+                                          color: MyTheme.accentFg)))))
                 ])),
         onCancel: showCancel ? cancel : null,
       );
@@ -3261,7 +3274,7 @@ Widget buildErrorBanner(BuildContext context,
                     },
                     child: Text(
                       translate("Retry"),
-                      style: TextStyle(color: MyTheme.accent),
+                      style: TextStyle(color: MyTheme.accentFg),
                     )).marginSymmetric(horizontal: 5),
               FittedBox(
                 child: InkWell(
@@ -3658,8 +3671,8 @@ class ComboBox extends StatelessWidget {
               ? MyTheme.color(context).border2 ?? MyTheme.border
               : MyTheme.border,
         ),
-        borderRadius:
-            BorderRadius.circular(8), //border raiuds of dropdown button
+        borderRadius: BorderRadius.circular(
+            MyTheme.dzRadius), //border radius of dropdown button
       ),
       height: 42, // should be the height of a TextField
       child: Obx(() => DropdownButton<String>(

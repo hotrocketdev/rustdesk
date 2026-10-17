@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_hbb/desktop/widgets/dz_icon.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hbb/common/widgets/audio_input.dart';
 import 'package:flutter_hbb/common/widgets/dialog.dart';
@@ -114,7 +115,7 @@ class ToolbarState {
 
 class _ToolbarTheme {
   static const Color blueColor = MyTheme.button;
-  static const Color hoverBlueColor = MyTheme.accent;
+  static const Color hoverBlueColor = Color(0xFF2A2A2A);
   static Color inactiveColor = Colors.grey[800]!;
   static Color hoverInactiveColor = Colors.grey[850]!;
 
@@ -124,27 +125,27 @@ class _ToolbarTheme {
   static const double height = 20.0;
   static const double dividerHeight = 12.0;
 
-  static const double buttonSize = 32;
-  static const double buttonHMargin = 2;
-  static const double buttonVMargin = 6;
-  static const double iconRadius = 8;
+  static const double buttonSize = 40;
+  static const double buttonHMargin = 3;
+  static const double buttonVMargin = 4;
+  static const double iconRadius = 2;
   static const double elevation = 3;
 
   static double dividerSpaceToAction = isWindows ? 8 : 14;
 
-  static double menuBorderRadius = isWindows ? 5.0 : 7.0;
+  static double menuBorderRadius = 2.0;
   static EdgeInsets menuPadding = isWindows
       ? EdgeInsets.fromLTRB(4, 12, 4, 12)
       : EdgeInsets.fromLTRB(6, 14, 6, 14);
-  static const double menuButtonBorderRadius = 3.0;
+  static const double menuButtonBorderRadius = 2.0;
 
-  static Color borderColor(BuildContext context) =>
-      MyTheme.color(context).border3 ?? MyTheme.border;
+  static Color borderColor(BuildContext context) => const Color(0xFF333333);
 
-  static Color? dividerColor(BuildContext context) =>
-      MyTheme.color(context).divider;
+  static Color? dividerColor(BuildContext context) => const Color(0xFF333333);
 
   static MenuStyle defaultMenuStyle(BuildContext context) => MenuStyle(
+        backgroundColor: const MaterialStatePropertyAll(Color(0xFF0E0E0E)),
+        elevation: const MaterialStatePropertyAll(8),
         side: MaterialStateProperty.all(BorderSide(
           width: 1,
           color: borderColor(context),
@@ -342,7 +343,7 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
         triggerAutoHide();
       }
       final borderRadius = BorderRadius.vertical(
-        bottom: Radius.circular(5),
+        bottom: Radius.circular(2),
       );
       return Align(
         alignment: FractionalOffset(_fractionX.value, 0),
@@ -405,7 +406,7 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
     }
     if (!isWeb) toolbarItems.add(_RecordMenu());
     toolbarItems.add(_CloseMenu(id: widget.id, ffi: widget.ffi));
-    final toolbarBorderRadius = BorderRadius.all(Radius.circular(4.0));
+    final toolbarBorderRadius = BorderRadius.vertical(bottom: Radius.circular(2));
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -413,11 +414,7 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
           elevation: _ToolbarTheme.elevation,
           shadowColor: MyTheme.color(context).shadow,
           borderRadius: toolbarBorderRadius,
-          color: Theme.of(context)
-              .menuBarTheme
-              .style
-              ?.backgroundColor
-              ?.resolve(MaterialState.values.toSet()),
+          color: const Color(0xFF0E0E0E),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Theme(
@@ -426,16 +423,32 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
                   context,
                   Row(
                     children: [
-                      SizedBox(width: _ToolbarTheme.buttonHMargin * 2),
+                      SizedBox(width: _ToolbarTheme.buttonHMargin * 3),
                       ...toolbarItems,
-                      SizedBox(width: _ToolbarTheme.buttonHMargin * 2)
+                      Container(
+                        width: 1,
+                        height: 22,
+                        margin: const EdgeInsets.symmetric(horizontal: 6),
+                        color: const Color(0xFF333333),
+                      ),
+                      _DraggableShowHide(
+                        id: widget.id,
+                        sessionId: widget.ffi.sessionId,
+                        dragging: _dragging,
+                        fractionX: _fractionX,
+                        toolbarState: widget.state,
+                        setFullscreen: _setFullscreen,
+                        setMinimize: _minimize,
+                        borderRadius: BorderRadius.zero,
+                        inline: true,
+                      ),
+                      SizedBox(width: _ToolbarTheme.buttonHMargin * 3)
                     ],
                   ),
                   toolbarBorderRadius),
             ),
           ),
         ),
-        _buildDraggableCollapse(context),
       ],
     );
   }
@@ -477,7 +490,7 @@ class _PinMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     return Obx(
       () => _IconMenuButton(
-        assetName: state.pin ? "assets/pinned.svg" : "assets/unpinned.svg",
+        assetName: state.pin ? "assets/deskzap/icons/dz-pin-on.svg" : "assets/deskzap/icons/dz-pin.svg",
         tooltip: state.pin ? 'Unpin Toolbar' : 'Pin Toolbar',
         onPressed: state.switchPin,
         color:
@@ -498,7 +511,7 @@ class _MobileActionMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!ffi.ffiModel.isPeerAndroid) return Offstage();
     return Obx(() => _IconMenuButton(
-          assetName: 'assets/actions_mobile.svg',
+          assetName: 'assets/deskzap/icons/dz-actions.svg',
           tooltip: 'Mobile Actions',
           onPressed: () => ffi.dialogManager.setMobileActionsOverlayVisible(
               !ffi.dialogManager.mobileActionsOverlayVisible.value),
@@ -632,7 +645,7 @@ class _MonitorMenu extends StatelessWidget {
                       alignment: Alignment.center,
                       children: [
                         SvgPicture.asset(
-                          "assets/screen.svg",
+                          "assets/deskzap/icons/dz-monitors.svg",
                           colorFilter:
                               ColorFilter.mode(Colors.white, BlendMode.srcIn),
                         ),
@@ -755,7 +768,7 @@ class _ControlMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     return _IconSubmenuButton(
         tooltip: 'Control Actions',
-        svg: "assets/actions.svg",
+        svg: "assets/deskzap/icons/dz-actions.svg",
         color: _ToolbarTheme.blueColor,
         hoverColor: _ToolbarTheme.hoverBlueColor,
         ffi: ffi,
@@ -1032,7 +1045,7 @@ class _DisplayMenuState extends State<_DisplayMenu> {
 
     return _IconSubmenuButton(
       tooltip: 'Display Settings',
-      svg: "assets/display.svg",
+      svg: "assets/deskzap/icons/dz-display.svg",
       ffi: widget.ffi,
       color: _ToolbarTheme.blueColor,
       hoverColor: _ToolbarTheme.hoverBlueColor,
@@ -1781,7 +1794,7 @@ class _KeyboardMenu extends StatelessWidget {
 
     return _IconSubmenuButton(
         tooltip: 'Keyboard Settings',
-        svg: "assets/keyboard_mouse.svg",
+        svg: "assets/deskzap/icons/dz-keyboard.svg",
         ffi: ffi,
         color: _ToolbarTheme.blueColor,
         hoverColor: _ToolbarTheme.hoverBlueColor,
@@ -2056,7 +2069,7 @@ class _ChatMenuState extends State<_ChatMenu> {
       return _IconSubmenuButton(
           tooltip: 'Chat',
           key: chatButtonKey,
-          svg: 'assets/chat.svg',
+          svg: 'assets/deskzap/icons/dz-chat.svg',
           ffi: widget.ffi,
           color: _ToolbarTheme.blueColor,
           hoverColor: _ToolbarTheme.hoverBlueColor,
@@ -2066,7 +2079,7 @@ class _ChatMenuState extends State<_ChatMenu> {
 
   buildTextChatButton() {
     return _IconMenuButton(
-      assetName: 'assets/message_24dp_5F6368.svg',
+      assetName: 'assets/deskzap/icons/dz-chat.svg',
       tooltip: 'Text chat',
       key: chatButtonKey,
       onPressed: _textChatOnPressed,
@@ -2161,7 +2174,7 @@ class _VoiceCallMenu extends StatelessWidget {
           case VoiceCallStatus.connected:
             return _IconSubmenuButton(
               tooltip: 'Voice call',
-              svg: 'assets/voice_call.svg',
+              svg: 'assets/deskzap/icons/dz-voice.svg',
               color: _ToolbarTheme.blueColor,
               hoverColor: _ToolbarTheme.hoverBlueColor,
               menuChildrenGetter: menuChildrenGetter,
@@ -2176,7 +2189,7 @@ class _VoiceCallMenu extends StatelessWidget {
 
   Widget buildCallWaiting(BuildContext context) {
     return _IconMenuButton(
-      assetName: "assets/call_wait.svg",
+      assetName: "assets/deskzap/icons/dz-voice.svg",
       tooltip: "Waiting",
       onPressed: () => bind.sessionCloseVoiceCall(sessionId: ffi.sessionId),
       color: _ToolbarTheme.redColor,
@@ -2196,7 +2209,7 @@ class _RecordMenu extends StatelessWidget {
         (recordingModel.start || ffi.permissions['recording'] != false);
     if (!visible) return Offstage();
     return _IconMenuButton(
-      assetName: 'assets/rec.svg',
+      assetName: 'assets/deskzap/icons/dz-record.svg',
       tooltip: recordingModel.start
           ? 'Stop session recording'
           : 'Start session recording',
@@ -2220,7 +2233,7 @@ class _CloseMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _IconMenuButton(
-      assetName: 'assets/close.svg',
+      assetName: 'assets/deskzap/icons/dz-power.svg',
       tooltip: 'Close',
       onPressed: () async {
         if (await showConnEndAuditDialogCloseCanceled(ffi: ffi)) {
@@ -2228,8 +2241,9 @@ class _CloseMenu extends StatelessWidget {
         }
         closeConnection(id: id);
       },
-      color: _ToolbarTheme.redColor,
+      color: Colors.transparent,
       hoverColor: _ToolbarTheme.hoverRedColor,
+      iconColor: const Color(0xFFFF6B6B),
     );
   }
 }
@@ -2245,8 +2259,10 @@ class _IconMenuButton extends StatefulWidget {
   final double? vMargin;
   final bool topLevel;
   final double? width;
+  final Color iconColor;
   const _IconMenuButton({
     Key? key,
+    this.iconColor = const Color(0xFFD4D4D4),
     this.assetName,
     this.icon,
     required this.tooltip,
@@ -2270,11 +2286,17 @@ class _IconMenuButtonState extends State<_IconMenuButton> {
   Widget build(BuildContext context) {
     assert(widget.assetName != null || widget.icon != null);
     final icon = widget.icon ??
-        SvgPicture.asset(
-          widget.assetName!,
-          colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
-          width: _ToolbarTheme.buttonSize,
+        SizedBox(
+          width: widget.width ?? _ToolbarTheme.buttonSize,
           height: _ToolbarTheme.buttonSize,
+          child: Center(
+            child: SvgPicture.asset(
+              widget.assetName!,
+              colorFilter: ColorFilter.mode(widget.iconColor, BlendMode.srcIn),
+              width: 20,
+              height: 20,
+            ),
+          ),
         );
     var button = SizedBox(
       width: widget.width ?? _ToolbarTheme.buttonSize,
@@ -2296,7 +2318,11 @@ class _IconMenuButtonState extends State<_IconMenuButton> {
                     decoration: BoxDecoration(
                       borderRadius:
                           BorderRadius.circular(_ToolbarTheme.iconRadius),
-                      color: hover ? widget.hoverColor : widget.color,
+                      color: hover
+                          ? widget.hoverColor
+                          : (widget.color == _ToolbarTheme.blueColor
+                              ? Colors.transparent
+                              : widget.color),
                     ),
                     child: icon)),
           )),
@@ -2345,6 +2371,7 @@ class _IconSubmenuButton extends StatefulWidget {
 
 class _IconSubmenuButtonState extends State<_IconSubmenuButton> {
   bool hover = false;
+  bool open = false;
 
   @override // discard @protected
   void setState(VoidCallback fn) {
@@ -2355,11 +2382,17 @@ class _IconSubmenuButtonState extends State<_IconSubmenuButton> {
   Widget build(BuildContext context) {
     assert(widget.svg != null || widget.icon != null);
     final icon = widget.icon ??
-        SvgPicture.asset(
-          widget.svg!,
-          colorFilter: ColorFilter.mode(Colors.white, BlendMode.srcIn),
-          width: _ToolbarTheme.buttonSize,
+        SizedBox(
+          width: widget.width ?? _ToolbarTheme.buttonSize,
           height: _ToolbarTheme.buttonSize,
+          child: Center(
+            child: SvgPicture.asset(
+              widget.svg!,
+              colorFilter: ColorFilter.mode(Color(0xFFD4D4D4), BlendMode.srcIn),
+              width: 20,
+              height: 20,
+            ),
+          ),
         );
     final button = SizedBox(
         width: widget.width ?? _ToolbarTheme.buttonSize,
@@ -2371,6 +2404,8 @@ class _IconSubmenuButtonState extends State<_IconSubmenuButton> {
             onHover: (value) => setState(() {
                   hover = value;
                 }),
+            onOpen: () => setState(() => open = true),
+            onClose: () => setState(() => open = false),
             child: Tooltip(
                 message: translate(widget.tooltip),
                 child: Material(
@@ -2379,7 +2414,13 @@ class _IconSubmenuButtonState extends State<_IconSubmenuButton> {
                         decoration: BoxDecoration(
                           borderRadius:
                               BorderRadius.circular(_ToolbarTheme.iconRadius),
-                          color: hover ? widget.hoverColor : widget.color,
+                          color: open
+                              ? MyTheme.accent
+                              : (hover
+                                  ? widget.hoverColor
+                                  : (widget.color == _ToolbarTheme.blueColor
+                                      ? Colors.transparent
+                                      : widget.color)),
                         ),
                         child: icon))),
             menuChildren: widget
@@ -2522,12 +2563,15 @@ class _DraggableShowHide extends StatefulWidget {
   final RxBool dragging;
   final ToolbarState toolbarState;
   final BorderRadius borderRadius;
+  // Deskzap: drawn inside the toolbar bar (no frame of its own) with square cells.
+  final bool inline;
 
   final Function(bool) setFullscreen;
   final Function() setMinimize;
 
   const _DraggableShowHide({
     Key? key,
+    this.inline = false,
     required this.id,
     required this.sessionId,
     required this.fractionX,
@@ -2575,11 +2619,19 @@ class _DraggableShowHideState extends State<_DraggableShowHide> {
   Widget _buildDraggable(BuildContext context) {
     return Draggable(
       axis: Axis.horizontal,
-      child: Icon(
-        Icons.drag_indicator,
-        size: 20,
-        color: MyTheme.color(context).drag_indicator,
-      ),
+      child: widget.inline
+          ? SizedBox(
+              width: 30,
+              height: _ToolbarTheme.buttonSize,
+              child: Center(
+                child: DzIcon('grip', size: 18, color: const Color(0xFF6B6B6B)),
+              ),
+            )
+          : Icon(
+              Icons.drag_indicator,
+              size: 20,
+              color: Color(0xFF6B6B6B),
+            ),
       feedback: widget,
       onDragStarted: (() {
         final RenderObject? renderObj = context.findRenderObject();
@@ -2624,7 +2676,13 @@ class _DraggableShowHideState extends State<_DraggableShowHide> {
       final bgColor = buttonStyle.backgroundColor?.resolve({});
       return TextButton(
         onPressed: onPressed,
-        child: child,
+        child: widget.inline
+            ? SizedBox(
+                width: _ToolbarTheme.buttonSize,
+                height: _ToolbarTheme.buttonSize,
+                child: Center(child: child),
+              )
+            : child,
         style: buttonStyle.copyWith(
           backgroundColor: MaterialStateProperty.resolveWith((states) {
             if (states.contains(MaterialState.hovered)) {
@@ -2647,11 +2705,10 @@ class _DraggableShowHideState extends State<_DraggableShowHide> {
               Tooltip(
                 message: translate(
                     isFullscreen.isTrue ? 'Exit Fullscreen' : 'Fullscreen'),
-                child: Icon(
-                  isFullscreen.isTrue
-                      ? Icons.fullscreen_exit
-                      : Icons.fullscreen,
-                  size: iconSize,
+                child: DzIcon(
+                  'fullscreen',
+                  size: 18,
+                  color: const Color(0xFFC9C9C9),
                 ),
               ),
             )),
@@ -2662,9 +2719,10 @@ class _DraggableShowHideState extends State<_DraggableShowHide> {
                   widget.setMinimize,
                   Tooltip(
                     message: translate('Minimize'),
-                    child: Icon(
-                      Icons.remove,
-                      size: iconSize,
+                    child: DzIcon(
+                      'minimize',
+                      size: 18,
+                      color: const Color(0xFFC9C9C9),
                     ),
                   ),
                 ),
@@ -2676,9 +2734,10 @@ class _DraggableShowHideState extends State<_DraggableShowHide> {
           Obx((() => Tooltip(
                 message: translate(
                     collapse.isFalse ? 'Hide Toolbar' : 'Show Toolbar'),
-                child: Icon(
-                  collapse.isFalse ? Icons.expand_less : Icons.expand_more,
-                  size: iconSize,
+                child: DzIcon(
+                  collapse.isFalse ? 'collapse' : 'chevron-down',
+                  size: 18,
+                  color: const Color(0xFFC9C9C9),
                 ),
               ))),
         ),
@@ -2703,15 +2762,17 @@ class _DraggableShowHideState extends State<_DraggableShowHide> {
           })
       ],
     );
+    if (widget.inline) {
+      return TextButtonTheme(
+        data: TextButtonThemeData(style: buttonStyle),
+        child: SizedBox(height: _ToolbarTheme.buttonSize, child: child),
+      );
+    }
     return TextButtonTheme(
       data: TextButtonThemeData(style: buttonStyle),
       child: Container(
         decoration: BoxDecoration(
-          color: Theme.of(context)
-              .menuBarTheme
-              .style
-              ?.backgroundColor
-              ?.resolve(MaterialState.values.toSet()),
+          color: const Color(0xFF0E0E0E),
           border: Border.all(
             color: _ToolbarTheme.borderColor(context),
             width: 1,

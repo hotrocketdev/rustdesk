@@ -2,6 +2,9 @@ import 'dart:ui' as ui;
 
 import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_hbb/desktop/widgets/dz_icon.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_list_controls.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_tokens.dart';
 import 'package:flutter_hbb/common/widgets/address_book.dart';
 import 'package:flutter_hbb/common/widgets/dialog.dart';
 import 'package:flutter_hbb/common/widgets/my_group.dart';
@@ -27,6 +30,18 @@ import '../../models/platform_model.dart';
 
 class PeerTabPage extends StatefulWidget {
   const PeerTabPage({Key? key}) : super(key: key);
+  // Set while a PeerTabPage is mounted; the Deskzap rail uses it to switch tabs.
+  static Future<void> Function(int)? selectTab;
+  // A tab chosen while no PeerTabPage is mounted (e.g. from Settings); applied on mount.
+  static final RxInt pendingTab = (-1).obs;
+  static void requestTab(int t) {
+    final f = selectTab;
+    if (f != null) {
+      f(t);
+    } else {
+      pendingTab.value = t;
+    }
+  }
   @override
   State<PeerTabPage> createState() => _PeerTabPageState();
 }
@@ -73,6 +88,28 @@ class _PeerTabPageState extends State<PeerTabPage>
 
   _PeerTabPageState() {
     _loadLocalOptions();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    PeerTabPage.selectTab = _dzSelectTab;
+    final pending = PeerTabPage.pendingTab.value;
+    if (pending >= 0) {
+      PeerTabPage.pendingTab.value = -1;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _dzSelectTab(pending));
+    }
+  }
+
+  Future<void> _dzSelectTab(int t) async {
+    await handleTabSelection(t);
+    await bind.setLocalFlutterOption(k: kOptionPeerTabIndex, v: t.toString());
+  }
+
+  @override
+  void dispose() {
+    if (PeerTabPage.selectTab == _dzSelectTab) PeerTabPage.selectTab = null;
+    super.dispose();
   }
 
   void _loadLocalOptions() {
@@ -139,6 +176,25 @@ class _PeerTabPageState extends State<PeerTabPage>
   }
 
   Widget _createSwitchBar(BuildContext context) {
+    // Deskzap Connect: the left rail is the navigation, so no icon strip here.
+    if (bind.isOutgoingOnly() && (isDesktop || isWebDesktop)) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: Padding(
+          padding: const EdgeInsets.only(left: 14),
+          child: Text(
+            'DEVICE',
+            style: TextStyle(
+              fontFamily: MyTheme.fontMono,
+              fontSize: 10.5,
+              letterSpacing: 0.9,
+              fontWeight: FontWeight.w500,
+              color: DzColors.of(context).dim,
+            ),
+          ),
+        ),
+      );
+    }
     final model = Provider.of<PeerTabModel>(context);
     var counter = -1;
     return ReorderableListView(
@@ -229,11 +285,13 @@ class _PeerTabPageState extends State<PeerTabPage>
             spinning: loading,
             child: RotatedBox(
                 quarterTurns: 2,
-                child: Icon(
-                  Icons.refresh,
-                  size: 18,
-                  color: textColor,
-                ))),
+                child: bind.isOutgoingOnly()
+                    ? DzIcon('refresh', size: 18, color: textColor)
+                    : Icon(
+                        Icons.refresh,
+                        size: 18,
+                        color: textColor,
+                      ))),
       ),
     );
   }
@@ -254,12 +312,14 @@ class _PeerTabPageState extends State<PeerTabPage>
           Navigator.pop(context);
         }
       },
-      child: SvgPicture.asset(
-        "assets/checkbox-outline.svg",
-        width: 18,
-        height: 18,
-        colorFilter: svgColor(textColor),
-      ),
+      child: bind.isOutgoingOnly()
+          ? DzIcon('select', size: 18, color: textColor)
+          : SvgPicture.asset(
+              "assets/checkbox-outline.svg",
+              width: 18,
+              height: 18,
+              colorFilter: svgColor(textColor),
+            ),
     );
   }
 
@@ -555,6 +615,24 @@ class _PeerTabPageState extends State<PeerTabPage>
 
   List<Widget> _landscapeRightActions(BuildContext context) {
     final model = Provider.of<PeerTabModel>(context);
+    if (bind.isOutgoingOnly() && (isDesktop || isWebDesktop)) {
+      // Deskzap Connect: search lives in the header; view and sort are Deskzap menus.
+      return [
+        _createRefresh(
+            index: PeerTabIndex.ab, loading: gFFI.abModel.currentAbLoading),
+        _createRefresh(
+            index: PeerTabIndex.group, loading: gFFI.groupModel.groupLoading),
+        Offstage(
+          offstage: model.currentTabCachedPeers.isEmpty,
+          child: _createMultiSelection(),
+        ),
+        const DzViewButton(),
+        Offstage(
+          offstage: model.currentTab == PeerTabIndex.recent.index,
+          child: const DzSortButton(),
+        ),
+      ];
+    }
     return [
       const PeerSearchBar().marginOnly(right: 13),
       _createRefresh(

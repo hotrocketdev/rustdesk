@@ -16,6 +16,9 @@ import 'package:flutter_hbb/desktop/pages/deskzap_quick_support_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_setting_page.dart';
 import 'package:flutter_hbb/desktop/pages/desktop_tab_page.dart';
 import 'package:flutter_hbb/desktop/widgets/deskzap_chat.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_detail_panel.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_palette.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_rail.dart';
 import 'package:flutter_hbb/desktop/widgets/update_progress.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
 import 'package:flutter_hbb/models/server_model.dart';
@@ -98,21 +101,42 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         }
       } catch (_) {}
     }
-    final home = Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        buildLeftPane(context),
-        if (!isIncomingOnly) const VerticalDivider(width: 1),
-        if (!isIncomingOnly) Expanded(child: buildRightPane(context)),
-      ],
+    final home = LayoutBuilder(
+      builder: (context, constraints) {
+        final compactRail = constraints.maxWidth < 860;
+        if (dzRailCompact.value != compactRail) {
+          WidgetsBinding.instance
+              .addPostFrameCallback((_) => dzRailCompact.value = compactRail);
+        }
+        return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          buildLeftPane(context, compact: compactRail),
+          if (!isIncomingOnly && !bind.isOutgoingOnly())
+            const VerticalDivider(width: 1),
+          if (!isIncomingOnly) Expanded(child: buildRightPane(context)),
+        ],
+      );
+      },
     );
     final chat = _chat;
+    final Widget homeWithKeys = bind.isOutgoingOnly()
+        ? CallbackShortcuts(
+            bindings: {
+              const SingleActivator(LogicalKeyboardKey.keyK, control: true): () =>
+                  showDzPalette(context),
+              const SingleActivator(LogicalKeyboardKey.keyK, meta: true): () =>
+                  showDzPalette(context),
+            },
+            child: Focus(autofocus: true, child: home),
+          )
+        : home;
     return _buildBlock(
         child: chat == null
-            ? home
+            ? homeWithKeys
             : Stack(
                 fit: StackFit.passthrough,
-                children: [home, DeskzapChatOverlay(controller: chat)]));
+                children: [homeWithKeys, DeskzapChatOverlay(controller: chat)]));
   }
 
   Widget _buildBlock({required Widget child}) {
@@ -120,9 +144,23 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         block: _block, mask: true, use: canBeBlocked, child: child);
   }
 
-  Widget buildLeftPane(BuildContext context) {
+  Widget buildLeftPane(BuildContext context, {bool compact = false}) {
     final isIncomingOnly = bind.isIncomingOnly();
     final isOutgoingOnly = bind.isOutgoingOnly();
+    if (isOutgoingOnly) {
+      // Deskzap Connect: brand rail instead of the stock left pane.
+      return Obx(() => DeskzapRail(
+        compact: compact,
+        settingsOpen: dzShowSettings.value,
+        onNavigate: () => dzShowSettings.value = false,
+        onAccount: () => DesktopSettingPage.switch2page(SettingsTabKey.account),
+        onSettings: () {
+          if (DesktopSettingPage.tabKeys.isNotEmpty) {
+            DesktopSettingPage.switch2page(DesktopSettingPage.tabKeys[0]);
+          }
+        },
+      ));
+    }
     final children = <Widget>[
       if (!isOutgoingOnly) buildPresetPasswordWarning(),
       if (bind.isCustomClient())
@@ -322,6 +360,16 @@ class _DesktopHomePageState extends State<DesktopHomePage>
   }
 
   buildRightPane(BuildContext context) {
+    if (bind.isOutgoingOnly()) {
+      return Container(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        child: Obx(() => dzShowSettings.value
+            ? DesktopSettingPage(
+                key: ValueKey('dz-settings-${dzSettingsPage.value.name}'),
+                initialTabkey: dzSettingsPage.value)
+            : ConnectionPage()),
+      );
+    }
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: ConnectionPage(),
@@ -354,9 +402,12 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          translate("ID"),
+                          translate("ID").toUpperCase(),
                           style: TextStyle(
-                              fontSize: 14,
+                              fontFamily: MyTheme.fontMono,
+                              fontSize: 10.5,
+                              letterSpacing: 0.9,
+                              fontWeight: FontWeight.w500,
                               color: Theme.of(context)
                                   .textTheme
                                   .titleLarge
@@ -382,7 +433,9 @@ class _DesktopHomePageState extends State<DesktopHomePage>
                           contentPadding: EdgeInsets.only(top: 10, bottom: 10),
                         ),
                         style: TextStyle(
+                          fontFamily: MyTheme.fontMono,
                           fontSize: 22,
+                          letterSpacing: 0.5,
                         ),
                       ).workaroundFreezeLinuxMint(),
                     ),
@@ -942,6 +995,17 @@ class _DesktopHomePageState extends State<DesktopHomePage>
             (await window_size.getScreenList()).map(screenToMap).toList());
       } else if (call.method == kWindowActionRebuild) {
         reloadCurrentWindow();
+      } else if (call.method == kWindowEventDzSession) {
+        try {
+          final m = jsonDecode(call.arguments as String);
+          final id = m['id'] as String;
+          final st = m['state'] as String;
+          if (st == 'closed') {
+            dzSessions.remove(id);
+          } else {
+            dzSessions[id] = st;
+          }
+        } catch (_) {}
       } else if (call.method == kWindowEventShow) {
         await rustDeskWinManager.registerActiveWindow(call.arguments["id"]);
       } else if (call.method == kWindowEventHide) {

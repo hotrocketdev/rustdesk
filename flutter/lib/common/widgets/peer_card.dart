@@ -1,5 +1,8 @@
 import 'package:bot_toast/bot_toast.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_tokens.dart';
+import 'package:flutter_hbb/desktop/widgets/dz_icon.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_detail_panel.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hbb/common/widgets/dialog.dart';
 import 'package:flutter_hbb/consts.dart';
@@ -66,6 +69,7 @@ class _PeerCardState extends State<_PeerCard>
             ? null
             : () => widget.connect(context, peer.id),
         onTap: () {
+          if (bind.isOutgoingOnly()) dzFocusedPeer.value = peer;
           if (peerTabModel.multiSelectionMode) {
             peerTabModel.select(peer);
           } else {
@@ -78,6 +82,180 @@ class _PeerCardState extends State<_PeerCard>
         },
         onLongPress: () => peerTabModel.select(peer),
         child: child);
+  }
+
+  final RxBool _dzHover = false.obs;
+
+  /// Deskzap Connect device row: OS tile, name over mono ID, status pill,
+  /// Connect button (filled on hover/selection) and the existing more menu.
+  Widget _buildDeskzapRow(Peer peer) {
+    final c = DzColors.of(context);
+    final PeerTabModel peerTabModel = Provider.of(context);
+    final selected = peerTabModel.isPeerSelected(peer.id);
+    final title = peer.alias.isNotEmpty
+        ? peer.alias
+        : (peer.hostname.isNotEmpty ? peer.hostname : formatID(peer.id));
+    final mono = TextStyle(
+      fontFamily: MyTheme.fontMono,
+      fontSize: 10.5,
+      letterSpacing: 0.9,
+      fontWeight: FontWeight.w500,
+    );
+    return MouseRegion(
+      onEnter: (_) => _dzHover.value = true,
+      onExit: (_) => _dzHover.value = false,
+      child: gestureDetector(
+        child: Obx(() {
+          final isSel = selected || dzFocusedPeer.value?.id == peer.id;
+          final sessionState = dzSessions[peer.id];
+          final connected = sessionState == 'connected';
+          final connecting = sessionState == 'connecting';
+          final active = _dzHover.value || isSel;
+          final compact = peerCardUiType.value == PeerUiType.tile;
+          final btnColor = connected ? c.ok : (active ? Colors.white : c.fg);
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: active ? c.card : null,
+              border: Border(
+                left: BorderSide(
+                    color: isSel ? MyTheme.accent : Colors.transparent,
+                    width: 2),
+                bottom: BorderSide(color: c.line),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: compact ? 28 : 38,
+                  height: compact ? 28 : 38,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: c.card,
+                    border: Border.all(color: c.line2),
+                  ),
+                  child: ColorFiltered(
+                    colorFilter: ColorFilter.mode(c.mute, BlendMode.srcIn),
+                    child: getPlatformImage(peer.platform, size: compact ? 15 : 20),
+                  ),
+                ),
+                const SizedBox(width: 13),
+                Expanded(
+                  child: compact
+                      ? Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w500,
+                                    color: c.fg),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              formatID(peer.id),
+                              maxLines: 1,
+                              style: TextStyle(
+                                  fontFamily: MyTheme.fontMono,
+                                  fontSize: 11,
+                                  letterSpacing: 0.3,
+                                  color: c.dim),
+                            ),
+                          ],
+                        )
+                      : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w500,
+                            color: c.fg),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        formatID(peer.id),
+                        maxLines: 1,
+                        style: TextStyle(
+                            fontFamily: MyTheme.fontMono,
+                            fontSize: 11.5,
+                            letterSpacing: 0.3,
+                            color: c.dim),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.fromLTRB(7, 4, 8, 4),
+                  decoration: BoxDecoration(border: Border.all(color: c.line2)),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: BoxDecoration(
+                            color: peer.online ? c.ok : c.off,
+                            shape: BoxShape.circle),
+                      ),
+                      const SizedBox(width: 7),
+                      Text(
+                        translate(peer.online ? 'Online' : 'Offline').toUpperCase(),
+                        style: mono.copyWith(
+                            color: peer.online ? c.ok : c.dim),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 14),
+                InkWell(
+                  onTap: peerTabModel.multiSelectionMode
+                      ? null
+                      : () => widget.connect(context, peer.id),
+                  child: Container(
+                    height: 30,
+                    padding: const EdgeInsets.symmetric(horizontal: 11),
+                    decoration: BoxDecoration(
+                      color: connected
+                          ? c.ok.withOpacity(0.14)
+                          : (active ? MyTheme.accent : null),
+                      border: Border.all(
+                          color: connected
+                              ? c.ok
+                              : (active ? MyTheme.accent : c.line2)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                            translate(connected
+                                    ? 'Connected'
+                                    : (connecting ? 'Connecting' : 'Connect'))
+                                .toUpperCase(),
+                            style: mono.copyWith(color: btnColor)),
+                        const SizedBox(width: 6),
+                        DzIcon(connected ? 'check' : 'connect',
+                            size: 14, color: btnColor),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                checkBoxOrActionMoreLandscape(peer, isTile: true),
+              ],
+            ),
+          );
+        }),
+      ),
+    );
   }
 
   Widget _buildPortrait() {
@@ -93,6 +271,7 @@ class _PeerCardState extends State<_PeerCard>
 
   Widget _buildLandscape() {
     final peer = super.widget.peer;
+    if (bind.isOutgoingOnly()) return _buildDeskzapRow(peer);
     var deco = Rx<BoxDecoration?>(
       BoxDecoration(
         border: Border.all(color: Colors.transparent, width: _borderWidth),
@@ -480,7 +659,12 @@ class _PeerCardState extends State<_PeerCard>
         _menuPos = RelativeRect.fromLTRB(x, y, x, y);
       },
       onPointerUp: (_) => _showPeerMenu(peer.id),
-      child: build_more(context));
+      child: bind.isOutgoingOnly()
+          ? Padding(
+              padding: const EdgeInsets.all(6),
+              child: DzIcon('more', size: 18, color: DzColors.of(context).mute),
+            )
+          : build_more(context));
 
   bool _shouldBuildPasswordIcon(Peer peer) {
     if (gFFI.peerTabModel.currentTab != PeerTabIndex.ab.index) return false;
@@ -528,7 +712,7 @@ abstract class BasePeerCard extends StatelessWidget {
       (await _buildMenuItems(context))
           .map((e) => e.build(
               context,
-              const MenuConfig(
+              MenuConfig(
                   commonColor: CustomPopupMenuTheme.commonColor,
                   height: CustomPopupMenuTheme.height,
                   dividerHeight: CustomPopupMenuTheme.dividerHeight)))

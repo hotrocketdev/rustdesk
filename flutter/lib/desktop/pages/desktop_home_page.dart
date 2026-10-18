@@ -18,7 +18,10 @@ import 'package:flutter_hbb/desktop/pages/desktop_tab_page.dart';
 import 'package:flutter_hbb/desktop/widgets/deskzap_chat.dart';
 import 'package:flutter_hbb/desktop/widgets/deskzap_detail_panel.dart';
 import 'package:flutter_hbb/desktop/widgets/deskzap_palette.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_host_widgets.dart';
 import 'package:flutter_hbb/desktop/widgets/deskzap_rail.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_tokens.dart';
+import 'package:flutter_hbb/desktop/widgets/dz_icon.dart';
 import 'package:flutter_hbb/desktop/widgets/update_progress.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
 import 'package:flutter_hbb/models/server_model.dart';
@@ -31,7 +34,6 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:window_size/window_size.dart' as window_size;
-import '../widgets/button.dart';
 
 class DesktopHomePage extends StatefulWidget {
   const DesktopHomePage({Key? key}) : super(key: key);
@@ -168,11 +170,15 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           alignment: Alignment.center,
           child: loadPowered(context),
         ),
-      Align(
-        alignment: Alignment.center,
-        child: loadLogo(),
-      ),
-      buildTip(context),
+      if (isIncomingOnly)
+        DzHostHeader(tip: translate("desk_tip"))
+      else ...[
+        Align(
+          alignment: Alignment.center,
+          child: loadLogo(),
+        ),
+        buildTip(context),
+      ],
       if (!isOutgoingOnly) buildIDBoard(context),
       if (!isOutgoingOnly) buildPasswordBoard(context),
       FutureBuilder<Widget>(
@@ -197,7 +203,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     ];
     if (isIncomingOnly) {
       children.addAll([
-        Divider(),
+        Divider(height: 1, color: DzColors.of(context).line),
+        const SizedBox(height: 10),
         OnlineStatusWidget(
           onSvcStatusChanged: () {
             if (isInHomePage()) {
@@ -378,6 +385,50 @@ class _DesktopHomePageState extends State<DesktopHomePage>
 
   buildIDBoard(BuildContext context) {
     final model = gFFI.serverModel;
+    if (bind.isIncomingOnly()) {
+      final c = DzColors.of(context);
+      return DzHostField(
+        label: translate("ID"),
+        value: GestureDetector(
+          onDoubleTap: () {
+            Clipboard.setData(ClipboardData(text: model.serverId.text));
+            showToast(translate("Copied"));
+          },
+          child: TextFormField(
+            controller: model.serverId,
+            readOnly: true,
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              filled: false,
+              isDense: true,
+              contentPadding: EdgeInsets.zero,
+            ),
+            style: TextStyle(
+              fontFamily: MyTheme.fontMono,
+              fontSize: 24,
+              letterSpacing: 0.6,
+              color: c.fg,
+            ),
+          ).workaroundFreezeLinuxMint(),
+        ),
+        actions: [
+          DzHostAction(
+            icon: 'copy',
+            tooltip: translate('Copy to clipboard'),
+            onTap: () {
+              Clipboard.setData(ClipboardData(text: model.serverId.text));
+              showToast(translate("Copied"));
+            },
+          ),
+          if (!bind.isDisableSettings())
+            DzHostAction(
+              icon: 'settings',
+              tooltip: translate('Settings'),
+              onTap: DesktopTabPage.onAddSetting,
+            ),
+        ],
+      );
+    }
     return Container(
       margin: const EdgeInsets.only(left: 20, right: 11),
       height: 57,
@@ -490,6 +541,60 @@ class _DesktopHomePageState extends State<DesktopHomePage>
     final textColor = Theme.of(context).textTheme.titleLarge?.color;
     final showOneTime = model.approveMode != 'click' &&
         model.verificationMethod != kUsePermanentPassword;
+    if (bind.isIncomingOnly()) {
+      final c = DzColors.of(context);
+      return DzHostField(
+        label: translate("One-time Password"),
+        value: GestureDetector(
+          onDoubleTap: () {
+            if (showOneTime) {
+              Clipboard.setData(ClipboardData(text: model.serverPasswd.text));
+              showToast(translate("Copied"));
+            }
+          },
+          child: TextFormField(
+            controller: model.serverPasswd,
+            readOnly: true,
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              filled: false,
+              isDense: true,
+              contentPadding: EdgeInsets.zero,
+            ),
+            style: TextStyle(
+              fontFamily: MyTheme.fontMono,
+              fontSize: 17,
+              letterSpacing: 1.2,
+              color: c.fg,
+            ),
+          ).workaroundFreezeLinuxMint(),
+        ),
+        actions: [
+          if (showOneTime)
+            DzHostAction(
+              icon: 'refresh',
+              tooltip: translate('Refresh Password'),
+              onTap: () => bind.mainUpdateTemporaryPassword(),
+            ),
+          if (showOneTime)
+            DzHostAction(
+              icon: 'copy',
+              tooltip: translate('Copy to clipboard'),
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: model.serverPasswd.text));
+                showToast(translate("Copied"));
+              },
+            ),
+          if (!bind.isDisableSettings())
+            DzHostAction(
+              icon: 'shield',
+              tooltip: translate('Change Password'),
+              onTap: () =>
+                  DesktopSettingPage.switch2page(SettingsTabKey.safety),
+            ),
+        ],
+      );
+    }
     return Container(
       margin: EdgeInsets.only(left: 20.0, right: 16, top: 13, bottom: 13),
       child: Row(
@@ -753,6 +858,11 @@ class _DesktopHomePageState extends State<DesktopHomePage>
       return Align(
         alignment: Alignment.centerRight,
         child: OutlinedButton(
+          style: OutlinedButton.styleFrom(
+            shape: const RoundedRectangleBorder(),
+            side: BorderSide(color: DzColors.of(context).line2),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          ),
           onPressed: () {
             SystemNavigator.pop(); // Close the application
             // https://github.com/flutter/flutter/issues/66631
@@ -760,7 +870,15 @@ class _DesktopHomePageState extends State<DesktopHomePage>
               exit(0);
             }
           },
-          child: Text(translate('Quit')),
+          child: Text(
+            translate('Quit').toUpperCase(),
+            style: TextStyle(
+              fontFamily: MyTheme.fontMono,
+              fontSize: 11,
+              letterSpacing: 0.9,
+              color: DzColors.of(context).fg,
+            ),
+          ),
         ),
       ).marginAll(14);
     }
@@ -798,89 +916,80 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         Container(
           margin: EdgeInsets.fromLTRB(
               0, marginTop, 0, bind.isIncomingOnly() ? marginTop : 0),
-          child: Container(
+          child: Builder(builder: (context) {
+            final c = DzColors.of(context);
+            final rule = bind.isIncomingOnly() ? kDzHostPink : MyTheme.accent;
+            final mono = TextStyle(
+                fontFamily: MyTheme.fontMono,
+                fontSize: 10.5,
+                letterSpacing: 1.0,
+                color: c.mute);
+            return Container(
+              margin: EdgeInsets.symmetric(
+                  horizontal: bind.isIncomingOnly() ? 16 : 0),
               decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [
-                  Color.fromARGB(255, 226, 66, 188),
-                  Color.fromARGB(255, 244, 114, 124),
-                ],
-              )),
-              padding: EdgeInsets.all(20),
+                color: c.card,
+                border: Border(
+                  top: BorderSide(color: rule, width: 2),
+                  left: BorderSide(color: c.line2),
+                  right: BorderSide(color: c.line2),
+                  bottom: BorderSide(color: c.line2),
+                ),
+              ),
+              padding: const EdgeInsets.all(16),
               child: Column(
                   mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: (title.isNotEmpty
-                          ? <Widget>[
-                              Center(
-                                  child: Text(
-                                translate(title),
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15),
-                              ).marginOnly(bottom: 6)),
-                            ]
-                          : <Widget>[]) +
-                      <Widget>[
-                        if (content.isNotEmpty)
-                          Text(
-                            translate(content),
+                  children: [
+                    if (title.isNotEmpty)
+                      Text(translate(title).toUpperCase(), style: mono)
+                          .marginOnly(bottom: 8, right: 24),
+                    if (content.isNotEmpty)
+                      Text(
+                        translate(content),
+                        style:
+                            TextStyle(height: 1.5, color: c.fg, fontSize: 13),
+                      ).marginOnly(bottom: 14),
+                    if (btnText.isNotEmpty)
+                      InkWell(
+                        onTap: onPressed,
+                        child: Container(
+                          height: 36,
+                          alignment: Alignment.center,
+                          color: rule,
+                          child: Text(
+                            translate(btnText).toUpperCase(),
+                            style: const TextStyle(
+                                fontFamily: MyTheme.fontMono,
+                                fontSize: 11,
+                                letterSpacing: 0.9,
+                                fontWeight: FontWeight.w500,
+                                color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    if (help != null)
+                      InkWell(
+                          onTap: () async => await launchUrl(Uri.parse(link!)),
+                          child: Text(
+                            translate(help),
                             style: TextStyle(
-                                height: 1.5,
-                                color: Colors.white,
-                                fontWeight: FontWeight.normal,
-                                fontSize: 13),
-                          ).marginOnly(bottom: 20)
-                      ] +
-                      (btnText.isNotEmpty
-                          ? <Widget>[
-                              Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    FixedWidthButton(
-                                      width: 150,
-                                      padding: 8,
-                                      isOutline: true,
-                                      text: translate(btnText),
-                                      textColor: Colors.white,
-                                      borderColor: Colors.white,
-                                      textSize: 20,
-                                      radius: 10,
-                                      onTap: onPressed,
-                                    )
-                                  ])
-                            ]
-                          : <Widget>[]) +
-                      (help != null
-                          ? <Widget>[
-                              Center(
-                                  child: InkWell(
-                                      onTap: () async =>
-                                          await launchUrl(Uri.parse(link!)),
-                                      child: Text(
-                                        translate(help),
-                                        style: TextStyle(
-                                            decoration:
-                                                TextDecoration.underline,
-                                            color: Colors.white,
-                                            fontSize: 12),
-                                      )).marginOnly(top: 6)),
-                            ]
-                          : <Widget>[]))),
+                                decoration: TextDecoration.underline,
+                                color: c.mute,
+                                fontSize: 12),
+                          )).marginOnly(top: 10),
+                  ]),
+            );
+          }),
         ),
         if (closeButton != null && closeButton == true)
           Positioned(
-            top: 18,
-            right: 0,
+            top: marginTop + 8,
+            right: bind.isIncomingOnly() ? 16 : 0,
             child: IconButton(
-              icon: Icon(
-                Icons.close,
-                color: Colors.white,
-                size: 20,
-              ),
+              icon: Builder(
+                  builder: (context) => DzIcon('close',
+                      size: 14, color: DzColors.of(context).mute)),
               onPressed: closeCard,
             ),
           ),

@@ -5,6 +5,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_hbb/desktop/widgets/deskzap_tokens.dart';
+import 'package:flutter_hbb/desktop/widgets/dz_icon.dart';
 import 'package:flutter_hbb/common/widgets/audio_input.dart';
 import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/desktop/widgets/tabbar_widget.dart';
@@ -188,7 +189,25 @@ class ConnectionManagerState extends State<ConnectionManager>
               buildTitleBar(),
               Expanded(
                 child: Center(
-                  child: Text(translate("Waiting")),
+                  child: Builder(builder: (context) {
+                    final dz = DzColors.of(context);
+                    return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        DzIcon('connect', size: 28, color: dz.dim),
+                        const SizedBox(height: 12),
+                        Text(
+                          translate("Waiting").toUpperCase(),
+                          style: TextStyle(
+                            fontFamily: MyTheme.fontMono,
+                            fontSize: 11,
+                            letterSpacing: 1.2,
+                            color: dz.mute,
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
                 ),
               ),
             ],
@@ -401,10 +420,7 @@ class _CloseButton extends StatelessWidget {
       onPressed: () {
         windowManager.close();
       },
-      icon: const Icon(
-        IconFont.close,
-        size: 18,
-      ),
+      icon: DzIcon('close', size: 16, color: DzColors.of(context).mute),
       splashColor: Colors.transparent,
       hoverColor: Colors.transparent,
     );
@@ -455,7 +471,7 @@ class _CmHeaderState extends State<_CmHeader>
       decoration: BoxDecoration(
         color: dz.card,
         border: Border(
-          top: const BorderSide(color: Color(0xFFFF2E88), width: 2),
+          top: const BorderSide(color: kDzHostPink, width: 2),
           left: BorderSide(color: dz.line2),
           right: BorderSide(color: dz.line2),
           bottom: BorderSide(color: dz.line2),
@@ -482,7 +498,8 @@ class _CmHeaderState extends State<_CmHeader>
                   client.name,
                   style: TextStyle(
                     color: dz.fg,
-                    fontWeight: FontWeight.bold,
+                    fontFamily: MyTheme.fontDisplay,
+                    fontWeight: FontWeight.w600,
                     fontSize: 20,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -490,8 +507,12 @@ class _CmHeaderState extends State<_CmHeader>
                 )),
                 FittedBox(
                   child: Text(
-                    "(${client.peerId})",
-                    style: TextStyle(color: dz.fg, fontSize: 14),
+                    client.peerId,
+                    style: TextStyle(
+                        color: dz.mute,
+                        fontFamily: MyTheme.fontMono,
+                        fontSize: 13,
+                        letterSpacing: 0.6),
                   ),
                 ),
                 if (client.type_() == ClientType.terminal)
@@ -526,13 +547,27 @@ class _CmHeaderState extends State<_CmHeader>
                 FittedBox(
                     child: Row(
                   children: [
+                    if (client.authorized && !client.disconnected)
+                      Container(
+                        width: 7,
+                        height: 7,
+                        margin: const EdgeInsets.only(right: 6),
+                        color: dz.ok,
+                      ),
                     Text(
-                      client.authorized
-                          ? client.disconnected
-                              ? translate("Disconnected")
-                              : translate("Connected")
-                          : "${translate("Request access to your device")}...",
-                      style: TextStyle(color: dz.fg),
+                      (client.authorized
+                              ? client.disconnected
+                                  ? translate("Disconnected")
+                                  : translate("Connected")
+                              : "${translate("Request access to your device")}...")
+                          .toUpperCase(),
+                      style: TextStyle(
+                          color: client.authorized && !client.disconnected
+                              ? dz.ok
+                              : dz.fg,
+                          fontFamily: MyTheme.fontMono,
+                          fontSize: 11,
+                          letterSpacing: 0.9),
                     ).marginOnly(right: 8.0),
                     if (client.authorized)
                       Obx(
@@ -540,7 +575,10 @@ class _CmHeaderState extends State<_CmHeader>
                           formatDurationToTime(
                             Duration(seconds: _time.value),
                           ),
-                          style: TextStyle(color: dz.fg),
+                          style: TextStyle(
+                              color: dz.mute,
+                              fontFamily: MyTheme.fontMono,
+                              fontSize: 11),
                         ),
                       )
                   ],
@@ -620,30 +658,53 @@ class _PrivilegeBoard extends StatefulWidget {
 
 class _PrivilegeBoardState extends State<_PrivilegeBoard> {
   late final client = widget.client;
-  Widget buildPermissionIcon(bool enabled, IconData iconData,
-      Function(bool)? onTap, String tooltipText) {
+
+  void _switch(String name, bool enabled, void Function(bool) apply) {
+    checkClickTime(client.id, () {
+      bind.cmSwitchPermission(connId: client.id, name: name, enabled: enabled);
+      setState(() => apply(enabled));
+    });
+  }
+
+  Widget _tile(DzColors dz, String icon, String label, String tooltip,
+      bool enabled, String name, void Function(bool) apply, double width) {
+    final ink = enabled ? MyTheme.accentFg : dz.dim;
     return Tooltip(
-      message: "$tooltipText: ${enabled ? "ON" : "OFF"}",
+      message: "${translate(tooltip)}: ${enabled ? "ON" : "OFF"}",
       waitDuration: Duration.zero,
-      child: Container(
-        decoration: BoxDecoration(
-          color: enabled ? MyTheme.accent : Colors.grey[700],
-          borderRadius: BorderRadius.circular(10.0),
-        ),
-        padding: EdgeInsets.all(8.0),
+      child: Semantics(
+        button: true,
+        toggled: enabled,
+        label: translate(tooltip),
         child: InkWell(
-          onTap: () =>
-              checkClickTime(widget.client.id, () => onTap?.call(!enabled)),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              Expanded(
-                child: Icon(
-                  iconData,
-                  color: Colors.white,
+          onTap: () => _switch(name, !enabled, apply),
+          child: Container(
+            width: width,
+            height: 34,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: enabled ? MyTheme.accent.withOpacity(0.12) : dz.card,
+              border: Border.all(color: enabled ? MyTheme.accent : dz.line2),
+            ),
+            child: Row(
+              children: [
+                DzIcon(icon, size: 16, color: ink),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    translate(label).toUpperCase(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontFamily: MyTheme.fontMono,
+                      fontSize: 10,
+                      letterSpacing: 0.8,
+                      color: enabled ? dz.fg : dz.dim,
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -652,176 +713,74 @@ class _PrivilegeBoardState extends State<_PrivilegeBoard> {
 
   @override
   Widget build(BuildContext context) {
-    final crossAxisCount = 4;
-    final spacing = 10.0;
+    final dz = DzColors.of(context);
+    const gap = 5.0;
+    final isCamera = client.type_() == ClientType.camera;
     return Container(
       width: double.infinity,
-      height: 160.0,
-      margin: EdgeInsets.all(5.0),
-      padding: EdgeInsets.all(5.0),
+      margin: const EdgeInsets.symmetric(horizontal: 5.0, vertical: 4.0),
+      padding: const EdgeInsets.all(10.0),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10.0),
-        color: Theme.of(context).colorScheme.background,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            spreadRadius: 1,
-            blurRadius: 1,
-            offset: Offset(0, 1.5),
-          ),
-        ],
+        color: dz.rail,
+        border: Border.all(color: dz.line),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            translate("Permissions"),
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center,
-          ).marginOnly(left: 4.0, bottom: 8.0),
-          Expanded(
-            child: GridView.count(
-              crossAxisCount: crossAxisCount,
-              padding: EdgeInsets.symmetric(horizontal: spacing),
-              mainAxisSpacing: spacing,
-              crossAxisSpacing: spacing,
-              children: client.type_() == ClientType.camera
+      child: LayoutBuilder(builder: (context, box) {
+        final w = (box.maxWidth - gap) / 2;
+        Widget t(String icon, String label, String tip, bool v, String name,
+                void Function(bool) apply) =>
+            _tile(dz, icon, label, tip, v, name, apply, w);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              translate("Permissions").toUpperCase(),
+              style: TextStyle(
+                fontFamily: MyTheme.fontMono,
+                fontSize: 10.5,
+                letterSpacing: 1.2,
+                color: dz.mute,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: gap,
+              runSpacing: gap,
+              children: isCamera
                   ? [
-                      buildPermissionIcon(
-                        client.audio,
-                        Icons.volume_up_rounded,
-                        (enabled) {
-                          bind.cmSwitchPermission(
-                              connId: client.id,
-                              name: "audio",
-                              enabled: enabled);
-                          setState(() {
-                            client.audio = enabled;
-                          });
-                        },
-                        translate('Enable audio'),
-                      ),
-                      buildPermissionIcon(
-                        client.recording,
-                        Icons.videocam_rounded,
-                        (enabled) {
-                          bind.cmSwitchPermission(
-                              connId: client.id,
-                              name: "recording",
-                              enabled: enabled);
-                          setState(() {
-                            client.recording = enabled;
-                          });
-                        },
-                        translate('Enable recording session'),
-                      ),
+                      t('voice', 'Audio', 'Enable audio', client.audio,
+                          'audio', (v) => client.audio = v),
+                      t('record', 'Recording', 'Enable recording session',
+                          client.recording, 'recording',
+                          (v) => client.recording = v),
                     ]
                   : [
-                      buildPermissionIcon(
-                        client.keyboard,
-                        Icons.keyboard,
-                        (enabled) {
-                          bind.cmSwitchPermission(
-                              connId: client.id,
-                              name: "keyboard",
-                              enabled: enabled);
-                          setState(() {
-                            client.keyboard = enabled;
-                          });
-                        },
-                        translate('Enable keyboard/mouse'),
-                      ),
-                      buildPermissionIcon(
-                        client.clipboard,
-                        Icons.assignment_rounded,
-                        (enabled) {
-                          bind.cmSwitchPermission(
-                              connId: client.id,
-                              name: "clipboard",
-                              enabled: enabled);
-                          setState(() {
-                            client.clipboard = enabled;
-                          });
-                        },
-                        translate('Enable clipboard'),
-                      ),
-                      buildPermissionIcon(
-                        client.audio,
-                        Icons.volume_up_rounded,
-                        (enabled) {
-                          bind.cmSwitchPermission(
-                              connId: client.id,
-                              name: "audio",
-                              enabled: enabled);
-                          setState(() {
-                            client.audio = enabled;
-                          });
-                        },
-                        translate('Enable audio'),
-                      ),
-                      buildPermissionIcon(
-                        client.file,
-                        Icons.upload_file_rounded,
-                        (enabled) {
-                          bind.cmSwitchPermission(
-                              connId: client.id,
-                              name: "file",
-                              enabled: enabled);
-                          setState(() {
-                            client.file = enabled;
-                          });
-                        },
-                        translate('Enable file copy and paste'),
-                      ),
-                      buildPermissionIcon(
-                        client.restart,
-                        Icons.restart_alt_rounded,
-                        (enabled) {
-                          bind.cmSwitchPermission(
-                              connId: client.id,
-                              name: "restart",
-                              enabled: enabled);
-                          setState(() {
-                            client.restart = enabled;
-                          });
-                        },
-                        translate('Enable remote restart'),
-                      ),
-                      buildPermissionIcon(
-                        client.recording,
-                        Icons.videocam_rounded,
-                        (enabled) {
-                          bind.cmSwitchPermission(
-                              connId: client.id,
-                              name: "recording",
-                              enabled: enabled);
-                          setState(() {
-                            client.recording = enabled;
-                          });
-                        },
-                        translate('Enable recording session'),
-                      ),
+                      t('keyboard', 'Keyboard', 'Enable keyboard/mouse',
+                          client.keyboard, 'keyboard',
+                          (v) => client.keyboard = v),
+                      t('copy', 'Clipboard', 'Enable clipboard',
+                          client.clipboard, 'clipboard',
+                          (v) => client.clipboard = v),
+                      t('voice', 'Audio', 'Enable audio', client.audio,
+                          'audio', (v) => client.audio = v),
+                      t('files', 'Files', 'Enable file copy and paste',
+                          client.file, 'file', (v) => client.file = v),
+                      t('refresh', 'Restart', 'Enable remote restart',
+                          client.restart, 'restart',
+                          (v) => client.restart = v),
+                      t('record', 'Recording', 'Enable recording session',
+                          client.recording, 'recording',
+                          (v) => client.recording = v),
                       // only windows support block input
                       if (isWindows)
-                        buildPermissionIcon(
-                          client.blockInput,
-                          Icons.block,
-                          (enabled) {
-                            bind.cmSwitchPermission(
-                                connId: client.id,
-                                name: "block_input",
-                                enabled: enabled);
-                            setState(() {
-                              client.blockInput = enabled;
-                            });
-                          },
-                          translate('Enable blocking user input'),
-                        )
+                        t('shield', 'Block input',
+                            'Enable blocking user input', client.blockInput,
+                            'block_input', (v) => client.blockInput = v),
                     ],
             ),
-          ),
-        ],
-      ),
+          ],
+        );
+      }),
     );
   }
 }
@@ -923,7 +882,7 @@ class _CmControlPanel extends StatelessWidget {
               Expanded(
                 child: buildButton(
                   context,
-                  color: Colors.red,
+                  color: kDzDanger,
                   onClick: () => closeVoiceCall(),
                   icon: Icon(
                     Icons.call_end_rounded,
@@ -956,7 +915,7 @@ class _CmControlPanel extends StatelessWidget {
               Expanded(
                 child: buildButton(
                   context,
-                  color: Colors.red,
+                  color: kDzDanger,
                   onClick: () => handleVoiceCall(false),
                   icon: Icon(
                     Icons.phone_disabled_rounded,
@@ -973,7 +932,7 @@ class _CmControlPanel extends StatelessWidget {
         Offstage(
           offstage: !client.fromSwitch,
           child: buildButton(context,
-              color: Colors.purple,
+              color: MyTheme.accent,
               onClick: () => handleSwitchBack(context),
               icon: Icon(Icons.reply, color: Colors.white),
               text: "Switch Sides",
@@ -1001,7 +960,7 @@ class _CmControlPanel extends StatelessWidget {
           children: [
             Expanded(
               child: buildButton(context,
-                  color: Colors.redAccent,
+                  color: kDzDanger,
                   onClick: handleDisconnect,
                   text: 'Disconnect',
                   icon: Icon(
@@ -1043,7 +1002,7 @@ class _CmControlPanel extends StatelessWidget {
       children: [
         Offstage(
           offstage: !showElevation || !showAccept,
-          child: buildButton(context, color: Colors.green[700], onClick: () {
+          child: buildButton(context, color: kDzSuccess, onClick: () {
             handleAccept(context);
             handleElevate(context);
             windowManager.minimize();
@@ -1081,10 +1040,10 @@ class _CmControlPanel extends StatelessWidget {
               child: buildButton(
                 context,
                 color: Colors.transparent,
-                border: Border.all(color: Colors.grey),
+                border: Border.all(color: DzColors.of(context).line2),
                 onClick: handleDisconnect,
                 text: 'Cancel',
-                textColor: null,
+                textColor: DzColors.of(context).fg,
               ),
             ),
           ],

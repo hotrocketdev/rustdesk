@@ -1149,6 +1149,9 @@ class _TabState extends State<_Tab> with RestorationMixin {
                     color: tabIconColor,
                   ))
             .paddingOnly(right: hideLabel ? 0 : 6));
+    final tabIcon = hideLabel
+        ? Tooltip(message: translate(widget.label.value), child: icon)
+        : icon;
     final labelWidget = Obx(() {
       if (hideLabel) return const SizedBox.shrink();
       return ConstrainedBox(
@@ -1177,14 +1180,14 @@ class _TabState extends State<_Tab> with RestorationMixin {
         return Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            icon,
+            tabIcon,
             labelWidget,
           ],
         );
       } else {
         return widget.tabBuilder!(
           widget.tabInfoKey,
-          icon,
+          tabIcon,
           labelWidget,
           TabThemeConf(iconSize: _kIconSize),
         );

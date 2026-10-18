@@ -43,6 +43,7 @@ import 'models/platform_model.dart';
 
 import 'package:flutter_hbb/native/win32.dart'
     if (dart.library.html) 'package:flutter_hbb/web/win32.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_tokens.dart';
 import 'package:flutter_hbb/native/common.dart'
     if (dart.library.html) 'package:flutter_hbb/web/common.dart';
 import 'package:flutter_hbb/utils/http_service.dart' as http;
@@ -3722,7 +3723,7 @@ Widget loadPowered(BuildContext context) {
   if (bind.mainGetBuildinOption(key: "hide-powered-by-me") == 'Y') {
     return SizedBox.shrink();
   }
-  const dim = Color(0xFF737373);
+  final mute = DzColors.of(context).mute;
   return MouseRegion(
     cursor: SystemMouseCursors.click,
     child: GestureDetector(
@@ -3736,12 +3737,18 @@ Widget loadPowered(BuildContext context) {
           fontFamily: MyTheme.fontMono,
           fontSize: 9,
           letterSpacing: 1.0,
-          color: dim,
+          color: mute,
+          decoration: TextDecoration.underline,
         ),
       ),
     ),
   ).marginOnly(top: 8);
 }
+
+final bool _dzIsHost = bind.isIncomingOnly();
+
+/// The current app's accent: pink in the Host, blue in Connect.
+Color get dzAccent => _dzIsHost ? kDzHostPink : MyTheme.accent;
 
 // max 300 x 60
 Widget loadLogo() {

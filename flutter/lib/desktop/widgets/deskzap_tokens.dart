@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_hbb/models/platform_model.dart';
 
 /// Deskzap colours for the light and dark themes (same values as the website).
 /// Pick with [DzColors.of]; do not hard-code these in widgets.
@@ -70,5 +69,3 @@ const Color kDzHostPink = Color(0xFFFF2E88);
 const Color kDzDanger = Color(0xFFE5484D);
 const Color kDzSuccess = Color(0xFF16863F);
 
-/// The current app's accent: pink in the Host, blue in Connect.
-Color get dzAccent => bind.isIncomingOnly() ? kDzHostPink : const Color(0xFF0033FF);

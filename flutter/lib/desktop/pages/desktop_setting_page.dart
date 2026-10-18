@@ -3221,6 +3221,7 @@ class _HostCard extends StatelessWidget {
             width: _kCardFixedWidth,
             child: Container(
               margin: EdgeInsets.only(left: _kCardLeftMargin, top: 15, bottom: 10),
+              padding: const EdgeInsets.only(left: 2, right: 1),
               decoration: BoxDecoration(
                 color: c.card,
                 border: Border(
@@ -3256,7 +3257,7 @@ class _HostCard extends StatelessWidget {
                         ),
                         padding: const EdgeInsets.symmetric(vertical: 6),
                         child: e.marginOnly(
-                            left: _kContentHMargin / 2, right: _kContentHMargin),
+                            left: _kContentHMargin, right: _kContentHMargin),
                       )),
                 ],
               ),

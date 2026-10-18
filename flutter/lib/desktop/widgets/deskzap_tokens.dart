@@ -61,3 +61,6 @@ class DzColors {
 /// Device row heights in the Connect list (shared by the row and the list).
 const double kDzRowHeight = 64;
 const double kDzRowHeightCompact = 46;
+
+/// Accent used by the Host app (Connect uses MyTheme.accent).
+const Color kDzHostPink = Color(0xFFFF2E88);

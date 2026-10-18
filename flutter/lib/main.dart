@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kDebugMode;
+
 import 'package:bot_toast/bot_toast.dart';
 import 'package:desktop_multi_window/desktop_multi_window.dart';
 import 'package:flutter/material.dart';
@@ -40,6 +42,15 @@ late List<String> kBootArgs;
 Future<void> main(List<String> args) async {
   earlyAssert();
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Release builds swallow framework errors; print them so a blank window can be diagnosed.
+  FlutterError.onError = (FlutterErrorDetails details) {
+    debugPrint('FLUTTER_ERROR: ${details.exceptionAsString()}');
+    if (kDebugMode) {
+      debugPrint('${details.stack}');
+    }
+    FlutterError.presentError(details);
+  };
 
   debugPrint("launch args: $args");
   kBootArgs = List.from(args);

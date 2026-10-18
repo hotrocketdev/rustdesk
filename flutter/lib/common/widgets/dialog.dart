@@ -1029,7 +1029,7 @@ _connectDialog(
       title: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.password_rounded, color: MyTheme.accent),
+          Icon(Icons.password_rounded, color: MyTheme.accentFg),
           Text(translate('Password Required')).paddingOnly(left: 10),
         ],
       ),
@@ -1391,7 +1391,7 @@ showSetOSPassword(
       title: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.password_rounded, color: MyTheme.accent),
+          Icon(Icons.password_rounded, color: MyTheme.accentFg),
           Text(translate('OS Password')).paddingOnly(left: 10),
         ],
       ),
@@ -1482,7 +1482,7 @@ showSetOSAccount(
       title: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.password_rounded, color: MyTheme.accent),
+          Icon(Icons.password_rounded, color: MyTheme.accentFg),
           Text(translate('OS Account')).paddingOnly(left: 10),
         ],
       ),
@@ -2096,7 +2096,7 @@ void renameDialog(
       title: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.edit_rounded, color: MyTheme.accent),
+          Icon(Icons.edit_rounded, color: MyTheme.accentFg),
           Text(translate('Rename')).paddingOnly(left: 10),
         ],
       ),
@@ -2447,7 +2447,7 @@ void addPeersToAbDialog(
       title: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(IconFont.addressBook, color: MyTheme.accent),
+          Icon(IconFont.addressBook, color: MyTheme.accentFg),
           Text(translate('Add to address book')).paddingOnly(left: 10),
         ],
       ),
@@ -2522,7 +2522,7 @@ void setSharedAbPasswordDialog(String abName, Peer peer) {
       title: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.key, color: MyTheme.accent),
+          Icon(Icons.key, color: MyTheme.accentFg),
           Text(translate(peer.password.isEmpty
                   ? 'Set shared password'
                   : 'Change Password'))

@@ -152,6 +152,8 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/
+    - assets/deskzap/
+    - assets/deskzap/icons/
 
   fonts:
     - family: GestureIcons
@@ -172,6 +174,29 @@ flutter:
     - family: More
       fonts:
         - asset: assets/more.ttf
+    # Deskzap brand fonts (SIL OFL; licences alongside in assets/fonts/deskzap)
+    - family: Outfit
+      fonts:
+        - asset: assets/fonts/deskzap/Outfit-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/deskzap/Outfit-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/deskzap/Outfit-Bold.ttf
+          weight: 700
+    - family: IBMPlexSans
+      fonts:
+        - asset: assets/fonts/deskzap/IBMPlexSans-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/deskzap/IBMPlexSans-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/deskzap/IBMPlexSans-SemiBold.ttf
+          weight: 600
+    - family: IBMPlexMono
+      fonts:
+        - asset: assets/fonts/deskzap/IBMPlexMono-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/deskzap/IBMPlexMono-Medium.ttf
+          weight: 500
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware.

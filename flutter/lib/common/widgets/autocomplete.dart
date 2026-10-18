@@ -11,7 +11,8 @@ class AllPeersLoader {
   bool _isPeersLoading = false;
   bool _isPeersLoaded = false;
 
-  final String _listenerKey = 'AllPeersLoader';
+  // Per instance: the palette and the connection page each own a loader.
+  late final String _listenerKey = 'AllPeersLoader${identityHashCode(this)}';
 
   late void Function(VoidCallback) setState;
 

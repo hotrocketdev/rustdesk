@@ -2,6 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter_hbb/desktop/widgets/deskzap_switch.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_tokens.dart';
+import 'package:flutter_hbb/desktop/widgets/dz_icon.dart';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -27,9 +31,9 @@ import 'package:url_launcher/url_launcher_string.dart';
 import '../../common/widgets/dialog.dart';
 import '../../common/widgets/login.dart';
 
-const double _kTabWidth = 200;
+const double _kTabWidth = 224;
 const double _kTabHeight = 42;
-const double _kCardFixedWidth = 540;
+const double _kCardFixedWidth = 720;
 const double _kCardLeftMargin = 15;
 const double _kContentHMargin = 15;
 const double _kContentHSubMargin = _kContentHMargin + 33;
@@ -48,6 +52,27 @@ class _TabInfo {
   late final IconData unselected;
   late final IconData selected;
   _TabInfo(this.key, this.label, this.unselected, this.selected);
+}
+
+String _dzTabIcon(SettingsTabKey k) {
+  switch (k) {
+    case SettingsTabKey.general:
+      return 'settings';
+    case SettingsTabKey.safety:
+      return 'shield';
+    case SettingsTabKey.network:
+      return 'network';
+    case SettingsTabKey.display:
+      return 'devices';
+    case SettingsTabKey.plugin:
+      return 'actions';
+    case SettingsTabKey.account:
+      return 'user';
+    case SettingsTabKey.printer:
+      return 'printer';
+    case SettingsTabKey.about:
+      return 'info';
+  }
 }
 
 enum SettingsTabKey {
@@ -309,10 +334,12 @@ class _DesktopSettingPageState extends State<DesktopSettingPage>
     final settingsText = Text(
       translate('Settings'),
       textAlign: TextAlign.left,
-      style: const TextStyle(
-        color: _accentColor,
-        fontSize: _kTitleFontSize,
-        fontWeight: FontWeight.w400,
+      style: TextStyle(
+        fontFamily: MyTheme.fontDisplay,
+        color: DzColors.of(context).fg,
+        fontSize: 22,
+        fontWeight: FontWeight.w600,
+        letterSpacing: -0.2,
       ),
     );
     return Row(
@@ -355,6 +382,7 @@ class _DesktopSettingPageState extends State<DesktopSettingPage>
   Widget _listItem({required _TabInfo tab}) {
     return Obx(() {
       bool selected = tab.key == selectedTab.value;
+      final c = DzColors.of(context);
       return SizedBox(
         width: _kTabWidth,
         height: _kTabHeight,
@@ -369,25 +397,30 @@ class _DesktopSettingPageState extends State<DesktopSettingPage>
             }
             selectedTab.value = tab.key;
           },
-          child: Row(children: [
-            Container(
-              width: 4,
-              height: _kTabHeight * 0.7,
-              color: selected ? _accentColor : null,
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 1),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: selected ? c.raise : null,
+              border: selected
+                  ? const Border(
+                      left: BorderSide(color: MyTheme.accent, width: 2))
+                  : null,
             ),
-            Icon(
-              selected ? tab.selected : tab.unselected,
-              color: selected ? _accentColor : null,
-              size: 20,
-            ).marginOnly(left: 13, right: 10),
-            Text(
-              translate(tab.label),
-              style: TextStyle(
-                  color: selected ? _accentColor : null,
-                  fontWeight: FontWeight.w400,
-                  fontSize: _kContentFontSize),
-            ),
-          ]),
+            child: Row(children: [
+              DzIcon(
+                _dzTabIcon(tab.key),
+                color: selected ? c.fg : c.mute,
+                size: 18,
+              ),
+              const SizedBox(width: 11),
+              Text(
+                translate(tab.label),
+                style: TextStyle(
+                    color: selected ? c.fg : c.mute, fontSize: 13.5),
+              ),
+            ]),
+          ),
         ),
       );
     });
@@ -2127,56 +2160,6 @@ class _AccountState extends State<_Account> {
   }
 }
 
-class _Checkbox extends StatefulWidget {
-  final String label;
-  final bool Function() getValue;
-  final Future<void> Function(bool) setValue;
-
-  const _Checkbox(
-      {Key? key,
-      required this.label,
-      required this.getValue,
-      required this.setValue})
-      : super(key: key);
-
-  @override
-  State<_Checkbox> createState() => _CheckboxState();
-}
-
-class _CheckboxState extends State<_Checkbox> {
-  var value = false;
-
-  @override
-  initState() {
-    super.initState();
-    value = widget.getValue();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    onChanged(bool b) async {
-      await widget.setValue(b);
-      setState(() {
-        value = widget.getValue();
-      });
-    }
-
-    return GestureDetector(
-      child: Row(
-        children: [
-          Checkbox(
-            value: value,
-            onChanged: (_) => onChanged(!value),
-          ).marginOnly(right: 5),
-          Expanded(
-            child: Text(translate(widget.label)),
-          )
-        ],
-      ).marginOnly(left: _kCheckBoxLeftMargin),
-      onTap: () => onChanged(!value),
-    );
-  }
-}
 
 class _Plugin extends StatefulWidget {
   const _Plugin({Key? key}) : super(key: key);
@@ -2482,8 +2465,10 @@ Widget _Card(
       Flexible(
         child: SizedBox(
           width: _kCardFixedWidth,
-          child: Card(
-            child: Column(
+          child: Builder(builder: (context) {
+            final c = DzColors.of(context);
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   children: [
@@ -2491,18 +2476,26 @@ Widget _Card(
                         child: Text(
                       translate(title),
                       textAlign: TextAlign.start,
-                      style: const TextStyle(
+                      style: TextStyle(
+                        fontFamily: MyTheme.fontDisplay,
                         fontSize: _kTitleFontSize,
+                        fontWeight: FontWeight.w600,
+                        color: c.fg,
                       ),
                     )),
                     ...?title_suffix
                   ],
                 ).marginOnly(left: _kContentHMargin, top: 10, bottom: 10),
-                ...children
-                    .map((e) => e.marginOnly(top: 4, right: _kContentHMargin)),
+                ...children.map((e) => Container(
+                      decoration: BoxDecoration(
+                        border: Border(top: BorderSide(color: c.line)),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: e.marginOnly(right: _kContentHMargin),
+                    )),
               ],
-            ).marginOnly(bottom: 10),
-          ).marginOnly(left: _kCardLeftMargin, top: 15),
+            ).marginOnly(bottom: 10);
+          }).marginOnly(left: _kCardLeftMargin, top: 15),
         ),
       ),
     ],
@@ -2557,10 +2550,6 @@ Widget _OptionCheckBox(
     child: Obx(
       () => Row(
         children: [
-          Checkbox(
-                  value: ref.value,
-                  onChanged: enabled && !isOptFixed ? onChanged : null)
-              .marginOnly(right: 5),
           Offstage(
             offstage: !ref.value || checkedIcon == null,
             child: checkedIcon?.marginOnly(right: 5),
@@ -2569,10 +2558,15 @@ Widget _OptionCheckBox(
               child: Text(
             translate(label),
             style: TextStyle(color: disabledTextColor(context, enabled)),
-          ))
+          )),
+          const SizedBox(width: 16),
+          DzSwitch(
+              value: ref.value,
+              onChanged:
+                  enabled && !isOptFixed ? (b) => onChanged(b) : null),
         ],
       ),
-    ).marginOnly(left: _kCheckBoxLeftMargin),
+    ).marginOnly(left: _kCheckBoxLeftMargin, top: 4, bottom: 4),
     onTap: enabled && !isOptFixed
         ? () {
             onChanged(!ref.value);
@@ -2595,21 +2589,53 @@ Widget _Radio<T>(BuildContext context,
           }
         }
       : null;
-  return GestureDetector(
+  final c = DzColors.of(context);
+  final selected = value == groupValue;
+  return Semantics(
+    inMutuallyExclusiveGroup: true,
+    checked: selected,
+    enabled: onChange2 != null,
+    child: FocusableActionDetector(
+      enabled: onChange2 != null,
+      actions: {
+        ActivateIntent: CallbackAction<ActivateIntent>(
+          onInvoke: (_) {
+            onChange2?.call(value);
+            return null;
+          },
+        ),
+      },
+      child: GestureDetector(
+    behavior: HitTestBehavior.opaque,
     child: Row(
       children: [
-        Radio<T>(value: value, groupValue: groupValue, onChanged: onChange2),
+        Opacity(
+          opacity: onChange2 != null ? 1 : 0.45,
+          child: Container(
+            width: 16,
+            height: 16,
+            decoration: BoxDecoration(
+              color: c.card,
+              border: Border.all(color: selected ? MyTheme.accent : c.line2),
+            ),
+            child: selected
+                ? Center(child: Container(width: 8, height: 8, color: MyTheme.accent))
+                : null,
+          ),
+        ),
         Expanded(
           child: Text(translate(label),
                   overflow: autoNewLine ? null : TextOverflow.ellipsis,
                   style: TextStyle(
                       fontSize: _kContentFontSize,
                       color: disabledTextColor(context, onChange2 != null)))
-              .marginOnly(left: 5),
+              .marginOnly(left: 10),
         ),
       ],
-    ).marginOnly(left: _kRadioLeftMargin),
+    ).marginOnly(left: _kRadioLeftMargin, top: 4, bottom: 4),
     onTap: () => onChange2?.call(value),
+  ),
+    ),
   );
 }
 

@@ -7,7 +7,7 @@ import 'package:get/get.dart';
 const int kMaxVirtualDisplayCount = 4;
 const int kAllVirtualDisplay = -1;
 
-const double kDesktopRemoteTabBarHeight = 28.0;
+const double kDesktopRemoteTabBarHeight = 36.0;
 const int kInvalidWindowId = -1;
 const int kMainWindowId = 0;
 
@@ -50,6 +50,8 @@ const String kAppTypeDesktopPortForward = "port forward";
 const String kAppTypeDesktopTerminal = "terminal";
 
 const String kWindowMainWindowOnTop = "main_window_on_top";
+// Deskzap: a session window tells the main window about a device session's state.
+const String kWindowEventDzSession = "dz_session_state";
 const String kWindowRefreshCurrentUser = "refresh_current_user";
 const String kWindowGetWindowInfo = "get_window_info";
 const String kWindowGetScreenList = "get_screen_list";

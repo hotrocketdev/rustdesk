@@ -5,6 +5,11 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_tokens.dart';
+import 'package:flutter_hbb/desktop/widgets/dz_icon.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_detail_panel.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_palette.dart';
+import 'package:flutter_hbb/common/widgets/peers_view.dart';
 import 'package:flutter_hbb/common/widgets/connection_page_title.dart';
 import 'package:flutter_hbb/consts.dart';
 import 'package:flutter_hbb/desktop/widgets/popup_menu.dart';
@@ -311,6 +316,24 @@ class _ConnectionPageState extends State<ConnectionPage>
   @override
   Widget build(BuildContext context) {
     final isOutgoingOnly = bind.isOutgoingOnly();
+    if (isOutgoingOnly) {
+      return LayoutBuilder(
+        builder: (context, constraints) => Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: Column(
+                children: [
+                  _buildDeskzapHeader(context),
+                  const Expanded(child: PeerTabPage()),
+                ],
+              ),
+            ),
+            if (constraints.maxWidth >= 1000) const DeskzapDetailPanel(),
+          ],
+        ),
+      );
+    }
     return Column(
       children: [
         Expanded(
@@ -345,20 +368,159 @@ class _ConnectionPageState extends State<ConnectionPage>
         isTerminal: isTerminal);
   }
 
+
+  /// Deskzap Connect header: title, device search, quick connect and Add device.
+  /// Below 620px the quick-connect box moves to its own line instead of disappearing.
+  Widget _buildDeskzapHeader(BuildContext context) {
+    final c = DzColors.of(context);
+    return LayoutBuilder(builder: (context, box) {
+      final w = box.maxWidth;
+      final narrow = w < 620;
+      final search = _dzSearchBox(context, c);
+      final add = _dzAddButton(context, c, w >= 900);
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: c.line)),
+        ),
+        child: narrow
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(children: [
+                    Expanded(child: search),
+                    const SizedBox(width: 10),
+                    add,
+                  ]),
+                  const SizedBox(height: 10),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: _buildRemoteIDTextField(context),
+                  ),
+                ],
+              )
+            : Row(
+                children: [
+                  if (w >= 760) ...[
+                    Text(
+                      translate('Devices'),
+                      style: TextStyle(
+                        fontFamily: MyTheme.fontDisplay,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.2,
+                        color: c.fg,
+                      ),
+                    ),
+                    const SizedBox(width: 18),
+                  ],
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 360),
+                        child: search,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  _buildRemoteIDTextField(context),
+                  const SizedBox(width: 10),
+                  add,
+                ],
+              ),
+      );
+    });
+  }
+
+  Widget _dzSearchBox(BuildContext context, DzColors c) {
+    return Container(
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: c.card,
+        border: Border.all(color: c.line2),
+      ),
+      child: Row(
+        children: [
+          DzIcon('search', size: 16, color: c.dim),
+          const SizedBox(width: 9),
+          Expanded(
+            child: TextField(
+              controller: peerSearchTextController,
+              onChanged: (v) => peerSearchText.value = v,
+              style: TextStyle(fontSize: 13, color: c.fg),
+              decoration: InputDecoration(
+                hintText: translate('Search devices'),
+                hintStyle: TextStyle(fontSize: 13, color: c.dim),
+                border: InputBorder.none,
+                filled: false,
+                isDense: true,
+                contentPadding: EdgeInsets.zero,
+              ),
+            ).workaroundFreezeLinuxMint(),
+          ),
+          InkWell(
+            onTap: () => showDzPalette(context),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(border: Border.all(color: c.line2)),
+              child: Text(
+                isMacOS ? 'CMD K' : 'CTRL K',
+                style: TextStyle(
+                  fontFamily: MyTheme.fontMono,
+                  fontSize: 10,
+                  letterSpacing: 0.6,
+                  color: c.mute,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dzAddButton(BuildContext context, DzColors c, bool withLabel) {
+    final ink = Theme.of(context).scaffoldBackgroundColor;
+    return Tooltip(
+      message: translate('Add device'),
+      child: InkWell(
+        onTap: () => launchUrlString('https://my.deskzap.co.uk/install/host'),
+        child: Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          color: c.fg,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DzIcon('plus', size: 14, color: ink),
+              if (withLabel) ...[
+                const SizedBox(width: 8),
+                Text(
+                  translate('Add device').toUpperCase(),
+                  style: TextStyle(
+                    fontFamily: MyTheme.fontMono,
+                    fontSize: 10.5,
+                    letterSpacing: 0.9,
+                    fontWeight: FontWeight.w500,
+                    color: ink,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   /// UI for the remote ID TextField.
   /// Search for a peer.
   Widget _buildRemoteIDTextField(BuildContext context) {
-    var w = Container(
-      width: 320 + 20 * 2,
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 22),
-      decoration: BoxDecoration(
-          borderRadius: const BorderRadius.all(Radius.circular(13)),
-          border: Border.all(color: Theme.of(context).colorScheme.background)),
-      child: Ink(
-        child: Column(
-          children: [
-            getConnectionPageTitle(context, false).marginOnly(bottom: 15),
-            Row(
+    final compact = bind.isOutgoingOnly();
+    final Widget fieldRow = Row(
               children: [
                 Expanded(
                     child: RawAutocomplete<Peer>(
@@ -423,9 +585,9 @@ class _ConnectionPageState extends State<ConnectionPage>
                           enableSuggestions: false,
                           keyboardType: TextInputType.visiblePassword,
                           focusNode: fieldFocusNode,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontFamily: 'WorkSans',
-                            fontSize: 22,
+                            fontSize: compact ? 15 : 22,
                             height: 1.4,
                           ),
                           maxLines: 1,
@@ -437,8 +599,9 @@ class _ConnectionPageState extends State<ConnectionPage>
                               hintText: _idInputFocused.value
                                   ? null
                                   : translate('Enter Remote ID'),
-                              contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 15, vertical: 13)),
+                              contentPadding: EdgeInsets.symmetric(
+                                  horizontal: compact ? 10 : 15,
+                                  vertical: compact ? 9 : 13)),
                           controller: fieldTextEditingController,
                           inputFormatters: [IDTextInputFormatter()],
                           onChanged: (v) {
@@ -518,10 +681,13 @@ class _ConnectionPageState extends State<ConnectionPage>
                   },
                 )),
               ],
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 13.0),
-              child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
+            );
+    final Widget buttonsRow = Padding(
+              padding: EdgeInsets.only(top: compact ? 0 : 13.0),
+              child: Row(
+                  mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
                 SizedBox(
                   height: 28.0,
                   child: ElevatedButton(
@@ -589,7 +755,7 @@ class _ConnectionPageState extends State<ConnectionPage>
                                           ))
                                       .map((e) => e.build(
                                           context,
-                                          const MenuConfig(
+                                          MenuConfig(
                                               commonColor: CustomPopupMenuTheme
                                                   .commonColor,
                                               height:
@@ -611,7 +777,35 @@ class _ConnectionPageState extends State<ConnectionPage>
                   ),
                 ),
               ]),
-            ),
+            );
+    var w = Container(
+      width: compact ? null : 320 + 20 * 2,
+      padding: compact
+          ? EdgeInsets.zero
+          : const EdgeInsets.fromLTRB(20, 24, 20, 22),
+      decoration: compact
+          ? null
+          : BoxDecoration(
+              borderRadius: const BorderRadius.all(Radius.circular(13)),
+              border: Border.all(
+                  color: Theme.of(context).colorScheme.background)),
+      child: Ink(
+        child: Column(
+          children: [
+            if (compact)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(width: 190, child: fieldRow),
+                  const SizedBox(width: 8),
+                  buttonsRow,
+                ],
+              )
+            else ...[
+              getConnectionPageTitle(context, false).marginOnly(bottom: 15),
+              fieldRow,
+              buttonsRow,
+            ],
           ],
         ),
       ),

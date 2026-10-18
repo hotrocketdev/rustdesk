@@ -11,12 +11,13 @@ import 'package:flutter_hbb/models/input_model.dart';
 import 'package:flutter_hbb/models/state_model.dart';
 import 'package:flutter_hbb/desktop/pages/remote_page.dart';
 import 'package:flutter_hbb/desktop/widgets/remote_toolbar.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_tokens.dart';
+import 'package:flutter_hbb/desktop/widgets/dz_icon.dart';
 import 'package:flutter_hbb/desktop/widgets/tabbar_widget.dart';
 import 'package:flutter_hbb/desktop/widgets/material_mod_popup_menu.dart'
     as mod_menu;
 import 'package:flutter_hbb/desktop/widgets/popup_menu.dart';
 import 'package:flutter_hbb/utils/multi_window_manager.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:bot_toast/bot_toast.dart';
 
@@ -28,6 +29,16 @@ class _MenuTheme {
   // kMinInteractiveDimension
   static const double height = 20.0;
   static const double dividerHeight = 12.0;
+}
+
+// Devices whose session reached the connected state (Deskzap device-list button).
+final Set<String> _dzNotified = {};
+
+Future<void> _dzNotify(String id, String state) async {
+  try {
+    await rustDeskWinManager.call(WindowType.Main, kWindowEventDzSession,
+        jsonEncode({'id': id, 'state': state}));
+  } catch (_) {}
 }
 
 class ConnectionTabPage extends StatefulWidget {
@@ -65,6 +76,7 @@ class _ConnectionTabPageState extends State<ConnectionTabPage> {
     tryMoveToScreenAndSetFullscreen(screenRect);
     if (peerId != null) {
       ConnectionTypeState.init(peerId!);
+      _dzNotify(peerId!, 'connecting');
       tabController.onSelected = (id) {
         final remotePage = tabController.widget(id);
         if (remotePage is RemotePage) {
@@ -158,6 +170,9 @@ class _ConnectionTabPageState extends State<ConnectionTabPage> {
           } else {
             bool secure =
                 connectionType.secure.value == ConnectionType.strSecure;
+            if (_dzNotified.add(key)) {
+              Future.microtask(() => _dzNotify(key, 'connected'));
+            }
             bool direct =
                 connectionType.direct.value == ConnectionType.strDirect;
             String msgConn = getConnectionText(
@@ -181,10 +196,10 @@ class _ConnectionTabPageState extends State<ConnectionTabPage> {
                 icon,
                 Tooltip(
                   message: '$msgConn\n$msgFingerprint',
-                  child: SvgPicture.asset(
-                    'assets/${connectionType.secure.value}${connectionType.direct.value}.svg',
-                    width: themeConf.iconSize,
-                    height: themeConf.iconSize,
+                  child: DzIcon(
+                    'shield',
+                    size: themeConf.iconSize,
+                    color: secure ? DzColors.of(context).ok : const Color(0xFFFF6B6B),
                   ).paddingOnly(right: 5),
                 ),
                 label,
@@ -380,6 +395,8 @@ class _ConnectionTabPageState extends State<ConnectionTabPage> {
       loopCloseWindow();
     }
     ConnectionTypeState.delete(id);
+    _dzNotified.remove(id);
+    _dzNotify(id, 'closed');
     // Clean up relative mouse mode state for this peer.
     stateGlobal.relativeMouseModeState.remove(id);
     _update_remote_count();
@@ -387,6 +404,14 @@ class _ConnectionTabPageState extends State<ConnectionTabPage> {
 
   int windowId() {
     return widget.params["windowId"];
+  }
+
+  // Tell the main window every session in this window is over (clear() skips onRemoved).
+  void _dzCloseAll() {
+    for (final tab in tabController.state.value.tabs) {
+      _dzNotified.remove(tab.key);
+      _dzNotify(tab.key, 'closed');
+    }
   }
 
   Future<bool> handleWindowCloseButton() async {
@@ -400,6 +425,7 @@ class _ConnectionTabPageState extends State<ConnectionTabPage> {
       }
     }
     if (connLength <= 1) {
+      _dzCloseAll();
       tabController.clear();
       return true;
     } else {
@@ -411,7 +437,8 @@ class _ConnectionTabPageState extends State<ConnectionTabPage> {
         res = await closeConfirmDialog();
       }
       if (res) {
-        tabController.clear();
+        _dzCloseAll();
+      tabController.clear();
       }
       return res;
     }
@@ -448,6 +475,7 @@ class _ConnectionTabPageState extends State<ConnectionTabPage> {
         });
       });
       ConnectionTypeState.init(id);
+      _dzNotify(id, 'connecting');
       tabController.add(TabInfo(
         key: id,
         label: id,
@@ -480,6 +508,7 @@ class _ConnectionTabPageState extends State<ConnectionTabPage> {
     } else if (call.method == kWindowDisableGrabKeyboard) {
       // ???
     } else if (call.method == "onDestroy") {
+      _dzCloseAll();
       tabController.clear();
     } else if (call.method == kWindowActionRebuild) {
       reloadCurrentWindow();

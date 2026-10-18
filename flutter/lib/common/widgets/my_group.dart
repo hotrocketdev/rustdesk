@@ -8,6 +8,8 @@ import 'package:flutter_hbb/models/state_model.dart';
 import 'package:get/get.dart';
 
 import '../../common.dart';
+import '../../models/platform_model.dart';
+import '../../desktop/widgets/deskzap_rail.dart';
 
 class MyGroup extends StatefulWidget {
   final EdgeInsets? menuPadding;
@@ -49,7 +51,9 @@ class _MyGroupState extends State<MyGroup> {
               retry: null,
               close: () => gFFI.groupModel.groupLoadError.value = ''),
           Expanded(
-              child: Obx(() => stateGlobal.isPortrait.isTrue
+              // Narrow Connect window: the rail has no group list, so stack the selector above the devices.
+              child: Obx(() => (stateGlobal.isPortrait.isTrue ||
+                      (bind.isOutgoingOnly() && dzRailCompact.value))
                   ? _buildPortrait()
                   : _buildLandscape())),
         ],
@@ -60,6 +64,7 @@ class _MyGroupState extends State<MyGroup> {
   Widget _buildLandscape() {
     return Row(
       children: [
+        if (!bind.isOutgoingOnly())
         Container(
           decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
@@ -108,7 +113,10 @@ class _MyGroupState extends State<MyGroup> {
                 _buildLeftHeader(),
                 Container(
                   width: double.infinity,
-                  child: _buildLeftList(),
+                  // Desktop Connect (narrow window): the list needs a bounded height here.
+                  child: (bind.isOutgoingOnly() && stateGlobal.isPortrait.isFalse)
+                      ? SizedBox(height: 120, child: _buildLeftList())
+                      : _buildLeftList(),
                 )
               ],
             ),

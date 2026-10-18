@@ -34,7 +34,6 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:window_size/window_size.dart' as window_size;
-import '../widgets/button.dart';
 
 class DesktopHomePage extends StatefulWidget {
   const DesktopHomePage({Key? key}) : super(key: key);
@@ -415,17 +414,18 @@ class _DesktopHomePageState extends State<DesktopHomePage>
         actions: [
           DzHostAction(
             icon: 'copy',
-            tooltip: translate('Copy'),
+            tooltip: translate('Copy to clipboard'),
             onTap: () {
               Clipboard.setData(ClipboardData(text: model.serverId.text));
               showToast(translate("Copied"));
             },
           ),
-          DzHostAction(
-            icon: 'settings',
-            tooltip: translate('Settings'),
-            onTap: DesktopTabPage.onAddSetting,
-          ),
+          if (!bind.isDisableSettings())
+            DzHostAction(
+              icon: 'settings',
+              tooltip: translate('Settings'),
+              onTap: DesktopTabPage.onAddSetting,
+            ),
         ],
       );
     }
@@ -579,7 +579,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
           if (showOneTime)
             DzHostAction(
               icon: 'copy',
-              tooltip: translate('Copy'),
+              tooltip: translate('Copy to clipboard'),
               onTap: () {
                 Clipboard.setData(ClipboardData(text: model.serverPasswd.text));
                 showToast(translate("Copied"));

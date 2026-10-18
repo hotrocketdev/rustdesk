@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hbb/common.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_switch.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_tokens.dart';
+import 'package:flutter_hbb/desktop/widgets/dz_icon.dart';
 import 'package:flutter_hbb/desktop/widgets/tabbar_widget.dart';
 import 'package:flutter_hbb/models/platform_model.dart';
 import 'package:flutter_hbb/models/state_model.dart';
@@ -69,12 +72,6 @@ class _InstallPageBodyState extends State<_InstallPageBody>
   final RxBool showProgress = false.obs;
   final RxBool btnEnabled = true.obs;
 
-  // todo move to theme.
-  final buttonStyle = OutlinedButton.styleFrom(
-    textStyle: TextStyle(fontSize: 14, fontWeight: FontWeight.normal),
-    padding: EdgeInsets.symmetric(vertical: 15, horizontal: 12),
-  );
-
   _InstallPageBodyState() {
     controller = TextEditingController(text: bind.installInstallPath());
     final installOptions = jsonDecode(bind.installInstallOptions());
@@ -103,25 +100,59 @@ class _InstallPageBodyState extends State<_InstallPageBody>
     windowManager.close();
   }
 
-  InkWell Option(RxBool option, {String label = ''}) {
+  Widget Option(RxBool option, {String label = ''}) {
     return InkWell(
-      // todo mouseCursor: "SystemMouseCursors.forbidden" or no cursor on btnEnabled == false
-      borderRadius: BorderRadius.circular(6),
       onTap: () => btnEnabled.value ? option.value = !option.value : null,
-      child: Row(
-        children: [
-          Obx(
-            () => Checkbox(
-              visualDensity: VisualDensity(horizontal: -4, vertical: -4),
-              value: option.value,
-              onChanged: (v) =>
-                  btnEnabled.value ? option.value = !option.value : null,
-            ).marginOnly(right: 8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            Expanded(child: Text(translate(label))),
+            Obx(() => DzSwitch(
+                  value: option.value,
+                  onChanged: btnEnabled.value ? (v) => option.value = v : null,
+                )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _dzButton(DzColors c, String text, VoidCallback? onTap,
+      {bool primary = false, String? icon}) {
+    final accent = bind.isIncomingOnly() ? kDzHostPink : MyTheme.accent;
+    final enabled = onTap != null;
+    return Opacity(
+      opacity: enabled ? 1 : 0.45,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          height: 38,
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          decoration: BoxDecoration(
+            color: primary ? accent : Colors.transparent,
+            border: Border.all(color: primary ? accent : c.line2),
           ),
-          Expanded(
-            child: Text(translate(label)),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                DzIcon(icon, size: 14, color: primary ? Colors.white : c.fg),
+                const SizedBox(width: 8),
+              ],
+              Text(
+                translate(text).toUpperCase(),
+                style: TextStyle(
+                  fontFamily: MyTheme.fontMono,
+                  fontSize: 11,
+                  letterSpacing: 0.9,
+                  fontWeight: FontWeight.w500,
+                  color: primary ? Colors.white : c.fg,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -129,79 +160,104 @@ class _InstallPageBodyState extends State<_InstallPageBody>
   @override
   Widget build(BuildContext context) {
     final double em = 13;
-    final isDarkTheme = MyTheme.currentThemeMode() == ThemeMode.dark;
+    final c = DzColors.of(context);
+    final accent = bind.isIncomingOnly() ? kDzHostPink : MyTheme.accent;
     return Scaffold(
         backgroundColor: null,
         body: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(translate('Installation'),
-                  style: Theme.of(context).textTheme.headlineMedium),
               Row(
                 children: [
-                  Text('${translate('Installation Path')}:')
-                      .marginOnly(right: 10),
+                  loadIcon(30),
+                  const SizedBox(width: 12),
+                  Text(
+                    translate('Installation'),
+                    style: TextStyle(
+                      fontFamily: MyTheme.fontDisplay,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w600,
+                      color: c.fg,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              Text(
+                translate('Installation Path').toUpperCase(),
+                style: TextStyle(
+                  fontFamily: MyTheme.fontMono,
+                  fontSize: 10.5,
+                  letterSpacing: 1.0,
+                  color: c.dim,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
                   Expanded(
                     child: TextField(
                       controller: controller,
                       readOnly: true,
+                      style: TextStyle(
+                          fontFamily: MyTheme.fontMono, fontSize: 12.5),
                       decoration: InputDecoration(
+                        isDense: true,
                         contentPadding: EdgeInsets.all(0.75 * em),
                       ),
                     ).workaroundFreezeLinuxMint().marginOnly(right: 10),
                   ),
-                  Obx(
-                    () => OutlinedButton.icon(
-                      icon: Icon(Icons.folder_outlined, size: 16),
-                      onPressed: btnEnabled.value ? selectInstallPath : null,
-                      style: buttonStyle,
-                      label: Text(translate('Change Path')),
-                    ),
-                  )
+                  Obx(() => _dzButton(c, 'Change Path',
+                      btnEnabled.value ? selectInstallPath : null,
+                      icon: 'files')),
                 ],
-              ).marginSymmetric(vertical: 2 * em),
-              Option(startmenu, label: 'Create start menu shortcuts')
-                  .marginOnly(bottom: 7),
-              Option(desktopicon, label: 'Create desktop icon')
-                  .marginOnly(bottom: 7),
+              ),
+              const SizedBox(height: 14),
+              Option(startmenu, label: 'Create start menu shortcuts'),
+              Option(desktopicon, label: 'Create desktop icon'),
               Option(printer, label: 'Install {$appName} Printer'),
               Container(
-                  padding: EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: isDarkTheme
-                        ? Color.fromARGB(135, 87, 87, 90)
-                        : Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey),
+                    color: c.card,
+                    border: Border(
+                      left: BorderSide(color: accent, width: 2),
+                      top: BorderSide(color: c.line2),
+                      right: BorderSide(color: c.line2),
+                      bottom: BorderSide(color: c.line2),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.info_outline_rounded, size: 32)
-                          .marginOnly(right: 16),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(translate('agreement_tip'))
-                              .marginOnly(bottom: em),
-                          InkWell(
-                            hoverColor: Colors.transparent,
-                            onTap: () => launchUrlString(
-                                'https://deskzap.co.uk/privacy'),
-                            child: Tooltip(
-                              message: 'https://deskzap.co.uk/privacy',
-                              child: Row(children: [
-                                Icon(Icons.launch_outlined, size: 16)
-                                    .marginOnly(right: 5),
-                                Text(
+                      DzIcon('info', size: 22, color: c.mute)
+                          .marginOnly(right: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(translate('agreement_tip'),
+                                    style: TextStyle(
+                                        fontSize: 12.5,
+                                        height: 1.45,
+                                        color: c.mute))
+                                .marginOnly(bottom: 8),
+                            InkWell(
+                              onTap: () => launchUrlString(
+                                  'https://deskzap.co.uk/privacy'),
+                              child: Tooltip(
+                                message: 'https://deskzap.co.uk/privacy',
+                                child: Text(
                                   translate('End-user license agreement'),
-                                  style: const TextStyle(
-                                      decoration: TextDecoration.underline),
-                                )
-                              ]),
+                                  style: TextStyle(
+                                      decoration: TextDecoration.underline,
+                                      color: c.fg,
+                                      fontSize: 12.5),
+                                ),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       )
                     ],
                   )).marginSymmetric(vertical: 2 * em),
@@ -210,38 +266,28 @@ class _InstallPageBodyState extends State<_InstallPageBody>
                   Expanded(
                     // NOT use Offstage to wrap LinearProgressIndicator
                     child: Obx(() => showProgress.value
-                        ? LinearProgressIndicator().marginOnly(right: 10)
+                        ? LinearProgressIndicator(
+                                color: accent, backgroundColor: c.line)
+                            .marginOnly(right: 10)
                         : Offstage()),
                   ),
-                  Obx(
-                    () => OutlinedButton.icon(
-                      icon: Icon(Icons.close_rounded, size: 16),
-                      label: Text(translate('Cancel')),
-                      onPressed:
+                  Obx(() => _dzButton(c, 'Cancel',
                           btnEnabled.value ? () => windowManager.close() : null,
-                      style: buttonStyle,
-                    ).marginOnly(right: 10),
-                  ),
-                  Obx(
-                    () => ElevatedButton.icon(
-                      icon: Icon(Icons.done_rounded, size: 16),
-                      label: Text(translate('Accept and Install')),
-                      onPressed: btnEnabled.value ? install : null,
-                      style: buttonStyle,
-                    ),
-                  ),
+                          icon: 'close')
+                      .marginOnly(right: 10)),
+                  Obx(() => _dzButton(c, 'Accept and Install',
+                      btnEnabled.value ? install : null,
+                      primary: true, icon: 'check')),
                   Offstage(
                     offstage: bind.installShowRunWithoutInstall(),
-                    child: Obx(
-                      () => OutlinedButton.icon(
-                        icon: Icon(Icons.screen_share_outlined, size: 16),
-                        label: Text(translate('Run without install')),
-                        onPressed: btnEnabled.value
-                            ? () => bind.installRunWithoutInstall()
-                            : null,
-                        style: buttonStyle,
-                      ).marginOnly(left: 10),
-                    ),
+                    child: Obx(() => _dzButton(
+                            c,
+                            'Run without install',
+                            btnEnabled.value
+                                ? () => bind.installRunWithoutInstall()
+                                : null,
+                            icon: 'display')
+                        .marginOnly(left: 10)),
                   ),
                 ],
               )

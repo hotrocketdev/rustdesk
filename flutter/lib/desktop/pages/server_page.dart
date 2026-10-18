@@ -680,7 +680,7 @@ class _PrivilegeBoardState extends State<_PrivilegeBoard> {
           onTap: () => _switch(name, !enabled, apply),
           child: Container(
             width: width,
-            height: 38,
+            height: 34,
             padding: const EdgeInsets.symmetric(horizontal: 10),
             decoration: BoxDecoration(
               color: enabled ? MyTheme.accent.withOpacity(0.12) : dz.card,
@@ -692,7 +692,7 @@ class _PrivilegeBoardState extends State<_PrivilegeBoard> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    label.toUpperCase(),
+                    translate(label).toUpperCase(),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -714,7 +714,7 @@ class _PrivilegeBoardState extends State<_PrivilegeBoard> {
   @override
   Widget build(BuildContext context) {
     final dz = DzColors.of(context);
-    const gap = 6.0;
+    const gap = 5.0;
     final isCamera = client.type_() == ClientType.camera;
     return Container(
       width: double.infinity,
@@ -882,7 +882,7 @@ class _CmControlPanel extends StatelessWidget {
               Expanded(
                 child: buildButton(
                   context,
-                  color: const Color(0xFFE5484D),
+                  color: kDzDanger,
                   onClick: () => closeVoiceCall(),
                   icon: Icon(
                     Icons.call_end_rounded,
@@ -915,7 +915,7 @@ class _CmControlPanel extends StatelessWidget {
               Expanded(
                 child: buildButton(
                   context,
-                  color: const Color(0xFFE5484D),
+                  color: kDzDanger,
                   onClick: () => handleVoiceCall(false),
                   icon: Icon(
                     Icons.phone_disabled_rounded,
@@ -960,7 +960,7 @@ class _CmControlPanel extends StatelessWidget {
           children: [
             Expanded(
               child: buildButton(context,
-                  color: const Color(0xFFE5484D),
+                  color: kDzDanger,
                   onClick: handleDisconnect,
                   text: 'Disconnect',
                   icon: Icon(
@@ -1002,7 +1002,7 @@ class _CmControlPanel extends StatelessWidget {
       children: [
         Offstage(
           offstage: !showElevation || !showAccept,
-          child: buildButton(context, color: const Color(0xFF16863F), onClick: () {
+          child: buildButton(context, color: kDzSuccess, onClick: () {
             handleAccept(context);
             handleElevate(context);
             windowManager.minimize();

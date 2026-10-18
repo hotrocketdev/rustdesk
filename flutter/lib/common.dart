@@ -43,6 +43,7 @@ import 'models/platform_model.dart';
 
 import 'package:flutter_hbb/native/win32.dart'
     if (dart.library.html) 'package:flutter_hbb/web/win32.dart';
+import 'package:flutter_hbb/desktop/widgets/deskzap_tokens.dart';
 import 'package:flutter_hbb/native/common.dart'
     if (dart.library.html) 'package:flutter_hbb/web/common.dart';
 import 'package:flutter_hbb/utils/http_service.dart' as http;
@@ -3722,25 +3723,32 @@ Widget loadPowered(BuildContext context) {
   if (bind.mainGetBuildinOption(key: "hide-powered-by-me") == 'Y') {
     return SizedBox.shrink();
   }
+  final mute = DzColors.of(context).mute;
   return MouseRegion(
     cursor: SystemMouseCursors.click,
     child: GestureDetector(
       onTap: () {
-        launchUrl(Uri.parse('https://rustdesk.com'));
+        launchUrl(Uri.parse('https://deskzap.co.uk'));
       },
-      child: Opacity(
-          opacity: 0.5,
-          child: Text(
-            translate("powered_by_me"),
-            overflow: TextOverflow.clip,
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(fontSize: 9, decoration: TextDecoration.underline),
-          )),
+      child: Text(
+        translate("powered_by_me").toUpperCase(),
+        overflow: TextOverflow.clip,
+        style: TextStyle(
+          fontFamily: MyTheme.fontMono,
+          fontSize: 9,
+          letterSpacing: 1.0,
+          color: mute,
+          decoration: TextDecoration.underline,
+        ),
+      ),
     ),
-  ).marginOnly(top: 6);
+  ).marginOnly(top: 8);
 }
+
+final bool _dzIsHost = bind.isIncomingOnly();
+
+/// The current app's accent: pink in the Host, blue in Connect.
+Color get dzAccent => _dzIsHost ? kDzHostPink : MyTheme.accent;
 
 // max 300 x 60
 Widget loadLogo() {

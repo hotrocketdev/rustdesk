@@ -364,7 +364,24 @@ class _DesktopSettingPageState extends State<DesktopSettingPage>
         if (!isWeb)
           SizedBox(
             height: 62,
-            child: settingsText,
+            child: bind.isIncomingOnly()
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'DESKZAP HOST',
+                        style: TextStyle(
+                          fontFamily: MyTheme.fontMono,
+                          fontSize: 10,
+                          letterSpacing: 1.4,
+                          color: DzColors.of(context).dim,
+                        ),
+                      ),
+                      settingsText,
+                    ],
+                  )
+                : settingsText,
           ).marginOnly(left: 20, top: 10),
         const Spacer(),
       ],
@@ -403,8 +420,8 @@ class _DesktopSettingPageState extends State<DesktopSettingPage>
             decoration: BoxDecoration(
               color: selected ? c.raise : null,
               border: selected
-                  ? const Border(
-                      left: BorderSide(color: MyTheme.accent, width: 2))
+                  ? Border(
+                      left: BorderSide(color: dzAccent, width: 2))
                   : null,
             ),
             child: Row(children: [
@@ -2460,6 +2477,10 @@ Widget _Card(
     {required String title,
     required List<Widget> children,
     List<Widget>? title_suffix}) {
+  if (bind.isIncomingOnly()) {
+    return _HostCard(
+        title: title, children: children, title_suffix: title_suffix);
+  }
   return Row(
     children: [
       Flexible(
@@ -2616,10 +2637,10 @@ Widget _Radio<T>(BuildContext context,
             height: 16,
             decoration: BoxDecoration(
               color: c.card,
-              border: Border.all(color: selected ? MyTheme.accent : c.line2),
+              border: Border.all(color: selected ? dzAccent : c.line2),
             ),
             child: selected
-                ? Center(child: Container(width: 8, height: 8, color: MyTheme.accent))
+                ? Center(child: Container(width: 8, height: 8, color: dzAccent))
                 : null,
           ),
         ),
@@ -3178,3 +3199,72 @@ void changeSocks5Proxy() async {
 }
 
 //#endregion
+
+/// Host settings card: boxed, pink left rule, mono heading (same language as
+/// the Host home ID/password boxes).
+class _HostCard extends StatelessWidget {
+  const _HostCard(
+      {Key? key, required this.title, required this.children, this.title_suffix})
+      : super(key: key);
+
+  final String title;
+  final List<Widget> children;
+  final List<Widget>? title_suffix;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = DzColors.of(context);
+    return Row(
+      children: [
+        Flexible(
+          child: SizedBox(
+            width: _kCardFixedWidth,
+            child: Container(
+              margin: EdgeInsets.only(left: _kCardLeftMargin, top: 15, bottom: 10),
+              padding: const EdgeInsets.only(left: 2, right: 1),
+              decoration: BoxDecoration(
+                color: c.card,
+                border: Border(
+                  left: const BorderSide(color: kDzHostPink, width: 2),
+                  top: BorderSide(color: c.line2),
+                  right: BorderSide(color: c.line2),
+                  bottom: BorderSide(color: c.line2),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          translate(title).toUpperCase(),
+                          style: TextStyle(
+                            fontFamily: MyTheme.fontMono,
+                            fontSize: 11,
+                            letterSpacing: 1.1,
+                            fontWeight: FontWeight.w500,
+                            color: c.mute,
+                          ),
+                        ),
+                      ),
+                      ...?title_suffix,
+                    ],
+                  ).marginOnly(left: _kContentHMargin, top: 12, bottom: 8),
+                  ...children.map((e) => Container(
+                        decoration: BoxDecoration(
+                          border: Border(top: BorderSide(color: c.line)),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: e.marginOnly(
+                            left: _kContentHMargin, right: _kContentHMargin),
+                      )),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}

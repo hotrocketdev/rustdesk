@@ -3722,24 +3722,25 @@ Widget loadPowered(BuildContext context) {
   if (bind.mainGetBuildinOption(key: "hide-powered-by-me") == 'Y') {
     return SizedBox.shrink();
   }
+  const dim = Color(0xFF737373);
   return MouseRegion(
     cursor: SystemMouseCursors.click,
     child: GestureDetector(
       onTap: () {
-        launchUrl(Uri.parse('https://rustdesk.com'));
+        launchUrl(Uri.parse('https://deskzap.co.uk'));
       },
-      child: Opacity(
-          opacity: 0.5,
-          child: Text(
-            translate("powered_by_me"),
-            overflow: TextOverflow.clip,
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(fontSize: 9, decoration: TextDecoration.underline),
-          )),
+      child: Text(
+        translate("powered_by_me").toUpperCase(),
+        overflow: TextOverflow.clip,
+        style: TextStyle(
+          fontFamily: MyTheme.fontMono,
+          fontSize: 9,
+          letterSpacing: 1.0,
+          color: dim,
+        ),
+      ),
     ),
-  ).marginOnly(top: 6);
+  ).marginOnly(top: 8);
 }
 
 // max 300 x 60

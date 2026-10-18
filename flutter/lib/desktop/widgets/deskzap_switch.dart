@@ -37,8 +37,8 @@ class DzSwitch extends StatelessWidget {
               width: 38,
               height: 22,
               decoration: BoxDecoration(
-                color: value ? MyTheme.accent : c.card,
-                border: Border.all(color: value ? MyTheme.accent : c.line2),
+                color: value ? dzAccent : c.card,
+                border: Border.all(color: value ? dzAccent : c.line2),
               ),
               child: AnimatedAlign(
                 duration: const Duration(milliseconds: 140),

@@ -1134,6 +1134,11 @@ class _TabState extends State<_Tab> with RestorationMixin {
         ? MyTheme.tabbar(context).selectedTabIconColor
         : MyTheme.tabbar(context).unSelectedTabIconColor;
     final dzName = _dzTabName(isSelected ? widget.selectedIcon : widget.unselectedIcon);
+    // The Host's 280px home window has no room for two labelled tabs: only the
+    // selected tab shows its label, so the Settings tab is never clipped.
+    final hideLabel = widget.tabType == DesktopTabType.main &&
+        bind.isIncomingOnly() &&
+        !isSelected;
     final icon = Offstage(
         offstage: !showIcon,
         child: (dzName != null
@@ -1143,8 +1148,9 @@ class _TabState extends State<_Tab> with RestorationMixin {
                     size: _kIconSize,
                     color: tabIconColor,
                   ))
-            .paddingOnly(right: 6));
+            .paddingOnly(right: hideLabel ? 0 : 6));
     final labelWidget = Obx(() {
+      if (hideLabel) return const SizedBox.shrink();
       return ConstrainedBox(
           constraints: BoxConstraints(maxWidth: widget.maxLabelWidth ?? 200),
           child: Tooltip(

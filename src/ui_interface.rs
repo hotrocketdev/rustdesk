@@ -907,7 +907,17 @@ pub fn video_save_directory(root: bool) -> String {
             let dir = std::path::PathBuf::from(format!(
                 "{drive}\\ProgramData\\DeskZap\\Recordings"
             ));
-            return dir.to_string_lossy().to_string();
+            let created = try_create(&dir);
+            if !created.is_empty() {
+                return created;
+            }
+            log::warn!(
+                "Failed to create recording directory {}. Falling back to the previous recordings folder.",
+                dir.display()
+            );
+            let fallback =
+                std::path::PathBuf::from(format!("{drive}\\ProgramData\\{appname}\\recording"));
+            return fallback.to_string_lossy().to_string();
         }
     }
     // Get directory from config file otherwise --server will use the old value from global var.
@@ -932,20 +942,79 @@ pub fn video_save_directory(root: bool) -> String {
     {
         if let Some(user) = directories_next::UserDirs::new() {
             if let Some(documents_dir) = user.document_dir() {
-                let dir = try_create(&documents_dir.join("DeskZap").join("Recordings"));
+                let preferred = documents_dir.join("DeskZap").join("Recordings");
+                let dir = try_create(&preferred);
                 if !dir.is_empty() {
                     return dir;
                 }
+                log::warn!(
+                    "Failed to create recording directory {}. Falling back to the videos folder.",
+                    preferred.display()
+                );
+            } else {
+                log::warn!(
+                    "Documents directory could not be resolved. Falling back to the videos folder."
+                );
             }
-            let fallback = try_create(&user.home_dir().join("Videos").join(&appname));
-            if !fallback.is_empty() {
-                return fallback;
+            let videos = user.home_dir().join("Videos").join(&appname);
+            let dir = try_create(&videos);
+            if !dir.is_empty() {
+                return dir;
             }
-        } else if let Some(home) = crate::platform::get_active_user_home() {
-            let fallback = try_create(&home.join("Videos").join(&appname));
-            if !fallback.is_empty() {
-                return fallback;
+            log::warn!(
+                "Failed to create recording directory {}. Falling back to the previous recordings folder.",
+                videos.display()
+            );
+        } else {
+            log::warn!(
+                "Home directory could not be resolved. Falling back to the videos folder."
+            );
+        }
+    }
+
+    if let Some(user) = directories_next::UserDirs::new() {
+        if let Some(video_dir) = user.video_dir() {
+            let dir = try_create(&video_dir.join(&appname));
+            if !dir.is_empty() {
+                return dir;
             }
+            if video_dir.exists() {
+                return video_dir.to_string_lossy().to_string();
+            }
+        }
+        if let Some(desktop_dir) = user.desktop_dir() {
+            if desktop_dir.exists() {
+                return desktop_dir.to_string_lossy().to_string();
+            }
+        }
+        let home = user.home_dir();
+        if home.exists() {
+            return home.to_string_lossy().to_string();
+        }
+    }
+
+    // same order as above
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    if let Some(home) = crate::platform::get_active_user_home() {
+        let name = if cfg!(target_os = "macos") {
+            "Movies"
+        } else {
+            "Videos"
+        };
+        let video_dir = home.join(name);
+        let dir = try_create(&video_dir.join(&appname));
+        if !dir.is_empty() {
+            return dir;
+        }
+        if video_dir.exists() {
+            return video_dir.to_string_lossy().to_string();
+        }
+        let desktop_dir = home.join("Desktop");
+        if desktop_dir.exists() {
+            return desktop_dir.to_string_lossy().to_string();
+        }
+        if home.exists() {
+            return home.to_string_lossy().to_string();
         }
     }
 

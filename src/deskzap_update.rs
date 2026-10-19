@@ -51,27 +51,34 @@ pub fn pending_flag(response: &Value) -> bool {
 }
 
 /// Append one line to `<dir>/self-update.log` so a Host that never updates can
-/// be diagnosed. Best effort, never panics. The same message is written at most
-/// once per 10 minutes (a heartbeat comes every ~30 s) and the file is rotated
-/// at 256 KB.
-#[allow(dead_code)]
+/// be diagnosed. Best effort, never panics. Each distinct message is written at
+/// most once per 10 minutes (a heartbeat comes every ~30 s; the last 16 distinct
+/// messages are remembered) and the file is kept under ~256 KB.
 pub fn append_trace(dir: &Path, msg: &str) {
     use std::io::Write as _;
     use std::sync::Mutex;
-    use std::time::{Duration, SystemTime, UNIX_EPOCH};
-    static LAST: Mutex<Option<(String, SystemTime)>> = Mutex::new(None);
-    if let Ok(mut last) = LAST.lock() {
-        if let Some((m, at)) = last.as_ref() {
-            if m == msg && at.elapsed().map(|e| e < Duration::from_secs(600)).unwrap_or(false) {
+    use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+    static RECENT: Mutex<Vec<(String, Instant)>> = Mutex::new(Vec::new());
+    if let Ok(mut recent) = RECENT.lock() {
+        if let Some(entry) = recent.iter_mut().find(|(m, _)| m == msg) {
+            if entry.1.elapsed() < Duration::from_secs(600) {
                 return;
             }
+            entry.1 = Instant::now();
+        } else {
+            if recent.len() >= 16 {
+                recent.remove(0);
+            }
+            recent.push((msg.to_owned(), Instant::now()));
         }
-        *last = Some((msg.to_owned(), SystemTime::now()));
     }
     let _ = std::fs::create_dir_all(dir);
     let path = dir.join("self-update.log");
-    if std::fs::metadata(&path).map(|m| m.len() > 256 * 1024).unwrap_or(false) {
-        let _ = std::fs::rename(&path, dir.join("self-update.log.old"));
+    if std::fs::metadata(&path).map(|m| m.len() > 256 * 1024).unwrap_or(false)
+        && std::fs::rename(&path, dir.join("self-update.log.old")).is_err()
+    {
+        // Rotation failed (the file is open elsewhere): truncate rather than grow forever.
+        let _ = std::fs::OpenOptions::new().write(true).truncate(true).open(&path);
     }
     if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&path) {
         let secs = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
@@ -382,12 +389,26 @@ mod tests {
     }
 
     #[test]
+    fn the_flag_is_found_in_each_place_the_server_has_put_it() {
+        // top level only
+        assert!(pending_flag(&json!({ "pending_update": true })));
+        // device.update_pending only (the projected field)
+        assert!(pending_flag(&json!({ "device": { "update_pending": true } })));
+        // legacy nested metadata only
+        assert!(pending_flag(&json!({ "device": { "metadata": { "pending_update": true } } })));
+        // absent everywhere, or not a bool
+        assert!(!pending_flag(&json!({ "device": {} })));
+        assert!(!pending_flag(&json!({ "pending_update": "yes" })));
+    }
+
+    #[test]
     fn trace_dedupes_repeats_and_rotates() {
         let dir = std::env::temp_dir().join(format!("deskzap-trace-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         append_trace(&dir, "alpha");
         append_trace(&dir, "alpha"); // suppressed: same message again
         append_trace(&dir, "beta");
+        append_trace(&dir, "alpha"); // still suppressed even though beta came between
         let log = std::fs::read_to_string(dir.join("self-update.log")).unwrap();
         assert_eq!(log.lines().count(), 2, "{log}");
         assert!(log.lines().next().unwrap().ends_with("alpha"));

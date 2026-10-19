@@ -117,6 +117,10 @@ class _ToolbarTheme {
   static const Color blueColor = MyTheme.button;
   static const Color hoverBlueColor = Color(0xFF2A2A2A);
   static Color inactiveColor = Colors.grey[800]!;
+  // Monitor picker tiles: idle = raised dark with muted ink, selected = accent.
+  static const Color monitorIdleFill = Color(0xFF1A1A1A);
+  static const Color monitorIdleInk = Color(0xFFA3A3A3);
+  static const Color monitorSelectedHover = Color(0xFF1F4DFF);
   static Color hoverInactiveColor = Colors.grey[850]!;
 
   static const Color redColor = Colors.redAccent;
@@ -558,7 +562,7 @@ class _MonitorMenu extends StatelessWidget {
         width: width.value,
         color: _ToolbarTheme.blueColor,
         hoverColor: _ToolbarTheme.hoverBlueColor,
-        menuStyle: MenuStyle(
+        menuStyle: _ToolbarTheme.defaultMenuStyle(context).copyWith(
             padding:
                 MaterialStatePropertyAll(EdgeInsets.symmetric(horizontal: 6))),
         menuChildrenGetter: (_) => [buildMonitorSubmenuWidget(context)]);
@@ -597,9 +601,7 @@ class _MonitorMenu extends StatelessWidget {
   buildOneMonitorButton(i, curDisplay) => Text(
         '${i + 1}',
         style: TextStyle(
-          color: i == curDisplay
-              ? _ToolbarTheme.blueColor
-              : _ToolbarTheme.inactiveColor,
+          color: i == curDisplay ? Colors.white : _ToolbarTheme.monitorIdleInk,
           fontSize: 12,
           fontWeight: FontWeight.bold,
         ),
@@ -629,11 +631,11 @@ class _MonitorMenu extends StatelessWidget {
             vMargin: isMulti ? null : 12,
             topLevel: false,
             color: i == display.value
-                ? _ToolbarTheme.blueColor
-                : _ToolbarTheme.inactiveColor,
+                ? MyTheme.accent
+                : _ToolbarTheme.monitorIdleFill,
             hoverColor: i == display.value
-                ? _ToolbarTheme.hoverBlueColor
-                : _ToolbarTheme.hoverInactiveColor,
+                ? _ToolbarTheme.monitorSelectedHover
+                : _ToolbarTheme.hoverBlueColor,
             width: isAllMonitors ? width.value : null,
             icon: isAllMonitors
                 ? monitorsIcon
@@ -646,8 +648,13 @@ class _MonitorMenu extends StatelessWidget {
                       children: [
                         SvgPicture.asset(
                           "assets/deskzap/icons/dz-monitors.svg",
-                          colorFilter:
-                              ColorFilter.mode(Colors.white, BlendMode.srcIn),
+                          width: 26,
+                          height: 26,
+                          colorFilter: ColorFilter.mode(
+                              i == display.value
+                                  ? Colors.white
+                                  : _ToolbarTheme.monitorIdleInk,
+                              BlendMode.srcIn),
                         ),
                         Obx(() => buildOneMonitorButton(i, display.value)),
                       ],

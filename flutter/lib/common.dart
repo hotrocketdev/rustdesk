@@ -2830,6 +2830,10 @@ bool isRunningInPortableMode() {
 
 /// Window status callback
 Future<void> onActiveWindowChanged() async {
+  if (!rustDeskWinManager.getActiveWindows().contains(kMainWindowId)) {
+    // Main window is hidden: ignore session windows that are no longer visible.
+    await rustDeskWinManager.pruneStaleActiveWindows();
+  }
   print(
       "[MultiWindowHandler] active window changed: ${rustDeskWinManager.getActiveWindows()}");
   if (rustDeskWinManager.getActiveWindows().isEmpty) {

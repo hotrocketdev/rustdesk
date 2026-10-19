@@ -619,7 +619,10 @@ class _MonitorMenu extends StatelessWidget {
           Widget? monitorsIcon;
           if (isAllMonitors) {
             monitorsIcon = globalMonitorsWidget(
-                width, Colors.white, _ToolbarTheme.blueColor);
+                width, Colors.white, _ToolbarTheme.blueColor,
+                idleCellColor: i == display.value
+                    ? Colors.white
+                    : _ToolbarTheme.monitorIdleInk);
           }
           return _IconMenuButton(
             tooltip: isMulti
@@ -652,8 +655,8 @@ class _MonitorMenu extends StatelessWidget {
                           height: 26,
                           colorFilter: ColorFilter.mode(
                               i == display.value
-                                  ? Colors.white
-                                  : _ToolbarTheme.monitorIdleInk,
+                                  ? const Color(0x99FFFFFF)
+                                  : const Color(0xFF4A4A4A),
                               BlendMode.srcIn),
                         ),
                         Obx(() => buildOneMonitorButton(i, display.value)),
@@ -674,7 +677,8 @@ class _MonitorMenu extends StatelessWidget {
   }
 
   globalMonitorsWidget(
-      SimpleWrapper<double> width, Color activeTextColor, Color activeBgColor) {
+      SimpleWrapper<double> width, Color activeTextColor, Color activeBgColor,
+      {Color idleCellColor = Colors.white}) {
     getMonitors() {
       final pi = ffi.ffiModel.pi;
       RxInt display = CurrentDisplayState.find(id);
@@ -708,7 +712,7 @@ class _MonitorMenu extends StatelessWidget {
                 color: Colors.grey,
                 width: 1.0,
               ),
-              color: display.value == i ? activeBgColor : Colors.white,
+              color: display.value == i ? activeBgColor : idleCellColor,
             ),
             child: Center(
                 child: Text(

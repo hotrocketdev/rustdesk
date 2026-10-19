@@ -35,26 +35,66 @@ fn str_field<'a>(v: &'a Value, key: &str) -> Option<&'a str> {
         .filter(|s| !s.is_empty())
 }
 
+/// Whether the server flagged an update. The control plane sends it at the top
+/// level of the heartbeat reply (`pending_update`, already false when it has no
+/// complete installer to serve) and as `device.update_pending`; it never sends
+/// the stored `device.metadata` (that holds secrets). Older servers nested it
+/// under `device.metadata`, which is kept as a fallback. Reading only the nested
+/// copy made Hosts ignore every update (found 2026-10-18).
+pub fn pending_flag(response: &Value) -> bool {
+    response
+        .get("pending_update")
+        .and_then(Value::as_bool)
+        .or_else(|| response.pointer("/device/update_pending").and_then(Value::as_bool))
+        .or_else(|| response.pointer("/device/metadata/pending_update").and_then(Value::as_bool))
+        .unwrap_or(false)
+}
+
+/// Append one line to `<dir>/self-update.log` so a Host that never updates can
+/// be diagnosed. Best effort, never panics. The same message is written at most
+/// once per 10 minutes (a heartbeat comes every ~30 s) and the file is rotated
+/// at 256 KB.
+#[allow(dead_code)]
+pub fn append_trace(dir: &Path, msg: &str) {
+    use std::io::Write as _;
+    use std::sync::Mutex;
+    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+    static LAST: Mutex<Option<(String, SystemTime)>> = Mutex::new(None);
+    if let Ok(mut last) = LAST.lock() {
+        if let Some((m, at)) = last.as_ref() {
+            if m == msg && at.elapsed().map(|e| e < Duration::from_secs(600)).unwrap_or(false) {
+                return;
+            }
+        }
+        *last = Some((msg.to_owned(), SystemTime::now()));
+    }
+    let _ = std::fs::create_dir_all(dir);
+    let path = dir.join("self-update.log");
+    if std::fs::metadata(&path).map(|m| m.len() > 256 * 1024).unwrap_or(false) {
+        let _ = std::fs::rename(&path, dir.join("self-update.log.old"));
+    }
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(&path) {
+        let secs = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+        let _ = writeln!(f, "{secs} pid={} {msg}", std::process::id());
+    }
+}
+
 /// Decides from a runtime-heartbeat response. Never compares against the
 /// RustDesk core version (`agent_version`, e.g. `1.4.6`): only the baked Deskzap
 /// build version is meaningful, and versions are compared for equality, not
 /// order — the server decides what "latest" is.
 pub fn decide(response: &Value, installed_build: Option<&str>) -> Decision {
     let metadata = response.pointer("/device/metadata");
-    let pending = metadata
-        .and_then(|m| m.get("pending_update"))
-        .and_then(Value::as_bool)
-        .unwrap_or(false);
-    if !pending {
+    if !pending_flag(response) {
         return Decision::None;
     }
     // An unstamped (local/dev) build has no version to compare: never update it.
     let Some(installed) = installed_build else {
         return Decision::Skip("this build has no build_version".into());
     };
-    let latest = metadata
-        .and_then(|m| str_field(m, "latest_version"))
-        .or_else(|| str_field(response, "latest_version"));
+    // The server's own answer (top level) wins over the nested legacy copy.
+    let latest = str_field(response, "latest_version")
+        .or_else(|| metadata.and_then(|m| str_field(m, "latest_version")));
     let Some(latest) = latest else {
         return Decision::Skip("no latest_version".into());
     };
@@ -135,6 +175,11 @@ mod platform {
     /// UI processes also heartbeat but must never act on the flag.
     pub fn set_update_owner() {
         OWNER.store(true, Ordering::SeqCst);
+        trace("this process is the update owner (service)");
+    }
+
+    fn trace(msg: &str) {
+        super::append_trace(&update_dir(), msg);
     }
 
     fn update_dir() -> PathBuf {
@@ -148,6 +193,7 @@ mod platform {
 
     fn record_error(msg: &str) {
         log::error!("Deskzap self-update failed: {msg}");
+        trace(&format!("FAILED: {msg}"));
         let _ = std::fs::create_dir_all(update_dir());
         let _ = std::fs::write(result_path(), msg);
     }
@@ -185,18 +231,30 @@ mod platform {
 
     pub fn on_heartbeat_response(response: &str) {
         if !OWNER.load(Ordering::SeqCst) {
+            trace("heartbeat reply seen by a non-service process; not acting");
             return;
         }
         let Ok(json) = serde_json::from_str::<serde_json::Value>(response) else {
+            trace("heartbeat reply is not JSON");
             return;
         };
-        match decide(&json, crate::common::deskzap_build_version()) {
-            Decision::None => {}
-            Decision::Skip(reason) => log::info!("Deskzap self-update not applied: {reason}"),
+        let installed = crate::common::deskzap_build_version();
+        match decide(&json, installed) {
+            Decision::None => trace(&format!(
+                "nothing to do (pending={}, installed={:?})",
+                super::pending_flag(&json),
+                installed
+            )),
+            Decision::Skip(reason) => {
+                log::info!("Deskzap self-update not applied: {reason}");
+                trace(&format!("not applied: {reason}"));
+            }
             Decision::Apply { version, url, sha256 } => {
                 if recently_attempted(&version) || IN_FLIGHT.swap(true, Ordering::SeqCst) {
+                    trace(&format!("{version}: already attempted in the last hour or in flight; waiting"));
                     return;
                 }
+                trace(&format!("applying {version}"));
                 std::thread::spawn(move || {
                     if let Err(err) = apply(&version, &url, &sha256) {
                         record_error(&err);
@@ -252,6 +310,7 @@ mod platform {
         run("schtasks", &["/Create", "/F", "/TN", TASK_NAME, "/RU", "SYSTEM", "/RL", "HIGHEST", "/SC", "ONCE", "/ST", "00:00", "/TR", &action])?;
         run("schtasks", &["/Run", "/TN", TASK_NAME])?;
         log::info!("Deskzap self-update: {version} verified, helper started");
+        trace(&format!("{version} downloaded and verified; helper started"));
         Ok(())
     }
 
@@ -286,6 +345,56 @@ mod tests {
             "update_url": "https://my.deskzap.co.uk/api/v1/installers/public-artifacts/windows/host/download",
             "update_sha256": SHA,
         })
+    }
+
+    /// The reply the control plane really sends: the instruction at the top level
+    /// and as device.update_pending; NO device.metadata (it holds secrets).
+    fn real_resp(pending: bool, latest: &str) -> Value {
+        json!({
+            "device": { "agent_version": "1.4.6", "update_pending": pending, "update_target": latest },
+            "pending_update": pending,
+            "latest_version": latest,
+            "update_url": "https://my.deskzap.co.uk/api/v1/installers/public-artifacts/windows/host/download",
+            "update_sha256": SHA,
+        })
+    }
+
+    #[test]
+    fn the_real_server_reply_makes_the_host_apply() {
+        // Regression: decide() used to read only device.metadata, which the server
+        // never sends, so no Host ever self-updated.
+        match decide(&real_resp(true, "0.1.0-preview.9.1"), Some("0.1.0-preview.7.1")) {
+            Decision::Apply { version, sha256, .. } => {
+                assert_eq!(version, "0.1.0-preview.9.1");
+                assert_eq!(sha256, SHA);
+            }
+            other => panic!("expected Apply, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn top_level_not_pending_wins_over_a_stale_nested_copy() {
+        // The server reports pending=false when it has nothing servable.
+        let mut r = real_resp(false, "0.1.0-preview.9.1");
+        r["device"]["metadata"] = json!({ "pending_update": true });
+        assert_eq!(decide(&r, Some("0.1.0-preview.7.1")), Decision::None);
+        assert!(!pending_flag(&r));
+    }
+
+    #[test]
+    fn trace_dedupes_repeats_and_rotates() {
+        let dir = std::env::temp_dir().join(format!("deskzap-trace-test-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        append_trace(&dir, "alpha");
+        append_trace(&dir, "alpha"); // suppressed: same message again
+        append_trace(&dir, "beta");
+        let log = std::fs::read_to_string(dir.join("self-update.log")).unwrap();
+        assert_eq!(log.lines().count(), 2, "{log}");
+        assert!(log.lines().next().unwrap().ends_with("alpha"));
+        std::fs::write(dir.join("self-update.log"), vec![b'x'; 300 * 1024]).unwrap();
+        append_trace(&dir, "gamma");
+        assert!(dir.join("self-update.log.old").exists());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

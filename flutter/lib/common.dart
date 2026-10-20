@@ -2829,10 +2829,20 @@ bool isRunningInPortableMode() {
 }
 
 /// Window status callback
+Timer? _stalePruneTimer;
+
 Future<void> onActiveWindowChanged() async {
+  _stalePruneTimer?.cancel();
+  _stalePruneTimer = null;
   if (!rustDeskWinManager.getActiveWindows().contains(kMainWindowId)) {
-    // Main window is hidden: ignore session windows that are no longer visible.
+    // Main window is hidden: ignore session windows that are no longer visible,
+    // and keep re-checking while any remain, since a session window can vanish
+    // without posting kWindowEventHide.
     await rustDeskWinManager.pruneStaleActiveWindows();
+    if (rustDeskWinManager.getActiveWindows().isNotEmpty) {
+      _stalePruneTimer =
+          Timer(const Duration(seconds: 5), onActiveWindowChanged);
+    }
   }
   print(
       "[MultiWindowHandler] active window changed: ${rustDeskWinManager.getActiveWindows()}");

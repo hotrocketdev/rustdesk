@@ -525,8 +525,10 @@ class RustDeskMultiWindowManager {
         stale = true;
       }
       if (stale) {
+        // Same bookkeeping as unregisterActiveWindow(); keep the id in the type
+        // lists so closeAllSubWindows() can still reach it.
         _activeWindows.remove(id);
-        removeWindowId(id);
+        _inactiveWindows.add(id);
       }
     }
   }

@@ -510,6 +510,34 @@ class RustDeskMultiWindowManager {
     return _activeWindows;
   }
 
+  /// Drop session windows that are still marked active but are hidden or gone.
+  ///
+  /// A session window that closes without posting `kWindowEventHide` (e.g. after
+  /// a failed connection) would otherwise keep the process alive forever once the
+  /// main window is hidden.
+  Future<void> pruneStaleActiveWindows() async {
+    final existing = await getAllSubWindowIds();
+    for (final id in _activeWindows.toList()) {
+      if (id == kMainWindowId) continue;
+      // Gone => stale. Hidden => stale. An unexpected error keeps the window
+      // active so a transient failure can never close a live session.
+      bool stale = !existing.contains(id);
+      if (!stale) {
+        try {
+          stale = await WindowController.fromWindowId(id).isHidden();
+        } catch (e) {
+          debugPrint('pruneStaleActiveWindows: isHidden($id) failed: $e');
+        }
+      }
+      if (stale) {
+        // Same bookkeeping as unregisterActiveWindow(); keep the id in the type
+        // lists so closeAllSubWindows() can still reach it.
+        _activeWindows.remove(id);
+        _inactiveWindows.add(id);
+      }
+    }
+  }
+
   Future<void> _notifyActiveWindow() async {
     for (final callback in _windowActiveCallbacks) {
       await callback.call();

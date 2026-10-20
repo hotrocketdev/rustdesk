@@ -1664,13 +1664,14 @@ impl VideoHandler {
     pub fn record_screen(&mut self, start: bool, id: String, display_idx: usize, camera: bool) {
         self.record = false;
         if start {
+            let dir = crate::ui_interface::video_save_directory(false);
             self.recorder = Recorder::new(RecorderContext {
                 server: false,
                 id,
-                dir: crate::ui_interface::video_save_directory(false),
+                dir: dir.clone(),
                 display_idx,
                 camera,
-                tx: None,
+                tx: crate::hbbs_http::record_upload::start(dir),
             })
             .map_or(Default::default(), |r| Arc::new(Mutex::new(Some(r))));
         } else {

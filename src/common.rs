@@ -1892,6 +1892,16 @@ pub fn get_rendezvous_access_token() -> String {
     LocalConfig::get_option("access_token")
 }
 
+/// The device runtime token used for heartbeats; recording uploads authenticate with the same one.
+pub fn deskzap_runtime_token() -> String {
+    let token = Config::get_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION);
+    if token.is_empty() {
+        LocalConfig::get_option(DESKZAP_RUNTIME_HEARTBEAT_TOKEN_OPTION)
+    } else {
+        token
+    }
+}
+
 pub fn get_deskzap_relay_token() -> String {
     LocalConfig::get_option(DESKZAP_AUTHORIZATION_TOKEN_OPTION)
 }

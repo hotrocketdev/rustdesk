@@ -516,13 +516,18 @@ class RustDeskMultiWindowManager {
   /// a failed connection) would otherwise keep the process alive forever once the
   /// main window is hidden.
   Future<void> pruneStaleActiveWindows() async {
+    final existing = await getAllSubWindowIds();
     for (final id in _activeWindows.toList()) {
       if (id == kMainWindowId) continue;
-      bool stale;
-      try {
-        stale = await WindowController.fromWindowId(id).isHidden();
-      } catch (_) {
-        stale = true;
+      // Gone => stale. Hidden => stale. An unexpected error keeps the window
+      // active so a transient failure can never close a live session.
+      bool stale = !existing.contains(id);
+      if (!stale) {
+        try {
+          stale = await WindowController.fromWindowId(id).isHidden();
+        } catch (e) {
+          debugPrint('pruneStaleActiveWindows: isHidden($id) failed: $e');
+        }
       }
       if (stale) {
         // Same bookkeeping as unregisterActiveWindow(); keep the id in the type

@@ -12,13 +12,56 @@ use std::{
     fs::{File, OpenOptions},
     io,
     ops::{Deref, DerefMut},
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::mpsc::Sender,
     time::Instant,
 };
 use webm::mux::{self, Segment, Track, VideoTrack, Writer};
 
 const MIN_SECS: u64 = 1;
+
+fn sanitize_recording_peer_id(peer_id: &str) -> String {
+    let safe: String = peer_id
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-'))
+        .take(64)
+        .collect();
+    if safe == "." || safe == ".." {
+        "_".to_owned()
+    } else {
+        safe
+    }
+}
+
+fn recording_session_path(base: &Path, peer_id: &str, date: &str) -> PathBuf {
+    if base.as_os_str().is_empty() {
+        return PathBuf::new();
+    }
+
+    base.join(sanitize_recording_peer_id(peer_id)).join(date)
+}
+
+fn filename_has_timestamp(name: &str) -> bool {
+    let bytes = name.as_bytes();
+    if bytes.windows(14).any(|window| window.iter().all(|b| b.is_ascii_digit())) {
+        return true;
+    }
+    bytes.windows(10).any(|window| {
+        window[4] == b'-'
+            && window[7] == b'-'
+            && window.iter().enumerate().all(|(index, byte)| {
+                index == 4 || index == 7 || byte.is_ascii_digit()
+            })
+    })
+}
+
+fn apply_filename_timestamp(name: String, started: &str) -> String {
+    if filename_has_timestamp(&name) {
+        name
+    } else {
+        format!("{started}{name}")
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct RecorderContext {
@@ -39,13 +82,43 @@ pub struct RecorderContext2 {
 }
 
 impl RecorderContext2 {
-    pub fn set_filename(&mut self, ctx: &RecorderContext) -> ResultType<()> {
-        if !PathBuf::from(&ctx.dir).exists() {
-            std::fs::create_dir_all(&ctx.dir)?;
+    pub fn set_filename(&mut self, ctx: &RecorderContext, session_date: &str) -> ResultType<()> {
+        let base_dir = PathBuf::from(&ctx.dir);
+        let session_dir = recording_session_path(&base_dir, &ctx.id, session_date);
+        let recording_dir = if session_dir.as_os_str().is_empty() {
+            log::warn!(
+                "Recording base directory is empty. Falling back to the previous recordings path."
+            );
+            base_dir.clone()
+        } else if session_dir.exists() {
+            session_dir
+        } else {
+            match std::fs::create_dir_all(&session_dir) {
+                Ok(()) => session_dir,
+                Err(err) => {
+                    log::warn!(
+                        "Failed to create recording session directory {:?}: {}. Falling back to the base directory.",
+                        session_dir,
+                        err
+                    );
+                    base_dir.clone()
+                }
+            }
+        };
+        if !recording_dir.exists() {
+            if let Err(err) = std::fs::create_dir_all(&recording_dir) {
+                log::warn!(
+                    "Failed to create recording directory {:?}: {}.",
+                    recording_dir,
+                    err
+                );
+                return Err(err.into());
+            }
         }
+        let safe_peer_id = sanitize_recording_peer_id(&ctx.id);
         let file = if ctx.server { "incoming" } else { "outgoing" }.to_string()
             + "_"
-            + &ctx.id.clone()
+            + &safe_peer_id
             + &chrono::Local::now().format("_%Y%m%d%H%M%S%3f_").to_string()
             + &format!(
                 "{}{}_",
@@ -61,7 +134,9 @@ impl RecorderContext2 {
             } else {
                 ".mp4"
             };
-        self.filename = PathBuf::from(&ctx.dir)
+        let started = chrono::Local::now().format("%Y-%m-%d_%H%M%S_").to_string();
+        let file = apply_filename_timestamp(file, &started);
+        self.filename = recording_dir
             .join(file)
             .to_string_lossy()
             .to_string();
@@ -90,6 +165,7 @@ pub enum RecordState {
 pub struct Recorder {
     pub inner: Option<Box<dyn RecorderApi>>,
     ctx: RecorderContext,
+    session_date: String,
     ctx2: Option<RecorderContext2>,
     pts: Option<i64>,
     check_failed: bool,
@@ -114,6 +190,7 @@ impl Recorder {
         Ok(Self {
             inner: None,
             ctx,
+            session_date: chrono::Local::now().format("%Y-%m-%d").to_string(),
             ctx2: None,
             pts: None,
             check_failed: false,
@@ -130,7 +207,7 @@ impl Recorder {
                         format,
                         filename: Default::default(),
                     };
-                    ctx2.set_filename(&self.ctx)?;
+                    ctx2.set_filename(&self.ctx, &self.session_date)?;
                     self.ctx2 = Some(ctx2);
                     self.inner = None;
                 }
@@ -142,7 +219,7 @@ impl Recorder {
                     format,
                     filename: Default::default(),
                 };
-                ctx2.set_filename(&self.ctx)?;
+                ctx2.set_filename(&self.ctx, &self.session_date)?;
                 self.ctx2 = Some(ctx2);
                 self.inner = None;
             }
@@ -419,5 +496,99 @@ impl Drop for HwRecorder {
             state = RecordState::RemoveFile;
         }
         self.ctx.tx.as_ref().map(|tx| tx.send(state));
+    }
+}
+
+#[cfg(test)]
+mod recording_session_path_tests {
+    use super::{apply_filename_timestamp, recording_session_path};
+    use std::path::{Path, PathBuf};
+
+    const DATE: &str = "2026-10-19";
+
+    #[test]
+    fn recording_session_path_uses_peer_and_date() {
+        assert_eq!(
+            recording_session_path(Path::new("recordings"), "device-01", DATE),
+            PathBuf::from("recordings").join("device-01").join(DATE)
+        );
+    }
+
+    #[test]
+    fn recording_session_path_removes_path_separators_from_peer_id() {
+        assert_eq!(
+            recording_session_path(Path::new("recordings"), "device/one", DATE),
+            PathBuf::from("recordings").join("deviceone").join(DATE)
+        );
+    }
+
+    #[test]
+    fn recording_session_path_prevents_dot_segment_traversal() {
+        assert_eq!(
+            recording_session_path(Path::new("recordings"), "..", DATE),
+            PathBuf::from("recordings").join("_").join(DATE)
+        );
+        assert_eq!(
+            recording_session_path(Path::new("recordings"), ".", DATE),
+            PathBuf::from("recordings").join("_").join(DATE)
+        );
+    }
+
+    #[test]
+    fn recording_session_path_removes_spaces_and_unicode_from_peer_id() {
+        assert_eq!(
+            recording_session_path(Path::new("recordings"), "séance one", DATE),
+            PathBuf::from("recordings").join("sanceone").join(DATE)
+        );
+    }
+
+    #[test]
+    fn recording_session_path_collapses_parent_traversal() {
+        let base = Path::new("recordings");
+        let path = recording_session_path(base, "a/../../etc", DATE);
+        assert_eq!(path, PathBuf::from("recordings").join("a....etc").join(DATE));
+        assert!(path.starts_with(base));
+    }
+
+    #[test]
+    fn recording_session_path_limits_peer_id_to_64_chars() {
+        let peer_id = "a".repeat(80);
+        assert_eq!(
+            recording_session_path(Path::new("recordings"), &peer_id, DATE),
+            PathBuf::from("recordings").join("a".repeat(64)).join(DATE)
+        );
+    }
+
+    #[test]
+    fn apply_filename_timestamp_keeps_existing_timestamp() {
+        let name = "outgoing_abc_20261019120000000_display0_vp9.webm".to_owned();
+        assert_eq!(
+            apply_filename_timestamp(name.clone(), "2026-10-19_120000_"),
+            name
+        );
+    }
+
+    #[test]
+    fn apply_filename_timestamp_prepends_when_missing() {
+        assert_eq!(
+            apply_filename_timestamp("outgoing_abc.webm".to_owned(), "2026-10-19_120000_"),
+            "2026-10-19_120000_outgoing_abc.webm"
+        );
+    }
+
+    #[test]
+    fn recording_session_path_allows_empty_peer_id() {
+        assert_eq!(
+            recording_session_path(Path::new("recordings"), "", DATE),
+            PathBuf::from("recordings").join(DATE)
+        );
+    }
+
+    #[test]
+    fn recording_session_path_returns_empty_path_for_empty_base() {
+        assert_eq!(
+            recording_session_path(Path::new(""), "device-01", DATE),
+            PathBuf::new()
+        );
     }
 }

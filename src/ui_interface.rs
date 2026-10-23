@@ -904,9 +904,20 @@ pub fn video_save_directory(root: bool) -> String {
         #[cfg(windows)]
         {
             let drive = std::env::var("SystemDrive").unwrap_or("C:".to_owned());
-            let dir =
-                std::path::PathBuf::from(format!("{drive}\\ProgramData\\{appname}\\recording",));
-            return dir.to_string_lossy().to_string();
+            let dir = std::path::PathBuf::from(format!(
+                "{drive}\\ProgramData\\DeskZap\\Recordings"
+            ));
+            let created = try_create(&dir);
+            if !created.is_empty() {
+                return created;
+            }
+            log::warn!(
+                "Failed to create recording directory {}. Falling back to the previous recordings folder.",
+                dir.display()
+            );
+            let fallback =
+                std::path::PathBuf::from(format!("{drive}\\ProgramData\\{appname}\\recording"));
+            return fallback.to_string_lossy().to_string();
         }
     }
     // Get directory from config file otherwise --server will use the old value from global var.
@@ -924,6 +935,40 @@ pub fn video_save_directory(root: bool) -> String {
         let dir = try_create(&std::path::Path::new(&path));
         if !dir.is_empty() {
             return dir;
+        }
+    }
+
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        if let Some(user) = directories_next::UserDirs::new() {
+            if let Some(documents_dir) = user.document_dir() {
+                let preferred = documents_dir.join("DeskZap").join("Recordings");
+                let dir = try_create(&preferred);
+                if !dir.is_empty() {
+                    return dir;
+                }
+                log::warn!(
+                    "Failed to create recording directory {}. Falling back to the videos folder.",
+                    preferred.display()
+                );
+            } else {
+                log::warn!(
+                    "Documents directory could not be resolved. Falling back to the videos folder."
+                );
+            }
+            let videos = user.home_dir().join("Videos").join(&appname);
+            let dir = try_create(&videos);
+            if !dir.is_empty() {
+                return dir;
+            }
+            log::warn!(
+                "Failed to create recording directory {}. Falling back to the previous recordings folder.",
+                videos.display()
+            );
+        } else {
+            log::warn!(
+                "Home directory could not be resolved. Falling back to the videos folder."
+            );
         }
     }
 
